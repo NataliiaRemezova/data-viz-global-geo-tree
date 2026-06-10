@@ -1,0 +1,90 @@
+---
+title: "Quarto Demo"
+author: "Ulrike Grömping"
+date: "13 April 2026"
+lang: en
+format:
+  html:
+    toc: true
+    toc-float: true
+    code-fold: true
+    embed-resources: true
+    number-sections: true
+  pdf:
+    toc: false
+    keep-tex: true
+    number-sections: true
+execute:
+  echo: true
+  eval: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+params <- list(html=knitr::is_html_output())
+knitr::opts_chunk$set(echo = params$html)
+```
+
+# First chapter
+
+Quarto (Allaire et al. 2026) is the latest tool for integrating analysis and reporting. It handles R, Python and Julia, and possibly further languages. In this brief demo, I demonstrate some basic aspects of its use. Using it with R requires **knitr** (see, e.g., https://yihui.org/knitr/), and the possibilities of that package can also be used. It is possible to incorporate not only R code (like in this demo), but also, e.g., Python or Julia code with the respective code chunks.
+
+In Chapter&nbsp;@sec-meinreflabel2 you find a figure with a simple caption that was created by the `fig-cap` entry in the chunk information, and a table that was created with function `knitr::kable`. In Chapter&nbsp;@sec-meinreflabel3 you find a figure whose caption contains underscores and a formula; in Quarto, such captions can be written directly in the `fig-cap` chunk option without needing a separate reference definition (which would be needed with bookdown). A caption can contain _underscores_ and formulae directly.
+
+You can have unnumbered chapters (while most chapters are numbered), see the appendix.
+
+With Quarto, it is easy to reference back and forth between sections, and to figures or tables that were created from code chunks. References to figures start with `@fig-`, references to tables with `@tbl-`, and section references with `@sec-`. The chunk label itself must carry the corresponding prefix (different from bookdown, where the chunk label does not have the prefix, but the reference will).
+
+# Second chapter {#sec-meinreflabel2}
+
+@tbl-cor shows the correlations in the dataset `swiss`.
+
+```{r}
+#| label: tbl-cor
+#| tbl-cap: "The correlation matrix of the `swiss` data"
+knitr::kable(round(cor(swiss),4), booktabs=TRUE, linesep="")
+```
+
+@fig-kde shows a kernel density estimate of the proportion of males involved in agricultural occupations.
+
+```{r}
+#| label: fig-kde
+#| fig-cap: "Proportion of males involved in agricultural occupations in 47 French speaking swiss provinces (1888). Kernel density estimate."
+#| fig-height: 3
+#| fig-width: 4
+plot(density(swiss$Agriculture), xlab="Agriculture", las=1, mgp=c(2,0.5,0))
+```
+
+# Third chapter {#sec-meinreflabel3}
+
+@fig-scat shows a scatter plot with a more demanding figure caption.
+
+```{r}
+#| label: fig-scat
+#| fig-cap: "A caption can contain \\_underscores\\_ and $\\sqrt v$ formulae."
+#| fig-height: 3
+#| fig-width: 4
+plot(Fertility~Agriculture, swiss, las=1, mgp=c(2,0.5,0))
+```
+
+# Final chapter
+
+Your final chapter ---&nbsp;like your introductory chapter ---&nbsp;will be read by every reader. Both these chapters are therefore particularly important.
+
+Please note that this brief text focused on how to implement a report with the help of R package **bookdown**. There was no content of specific relevance for data visualization.
+
+# References {.unnumbered}
+
+Allaire, J., Teague, C., Scheidegger, C., Xie, Y., Dervieux, C., & Woodhull, G. (2026). Quarto (Version 1.9) [Computer software]. https://doi.org/10.5281/zenodo.5960048
+
+# Appendix A {.unnumbered}
+
+Example for an appendix
+
+The following listing shows the data (do not do that with a large data set!).
+
+```{r}
+#| label: printdat
+print(swiss)
+```
