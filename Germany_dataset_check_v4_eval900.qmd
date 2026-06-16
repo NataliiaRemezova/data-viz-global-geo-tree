@@ -1,0 +1,464 @@
+---
+title: "Germany Check: Full Dataset, Species Counts, and Category Lookup"
+author: "GlobalGeoTree team"
+format:
+  html:
+    toc: true
+    number-sections: true
+    theme: cosmo
+    df-print: paged
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Purpose
+
+This short diagnostic report checks Germany in the GlobalGeoTree observations file.
+
+It answers three questions:
+
+1. How many observations are available for Germany?
+2. How many recorded species are available for Germany?
+3. How many Germany observations and species can be assigned to the dataset-defined categories `Rare`, `Common`, and `Frequent`?
+
+The category check is especially important because the full observations dataset may not contain a `Category` column. In that case, this report uses the larger evaluation dataset `GlobalGeoTree-10kEval-900.csv` as a category lookup table.
+
+# Setup
+
+```{r setup}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+options(scipen = 999)
+
+focus_country_code <- "DE"
+focus_country_name <- "Germany"
+
+# Main observations file. Prefer the full dataset if available.
+observation_candidates <- c(
+  "GlobalGeoTree_full.csv",
+  "GlobalGeoTree.csv",
+  "GlobalGeoTree-6m.csv",
+  "GlobalGeoTree-10kEval-900.csv",
+  "GlobalGeoTree-10kEval-90.csv"
+)
+
+observations_path <- observation_candidates[file.exists(observation_candidates)][1]
+
+if (is.na(observations_path)) {
+  stop("No observations file found. Put GlobalGeoTree_full.csv or an eval CSV in the same folder as this QMD.")
+}
+
+# Category lookup. Prefer the larger 900-species eval dataset.
+eval_candidates <- c(
+  "GlobalGeoTree-10kEval-900.csv",
+  "GlobalGeoTree-10kEval-90.csv"
+)
+
+eval_lookup_path <- eval_candidates[file.exists(eval_candidates)][1]
+
+# Optional taxonomy catalog. It is not used for category, but can help verify taxonomy.
+catalog_candidates <- c(
+  "Tree_species_catalog.csv",
+  "Tree_species_catalog(1).csv"
+)
+
+catalog_path <- catalog_candidates[file.exists(catalog_candidates)][1]
+
+theme_gtree <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", size = base_size + 3),
+      plot.subtitle = element_text(color = "gray35"),
+      plot.caption = element_text(color = "gray45", size = base_size - 2),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold")
+    )
+}
+
+fmt_int <- function(x) format(x, big.mark = ",", scientific = FALSE)
+```
+
+# Input files
+
+```{r input-files}
+input_files <- tibble::tibble(
+  file_role = c("Main observations file", "Category lookup file", "Optional species catalog"),
+  file_path = c(
+    observations_path,
+    ifelse(is.na(eval_lookup_path), "Not found", eval_lookup_path),
+    ifelse(is.na(catalog_path), "Not found", catalog_path)
+  )
+)
+
+knitr::kable(input_files, caption = "Files used in this diagnostic report")
+```
+
+# Load data and inspect the head
+
+```{r load-data}
+obs_raw <- fread(observations_path, showProgress = FALSE)
+
+# Standardize column names only where needed.
+old_names <- names(obs_raw)
+names(obs_raw) <- str_to_lower(names(obs_raw))
+
+# The full dataset and eval files may use Category or category.
+if ("category" %in% names(obs_raw)) {
+  obs_raw <- obs_raw |> mutate(category = str_squish(as.character(category)))
+}
+
+required_observation_cols <- c("country_code", "level3_species", "species_key")
+missing_required <- setdiff(required_observation_cols, names(obs_raw))
+
+if (length(missing_required) > 0) {
+  stop("The observations file is missing required columns: ", paste(missing_required, collapse = ", "))
+}
+
+obs_clean <- obs_raw |>
+  mutate(
+    country_code = str_to_upper(str_squish(as.character(country_code))),
+    level3_species = str_squish(as.character(level3_species)),
+    species_key = as.character(species_key)
+  )
+
+if ("latitude" %in% names(obs_clean)) {
+  obs_clean <- obs_clean |> mutate(latitude = as.numeric(latitude))
+}
+
+if ("longitude" %in% names(obs_clean)) {
+  obs_clean <- obs_clean |> mutate(longitude = as.numeric(longitude))
+}
+
+obs_de <- obs_clean |>
+  filter(country_code == focus_country_code)
+```
+
+The table below shows the first rows of the main observations dataset. This is useful for checking which variables are available before any filtering or joins.
+
+```{r head-full}
+obs_clean |>
+  head(10) |>
+  knitr::kable(caption = "First 10 rows of the main observations dataset")
+```
+
+The table below shows the first rows after filtering to Germany.
+
+```{r head-germany}
+obs_de |>
+  head(10) |>
+  knitr::kable(caption = "First 10 Germany rows after filtering country_code == 'DE'")
+```
+
+# Germany observation and species counts
+
+```{r germany-basic-counts}
+germany_observations <- nrow(obs_de)
+germany_species <- n_distinct(obs_de$level3_species)
+germany_species_keys <- n_distinct(obs_de$species_key)
+
+basic_counts <- tibble::tibble(
+  metric = c(
+    "Germany observations",
+    "Germany recorded species names",
+    "Germany recorded species keys"
+  ),
+  value = c(
+    germany_observations,
+    germany_species,
+    germany_species_keys
+  )
+)
+
+knitr::kable(
+  basic_counts |> mutate(value = fmt_int(value)),
+  caption = "Germany subset size before category lookup"
+)
+```
+
+The Germany subset contains **`r fmt_int(germany_observations)` observations** and **`r fmt_int(germany_species)` recorded species names**.
+
+# Category source and lookup logic
+
+The category variable is handled in this order:
+
+1. If the main observations file already contains `category`, use it directly.
+2. If the main observations file does not contain `category`, use the evaluation dataset as a lookup table.
+3. Prefer joining by `species_key` because it is more stable than species names.
+4. If `species_key` is not available, fall back to joining by `level3_species`.
+
+The species catalog is **not** used to assign `Rare`, `Common`, or `Frequent`, because the catalog does not normally contain category labels. It is a taxonomy reference, not a category lookup.
+
+```{r category-lookup}
+main_has_category <- "category" %in% names(obs_clean)
+
+if (main_has_category) {
+  obs_de_cat <- obs_de |>
+    mutate(category_source = "Main observations file")
+  
+  category_source_note <- "The main observations file already contains a category column. No eval lookup was required."
+  lookup_summary <- tibble::tibble(
+    metric = c("Lookup file used", "Lookup species with category"),
+    value = c("Not needed", "Not needed")
+  )
+  
+} else {
+  if (is.na(eval_lookup_path)) {
+    stop("The main observations file has no category column and no eval lookup file was found.")
+  }
+  
+  eval_raw <- fread(eval_lookup_path, showProgress = FALSE)
+  names(eval_raw) <- str_to_lower(names(eval_raw))
+  
+  required_eval_cols <- c("level3_species", "species_key", "category")
+  missing_eval <- setdiff(required_eval_cols, names(eval_raw))
+  
+  if (length(missing_eval) > 0) {
+    stop("The eval lookup file is missing required columns: ", paste(missing_eval, collapse = ", "))
+  }
+  
+  eval_lookup <- eval_raw |>
+    mutate(
+      level3_species = str_squish(as.character(level3_species)),
+      species_key = as.character(species_key),
+      category = str_squish(as.character(category))
+    ) |>
+    filter(!is.na(category), category != "") |>
+    distinct(species_key, level3_species, category)
+  
+  # Check whether any species_key has conflicting categories.
+  conflicting_keys <- eval_lookup |>
+    count(species_key, name = "n_rows") |>
+    filter(n_rows > 1)
+  
+  # Resolve category by species_key first.
+  lookup_by_key <- eval_lookup |>
+    group_by(species_key) |>
+    summarise(
+      category = dplyr::first(category),
+      category_species_name = dplyr::first(level3_species),
+      .groups = "drop"
+    )
+  
+  # Fallback lookup by species name.
+  lookup_by_species <- eval_lookup |>
+    group_by(level3_species) |>
+    summarise(
+      category_by_species_name = dplyr::first(category),
+      .groups = "drop"
+    )
+  
+  obs_de_cat <- obs_de |>
+    left_join(lookup_by_key, by = "species_key") |>
+    left_join(lookup_by_species, by = "level3_species") |>
+    mutate(
+      category = coalesce(category, category_by_species_name),
+      category_join_method = case_when(
+        !is.na(category) & !is.na(category_species_name) ~ "Matched by species_key",
+        !is.na(category) & is.na(category_species_name) ~ "Matched by species name",
+        TRUE ~ "No category match"
+      ),
+      category_source = paste("Eval lookup:", eval_lookup_path)
+    ) |>
+    select(-category_by_species_name)
+  
+  category_source_note <- paste(
+    "The main observations file does not contain category. Categories were joined from",
+    eval_lookup_path,
+    "using species_key first and species name as fallback."
+  )
+  
+  lookup_summary <- tibble::tibble(
+    metric = c(
+      "Lookup file used",
+      "Lookup rows",
+      "Lookup species keys with category",
+      "Lookup species names with category",
+      "Species keys with conflicting category rows"
+    ),
+    value = c(
+      eval_lookup_path,
+      fmt_int(nrow(eval_lookup)),
+      fmt_int(n_distinct(eval_lookup$species_key)),
+      fmt_int(n_distinct(eval_lookup$level3_species)),
+      fmt_int(nrow(conflicting_keys))
+    )
+  )
+}
+
+knitr::kable(lookup_summary, caption = "Category lookup source and coverage")
+```
+
+`r category_source_note`
+
+# Category coverage in Germany
+
+```{r category-coverage}
+known_category_obs <- obs_de_cat |>
+  filter(!is.na(category), category != "")
+
+unknown_category_obs <- obs_de_cat |>
+  filter(is.na(category) | category == "")
+
+known_category_species <- known_category_obs |>
+  distinct(level3_species) |>
+  nrow()
+
+unknown_category_species <- obs_de_cat |>
+  filter(is.na(category) | category == "") |>
+  distinct(level3_species) |>
+  nrow()
+
+coverage_summary <- tibble::tibble(
+  metric = c(
+    "Germany observations",
+    "Germany recorded species",
+    "Germany observations with known category",
+    "Germany recorded species with known category",
+    "Germany observations without known category",
+    "Germany recorded species without known category"
+  ),
+  value = c(
+    nrow(obs_de_cat),
+    n_distinct(obs_de_cat$level3_species),
+    nrow(known_category_obs),
+    known_category_species,
+    nrow(unknown_category_obs),
+    unknown_category_species
+  ),
+  share = c(
+    1,
+    1,
+    nrow(known_category_obs) / nrow(obs_de_cat),
+    known_category_species / n_distinct(obs_de_cat$level3_species),
+    nrow(unknown_category_obs) / nrow(obs_de_cat),
+    unknown_category_species / n_distinct(obs_de_cat$level3_species)
+  )
+)
+
+coverage_summary_display <- coverage_summary |>
+  mutate(
+    value = fmt_int(value),
+    share = scales::percent(share, accuracy = 0.1)
+  )
+
+knitr::kable(coverage_summary_display, caption = "Known and unknown category coverage for Germany")
+```
+
+Interpretation:
+
+- `Germany observations with known category` counts observation rows whose species could be matched to `Rare`, `Common`, or `Frequent`.
+- `Germany recorded species with known category` counts unique species names in Germany whose category is known.
+- If the full dataset does not contain `category`, these values depend on how much overlap exists between Germany species and the eval lookup file.
+
+# Rare, Common, and Frequent relation
+
+```{r category-observation-summary}
+category_obs_summary <- known_category_obs |>
+  count(category, name = "observations") |>
+  mutate(share_observations = observations / sum(observations)) |>
+  arrange(desc(observations))
+
+knitr::kable(
+  category_obs_summary |>
+    mutate(
+      observations = fmt_int(observations),
+      share_observations = scales::percent(share_observations, accuracy = 0.1)
+    ),
+  caption = "Germany observations by known category"
+)
+```
+
+```{r category-species-summary}
+category_species_summary <- known_category_obs |>
+  distinct(category, level3_species) |>
+  count(category, name = "species") |>
+  mutate(share_species = species / sum(species)) |>
+  arrange(desc(species))
+
+knitr::kable(
+  category_species_summary |>
+    mutate(
+      species = fmt_int(species),
+      share_species = scales::percent(share_species, accuracy = 0.1)
+    ),
+  caption = "Germany recorded species by known category"
+)
+```
+
+```{r category-observation-chart, fig.width=7, fig.height=4.5}
+ggplot(category_obs_summary, aes(x = reorder(category, observations), y = observations)) +
+  geom_col(width = 0.7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Germany observations with known category",
+    subtitle = "Only species matched to the category lookup are included.",
+    x = NULL,
+    y = "Observation count",
+    caption = "Category labels come from the main file if available; otherwise from the evaluation lookup."
+  ) +
+  theme_gtree()
+```
+
+```{r category-species-chart, fig.width=7, fig.height=4.5}
+ggplot(category_species_summary, aes(x = reorder(category, species), y = species)) +
+  geom_col(width = 0.7) +
+  coord_flip() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(
+    title = "Germany species with known category",
+    subtitle = "This chart counts species, not observation rows.",
+    x = NULL,
+    y = "Number of species",
+    caption = "If many Germany species are unmatched, this chart should be interpreted as partial coverage only."
+  ) +
+  theme_gtree()
+```
+
+# Which Germany species received a category?
+
+```{r matched-species-table}
+matched_species <- known_category_obs |>
+  count(level3_species, species_key, category, name = "observations") |>
+  arrange(category, desc(observations))
+
+knitr::kable(
+  matched_species |>
+    mutate(observations = fmt_int(observations)),
+  caption = "Germany species with known category"
+)
+```
+
+# Which Germany species are still unmatched?
+
+```{r unmatched-species-table}
+unmatched_species <- unknown_category_obs |>
+  count(level3_species, species_key, name = "observations") |>
+  arrange(desc(observations))
+
+knitr::kable(
+  unmatched_species |>
+    head(30) |>
+    mutate(observations = fmt_int(observations)),
+  caption = "Top 30 Germany species without a known category"
+)
+```
+
+# Conclusion
+
+This diagnostic report separates two questions that are easy to confuse:
+
+1. **How many observations and species exist for Germany in the main dataset?**  
+   This is calculated directly from the full observations file after filtering `country_code == 'DE'`.
+
+2. **How many Germany observations and species have a known `Rare`, `Common`, or `Frequent` category?**  
+   This depends on whether the main file contains `category`. If it does not, category can only be assigned to species that overlap with the eval lookup dataset.
+
+Therefore, if the category comes from `GlobalGeoTree-10kEval-900.csv`, the Rare/Common/Frequent analysis is a **matched-subset analysis**, not a complete classification of all Germany species.

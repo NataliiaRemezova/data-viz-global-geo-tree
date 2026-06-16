@@ -1,0 +1,590 @@
+---
+title: "GlobalGeoTree: Species Ranges and Country Observation Hotspots"
+author: "Nataliia / GlobalGeoTree team"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    theme: cosmo
+    code-fold: true
+    code-tools: true
+    fig-width: 9
+    fig-height: 5.6
+execute:
+  echo: false
+  warning: false
+  message: false
+editor: visual
+---
+
+```{r setup}
+#| include: false
+
+# -------------------------------------------------------------------------
+# Required packages only
+# -------------------------------------------------------------------------
+# data.table: fast CSV reading, useful for the future 6M dataset
+# dplyr/stringr: data cleaning and summaries
+# ggplot2/scales: visualizations and readable labels
+library(data.table)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+
+set.seed(42)
+
+# -------------------------------------------------------------------------
+# User configuration
+# -------------------------------------------------------------------------
+# Files are assumed to be in the same folder as this .qmd file.
+# For the full 6M dataset, replace observations_path with the full file name.
+observations_path <- "GlobalGeoTree-10kEval-90.csv"
+catalog_path <- "Tree_species_catalog.csv"
+
+# Fallback paths if this file is rendered inside the ChatGPT sandbox.
+if (!file.exists(observations_path) && file.exists("/mnt/data/GlobalGeoTree-10kEval-90.csv")) {
+  observations_path <- "/mnt/data/GlobalGeoTree-10kEval-90.csv"
+}
+if (!file.exists(catalog_path) && file.exists("/mnt/data/Tree_species_catalog.csv")) {
+  catalog_path <- "/mnt/data/Tree_species_catalog.csv"
+}
+
+# Main sample size after cleaning.
+# With the 10k sample, all rows are used. With the 6M file, this creates a manageable sample.
+main_sample_n <- 100000
+
+# Country used for the within-country heatmap.
+# Use ISO-2 country codes: US, DE, FR, etc.
+focus_country_code <- "DE"
+
+# Minimum observations required for species-level spread analysis.
+min_obs_per_species <- 20
+
+# Maximum number of points drawn in point overlays.
+max_points_on_map <- 2500
+
+# Number of bins in the country heatmap.
+country_heatmap_bins <- 45
+
+# Small helper for readable country names without extra packages.
+country_names <- c(
+  "US" = "United States",
+  "DE" = "Germany",
+  "FR" = "France",
+  "CA" = "Canada",
+  "MX" = "Mexico",
+  "GB" = "United Kingdom",
+  "ES" = "Spain",
+  "IT" = "Italy",
+  "NL" = "Netherlands",
+  "BE" = "Belgium",
+  "CH" = "Switzerland",
+  "AT" = "Austria",
+  "PL" = "Poland"
+)
+focus_country_name <- country_names[[focus_country_code]]
+if (is.null(focus_country_name)) focus_country_name <- focus_country_code
+
+# -------------------------------------------------------------------------
+# Visual style
+# -------------------------------------------------------------------------
+
+theme_gtree <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", size = base_size + 4, margin = margin(b = 6)),
+      plot.subtitle = element_text(size = base_size, color = "gray35", margin = margin(b = 10)),
+      plot.caption = element_text(size = base_size - 2, color = "gray45", hjust = 0),
+      axis.title = element_text(face = "bold"),
+      axis.text = element_text(color = "gray25"),
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(linewidth = 0.2, color = "gray88"),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold", size = base_size),
+      strip.background = element_rect(fill = "gray95", color = NA),
+      plot.margin = margin(10, 14, 10, 10)
+    )
+}
+
+theme_set(theme_gtree())
+
+category_palette <- c(
+  "Rare" = "#8c510a",
+  "Common" = "#35978f",
+  "Frequent" = "#01665e"
+)
+
+plot_empty <- function(label) {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = label, size = 4.2, color = "gray35") +
+    xlim(-1, 1) + ylim(-1, 1) +
+    theme_void()
+}
+
+sample_up_to_grouped <- function(data, n_per_group) {
+  # Safer than slice_sample(n = min(n(), n_per_group)), because dplyr requires
+  # the n argument to be a fixed numeric value rather than n().
+  data |>
+    group_modify(~ slice_sample(.x, n = min(nrow(.x), n_per_group))) |>
+    ungroup()
+}
+```
+
+# Purpose
+
+This report focuses on one component of the larger GlobalGeoTree project: **subsampling, species spatial spread, category-level spatial spread, and within-country observation hotspots**.
+
+The original questions were:
+
+1.  *Do trees from one species grow in the same area? And from the same category?*
+2.  *Where are trees located in a given country?*
+
+For a clearer visualization report, these are reformulated as:
+
+**RQ1. Species and category spatial concentration**\
+Do observations of the same tree species tend to be geographically concentrated, and do dataset-defined categories such as `Rare`, `Common`, and `Frequent` differ in their spatial spread?
+
+**RQ2. Within-country observation hotspots**\
+Where are tree observations concentrated within a selected country, and which species or categories dominate these hotspots?
+
+::: callout-note
+The `Category` variable is treated as a **dataset-defined category**, not automatically as ecological rarity. In the 10k evaluation sample, category values may partly reflect the sampling design.
+:::
+
+# Data preparation and subsampling
+
+The full GlobalGeoTree dataset contains millions of observations. Rendering all records directly in a report can lead to slow computation and overplotted maps. Subsampling is therefore used to reduce the data to a manageable size while preserving the groups needed for the research questions.
+
+For this analysis, the preferred sample is stratified by **country**, **category**, and **species**. This is more appropriate than a purely random sample because random sampling can overrepresent dominant countries, dominant sources, or very frequently observed species.
+
+```{r load-clean-data}
+stopifnot(file.exists(observations_path))
+stopifnot(file.exists(catalog_path))
+
+obs_raw <- data.table::fread(observations_path, showProgress = FALSE) |>
+  as.data.frame()
+names(obs_raw) <- tolower(names(obs_raw))
+
+catalog_raw <- data.table::fread(catalog_path, showProgress = FALSE) |>
+  as.data.frame()
+names(catalog_raw) <- tolower(names(catalog_raw))
+
+required_cols <- c(
+  "sample_id", "country_code", "level0", "level1_family", "level2_genus",
+  "level3_species", "location", "source", "species_key", "year",
+  "longitude", "latitude", "category"
+)
+
+missing_cols <- setdiff(required_cols, names(obs_raw))
+if (length(missing_cols) > 0) {
+  stop("The observations file is missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+obs_clean <- obs_raw |>
+  mutate(
+    across(where(is.character), str_squish),
+    country_code = str_to_upper(country_code),
+    level0 = str_squish(level0),
+    level1_family = str_squish(level1_family),
+    level2_genus = str_squish(level2_genus),
+    level3_species = str_squish(level3_species),
+    category = str_squish(category),
+    source = str_squish(source),
+    year = as.integer(year),
+    longitude = as.numeric(longitude),
+    latitude = as.numeric(latitude)
+  ) |>
+  filter(
+    !is.na(latitude), !is.na(longitude),
+    between(latitude, -90, 90),
+    between(longitude, -180, 180),
+    !is.na(level3_species), level3_species != "",
+    !is.na(country_code), country_code != ""
+  )
+
+catalog_clean <- catalog_raw |>
+  mutate(
+    across(where(is.character), str_squish),
+    level0 = str_squish(level0),
+    level1_family = str_squish(level1_family),
+    level2_genus = str_squish(level2_genus),
+    level3_species = str_squish(level3_species)
+  ) |>
+  distinct(level3_species, level2_genus, level1_family, level0, species_key)
+
+if (nrow(obs_clean) <= main_sample_n) {
+  obs_sample <- obs_clean
+  sampling_note <- "The cleaned dataset is smaller than the requested sample size, so all cleaned observations were used."
+} else {
+  n_groups <- obs_clean |>
+    distinct(country_code, category, level3_species) |>
+    nrow()
+
+  n_per_group <- max(1, ceiling(main_sample_n / n_groups))
+
+  obs_sample <- obs_clean |>
+    group_by(country_code, category, level3_species) |>
+    sample_up_to_grouped(n_per_group = n_per_group)
+
+  if (nrow(obs_sample) > main_sample_n) {
+    obs_sample <- obs_sample |>
+      slice_sample(n = main_sample_n)
+  }
+
+  sampling_note <- paste0(
+    "A stratified sample was created by country, category, and species. Maximum rows per stratum: ",
+    n_per_group, "."
+  )
+}
+
+preprocessing_summary <- data.frame(
+  Step = c("Raw observations", "After coordinate/species/country cleaning", "Analytical sample", "Species catalog rows"),
+  Rows = c(nrow(obs_raw), nrow(obs_clean), nrow(obs_sample), nrow(catalog_clean)),
+  Countries = c(
+    length(unique(obs_raw$country_code)),
+    n_distinct(obs_clean$country_code),
+    n_distinct(obs_sample$country_code),
+    NA
+  ),
+  Species = c(
+    n_distinct(obs_raw$level3_species),
+    n_distinct(obs_clean$level3_species),
+    n_distinct(obs_sample$level3_species),
+    n_distinct(catalog_clean$level3_species)
+  )
+)
+```
+
+The cleaned observation dataset contains **`r comma(nrow(obs_clean))` records**, **`r comma(n_distinct(obs_clean$country_code))` countries**, and **`r comma(n_distinct(obs_clean$level3_species))` observed species**. The analytical sample used in this report contains **`r comma(nrow(obs_sample))` records**.
+
+```{r preprocessing-summary-table}
+#| tbl-cap: "Summary of preprocessing and sampling steps."
+knitr::kable(preprocessing_summary, align = "lrrr")
+```
+
+`r sampling_note`
+
+```{r category-sampling-plot, fig.cap="The category composition is checked after sampling to verify that the analytical sample still preserves the Rare/Common/Frequent structure."}
+category_composition <- obs_sample |>
+  count(category, name = "observations") |>
+  mutate(share = observations / sum(observations))
+
+ggplot(category_composition, aes(x = reorder(category, -share), y = share, fill = category)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = percent(share, accuracy = 0.1)), vjust = -0.35, size = 3.8) +
+  scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.12))) +
+  scale_fill_manual(values = category_palette) +
+  labs(
+    title = "Category composition in the analytical sample",
+    subtitle = "The sample keeps all three dataset-defined categories visible for comparison.",
+    x = NULL,
+    y = "Share of observations"
+  )
+```
+
+# Measuring species spatial spread
+
+To evaluate whether observations of the same species occur in the same area, each species is summarized using three simple spatial indicators:
+
+-   **number of countries** where the species is observed;
+-   **latitude range**, measuring north--south spread;
+-   **median distance to the species center**, measuring how far observations are from the species' average location.
+
+A species concentrated in one area should have a small number of countries and a smaller distance to its center. A widespread species should have larger values.
+
+```{r species-spread-data}
+haversine_km <- function(lon1, lat1, lon2, lat2) {
+  r <- 6371
+  to_rad <- pi / 180
+  d_lat <- (lat2 - lat1) * to_rad
+  d_lon <- (lon2 - lon1) * to_rad
+  a <- sin(d_lat / 2)^2 + cos(lat1 * to_rad) * cos(lat2 * to_rad) * sin(d_lon / 2)^2
+  2 * r * atan2(sqrt(a), sqrt(1 - a))
+}
+
+species_centers <- obs_sample |>
+  group_by(level3_species, category, level1_family, level2_genus) |>
+  summarise(
+    n_observations = n(),
+    n_countries = n_distinct(country_code),
+    center_lon = mean(longitude, na.rm = TRUE),
+    center_lat = mean(latitude, na.rm = TRUE),
+    lat_min = min(latitude, na.rm = TRUE),
+    lat_max = max(latitude, na.rm = TRUE),
+    lon_min = min(longitude, na.rm = TRUE),
+    lon_max = max(longitude, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  mutate(
+    lat_range = lat_max - lat_min,
+    lon_range = lon_max - lon_min
+  )
+
+species_spread <- obs_sample |>
+  left_join(
+    species_centers |>
+      select(level3_species, category, center_lon, center_lat),
+    by = c("level3_species", "category")
+  ) |>
+  mutate(
+    distance_to_center_km = haversine_km(longitude, latitude, center_lon, center_lat)
+  ) |>
+  group_by(level3_species, category) |>
+  summarise(
+    median_distance_to_center_km = median(distance_to_center_km, na.rm = TRUE),
+    mean_distance_to_center_km = mean(distance_to_center_km, na.rm = TRUE),
+    max_distance_to_center_km = max(distance_to_center_km, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  left_join(species_centers, by = c("level3_species", "category")) |>
+  filter(n_observations >= min_obs_per_species)
+```
+
+```{r species-spread-scatter, fig.cap="Each point represents one species. Species observed in more countries often have a larger median distance from their geographic center, indicating broader spatial spread."}
+if (nrow(species_spread) == 0) {
+  plot_empty("No species meet the minimum observation threshold.")
+} else {
+  ggplot(
+    species_spread,
+    aes(
+      x = n_countries,
+      y = median_distance_to_center_km,
+      size = n_observations,
+      color = category
+    )
+  ) +
+    geom_point(alpha = 0.75) +
+    scale_color_manual(values = category_palette) +
+    scale_x_continuous(breaks = pretty_breaks()) +
+    scale_y_continuous(labels = comma_format()) +
+    scale_size_continuous(labels = comma_format(), range = c(2, 8)) +
+    labs(
+      title = "Species differ in geographic spread",
+      subtitle = "A species is considered more widespread when it appears in more countries and farther from its geographic center.",
+      x = "Number of countries where species is observed",
+      y = "Median distance to species center (km)",
+      color = "Category",
+      size = "Observations"
+    )
+}
+```
+
+This plot directly addresses the first part of RQ1. Species do not all show the same spatial behavior: some are strongly localized, while others are distributed across many countries and over long distances.
+
+# Do categories differ in spatial concentration?
+
+The next visualization compares species-level spatial spread across the dataset-defined categories. Each point is one species, so the viewer can see both the category medians and the variability inside each category.
+
+```{r category-spread-jitter, fig.cap="Each point is one species; the black crossbar shows the median within each category. This makes the category comparison easier to read than a boxplot alone."}
+if (nrow(species_spread) == 0) {
+  plot_empty("No species meet the minimum observation threshold.")
+} else {
+  ggplot(species_spread, aes(x = category, y = median_distance_to_center_km, color = category)) +
+    geom_jitter(width = 0.14, alpha = 0.7, size = 2.3, show.legend = FALSE) +
+    stat_summary(
+      fun = median,
+      geom = "crossbar",
+      width = 0.45,
+      linewidth = 0.45,
+      color = "black"
+    ) +
+    scale_color_manual(values = category_palette) +
+    scale_y_continuous(labels = comma_format()) +
+    labs(
+      title = "Spatial concentration varies within each category",
+      subtitle = "Category alone does not fully determine whether a species is localized or widespread.",
+      x = NULL,
+      y = "Median distance to species center (km)"
+    )
+}
+```
+
+This figure is useful because it avoids reducing the categories to only one number. If points within a category are widely spread vertically, then category membership alone is not enough to explain geographic range.
+
+# Examples of localized and widespread species
+
+To make the spread metrics more intuitive, three example species are selected: one relatively localized species, one intermediate species, and one widespread species. These examples are chosen automatically from the species spread ranking.
+
+```{r selected-species-map-data}
+if (nrow(species_spread) > 0) {
+  species_ranked <- species_spread |>
+    arrange(median_distance_to_center_km)
+
+  selected_indices <- unique(round(seq(1, nrow(species_ranked), length.out = min(3, nrow(species_ranked)))))
+  selected_species <- species_ranked$level3_species[selected_indices]
+
+  selected_species_points <- obs_sample |>
+    filter(level3_species %in% selected_species) |>
+    group_by(level3_species) |>
+    sample_up_to_grouped(n_per_group = max_points_on_map)
+} else {
+  selected_species <- character(0)
+  selected_species_points <- obs_sample[0, ]
+}
+```
+
+```{r selected-species-maps, fig.cap="The small multiples show concrete examples of species with different spatial ranges. The maps are intentionally simple to emphasize relative spread rather than exact administrative boundaries."}
+if (length(selected_species) == 0 || nrow(selected_species_points) == 0) {
+  plot_empty("No species available for example maps.")
+} else {
+  ggplot(selected_species_points, aes(x = longitude, y = latitude, color = category)) +
+    geom_point(alpha = 0.45, size = 0.9) +
+    facet_wrap(~ level3_species, ncol = 1) +
+    scale_color_manual(values = category_palette) +
+    coord_fixed() +
+    labs(
+      title = "Examples of localized and widespread species",
+      subtitle = "Selected species illustrate how spatial spread differs across the dataset.",
+      x = "Longitude",
+      y = "Latitude",
+      color = "Category"
+    )
+}
+```
+
+# Within-country observation hotspots
+
+The second research question asks where trees are located in a selected country. The selected country for this report is **`r focus_country_name`** (`r focus_country_code`).
+
+```{r country-data}
+country_data <- obs_sample |>
+  filter(country_code == focus_country_code)
+
+if (nrow(country_data) > max_points_on_map) {
+  country_points <- country_data |>
+    slice_sample(n = max_points_on_map)
+} else {
+  country_points <- country_data
+}
+
+country_summary <- data.frame(
+  Metric = c("Observations", "Species", "Families", "Categories", "Years represented"),
+  Value = c(
+    comma(nrow(country_data)),
+    comma(n_distinct(country_data$level3_species)),
+    comma(n_distinct(country_data$level1_family)),
+    comma(n_distinct(country_data$category)),
+    paste(range(country_data$year, na.rm = TRUE), collapse = "–")
+  )
+)
+```
+
+```{r country-summary-table}
+#| tbl-cap: "Summary of observations in the selected country."
+if (nrow(country_data) == 0) {
+  knitr::kable(data.frame(Message = paste("No observations found for", focus_country_code)))
+} else {
+  knitr::kable(country_summary, align = "lr")
+}
+```
+
+```{r country-heatmap, fig.cap="The heatmap bins observations into longitude-latitude cells. Darker cells indicate stronger local concentration of observations. Points show a light sample of individual records for context."}
+if (nrow(country_data) == 0) {
+  plot_empty(paste("No observations found for", focus_country_code))
+} else {
+  ggplot(country_data, aes(x = longitude, y = latitude)) +
+    geom_bin2d(bins = country_heatmap_bins) +
+    geom_point(
+      data = country_points,
+      aes(x = longitude, y = latitude),
+      inherit.aes = FALSE,
+      alpha = 0.18,
+      size = 0.45,
+      color = "black"
+    ) +
+    scale_fill_gradient(low = "#f7fcf5", high = "#00441b", labels = comma_format()) +
+    coord_fixed() +
+    labs(
+      title = paste("Tree observation hotspots in", focus_country_name),
+      subtitle = "Observation density is shown with spatial bins; individual records are lightly overlaid.",
+      x = "Longitude",
+      y = "Latitude",
+      fill = "Observations"
+    )
+}
+```
+
+The heatmap shows the **observed concentration of records**, not necessarily the true biological density of trees. A hotspot may reflect many trees, but it may also reflect more active observation, easier access, or stronger platform coverage.
+
+# Which categories and species dominate the selected country?
+
+To interpret the country heatmap, it is useful to inspect which categories and species contribute most of the observations in the selected country.
+
+```{r country-category-plot, fig.cap="Category composition in the selected country helps interpret whether the country hotspot is driven by one dataset-defined group or by a mixture of categories."}
+if (nrow(country_data) == 0) {
+  plot_empty(paste("No observations found for", focus_country_code))
+} else {
+  country_category <- country_data |>
+    count(category, name = "observations") |>
+    mutate(share = observations / sum(observations))
+
+  ggplot(country_category, aes(x = reorder(category, -share), y = share, fill = category)) +
+    geom_col(width = 0.65, show.legend = FALSE) +
+    geom_text(aes(label = percent(share, accuracy = 0.1)), vjust = -0.35, size = 3.8) +
+    scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.12))) +
+    scale_fill_manual(values = category_palette) +
+    labs(
+      title = paste("Category composition in", focus_country_name),
+      subtitle = "The selected country may not mirror the global category composition.",
+      x = NULL,
+      y = "Share of observations"
+    )
+}
+```
+
+```{r country-top-species, fig.cap="The most observed species in the selected country reveal which species drive the within-country pattern."}
+if (nrow(country_data) == 0) {
+  plot_empty(paste("No observations found for", focus_country_code))
+} else {
+  top_country_species <- country_data |>
+    count(level3_species, category, name = "observations") |>
+    arrange(desc(observations)) |>
+    slice_head(n = 12)
+
+  ggplot(top_country_species, aes(x = reorder(level3_species, observations), y = observations, fill = category)) +
+    geom_col(width = 0.7) +
+    coord_flip() +
+    scale_y_continuous(labels = comma_format()) +
+    scale_fill_manual(values = category_palette) +
+    labs(
+      title = paste("Most observed species in", focus_country_name),
+      subtitle = "Top species provide context for the country-level hotspot map.",
+      x = NULL,
+      y = "Observations",
+      fill = "Category"
+    )
+}
+```
+
+# Interpretation
+
+The visual analysis suggests three important points.
+
+First, species differ substantially in their observed spatial spread. Some species are concentrated in a small number of places, while others appear across many countries and at larger distances from their geographic center.
+
+Second, the dataset-defined categories do not fully explain spatial range by themselves. If species within the same category show very different distances to their centers, then category membership should be interpreted carefully.
+
+Third, within-country heatmaps show observation hotspots, but these hotspots should not be interpreted as pure ecological density. They also reflect observation effort, accessibility, platform usage, and the sampling design of the dataset.
+
+# Limitations
+
+This analysis has several limitations:
+
+-   The 10k evaluation sample is small relative to the full 6M dataset.
+-   The `Category` variable is dataset-defined and should not automatically be interpreted as true ecological rarity.
+-   Coordinate-based heatmaps show observation density, not true tree abundance.
+-   The species center metric is a simplified geographic measure and does not account for natural range boundaries or habitat suitability.
+-   The country heatmap does not include administrative boundaries in order to keep the report lightweight and avoid additional map dependencies.
+
+# Next steps
+
+For the larger group project, this section could be extended by:
+
+-   applying the same workflow to the 6M dataset;
+-   comparing the 10k sample with a larger stratified subsample;
+-   repeating the country heatmap for the United States, Germany, and France;
+-   adding administrative boundaries or climate zones in a later map-focused section;
+-   comparing observation hotspots with source/platform information.
