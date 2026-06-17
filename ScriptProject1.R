@@ -248,56 +248,80 @@ data %>%
   arrange(level1_family)
 ## tree not possible with the three categories because the relationships are not linears
 
-## tree with level1 and level2
-# construction of the couples
-taxonomy_fg <- data %>%
-  distinct(level1_family, level2_genus)
-
-library(tidygraph)
-library(ggraph)
-library(dplyr)
-
-edges <- taxonomy_fg %>%
-  rename(from = level1_family,
-         to   = level2_genus)
-
-graph <- tbl_graph(edges = edges)
-
-ggraph(graph, layout = "dendrogram") +
-  geom_edge_diagonal() +
-  #geom_node_point(size = 2) +
-  geom_node_text(aes(label = name),
-                 size = 4,
-                 repel = TRUE) +
-  coord_flip() +
-  theme_void()
 
 
-## autre solution pour arbre avec angles droits
-library(dplyr)
-library(tidygraph)
-library(ggraph)
+## How are the trees distributed depending on the latitude ? ===================
 
-# Couples famille-genre
-edges_fg <- data %>%
-  distinct(level1_family, level2_genus)
+## distribution depending on the latitude
 
-# Ajouter une racine unique
-edges <- bind_rows(
-  tibble(from = "Plants", to = unique(edges_fg$level1_family)),
-  edges_fg %>%
-    rename(from = level1_family,
-           to   = level2_genus)
-)
-
-graph <- tbl_graph(edges = edges)
-
-ggraph(graph, layout = "dendrogram") +
-  geom_edge_elbow(colour = "grey50") +
-  geom_node_text(
-    aes(label = name),
-    hjust = -0.1,
-    size = 3
+# histogramme
+ggplot(data, aes(x = latitude)) +
+  geom_histogram(binwidth = 2, fill = "forestgreen", color = "white") +
+  labs(
+    title = "Tree distrbution depending on the latitude",
+    x = "Latitude (°)",
+    y = "Number of observations"
   ) +
-  coord_flip() +
-  theme_void()
+  theme_minimal()
+# ajouter où est le nord et le sud et faire en sorte que la latitude 0 soit au milieu
+
+# density curve
+ggplot(data, aes(x = latitude)) +
+  geom_density(fill = "forestgreen", alpha = 0.5) +
+  labs(
+    title = "Tree density depending on the latitude",
+    x = "Latitude (°)",
+    y = "Density"
+  ) +
+  theme_minimal()
+# ajouter où est le nord et le sud et faire en sorte que la latitude 0 soit au milieu
+
+## Number of tree in each longitudinal branch
+library(dplyr)
+
+lat_band <- data %>%
+  mutate(lat_bin = floor(latitude / 5) * 5) %>%
+  count(lat_bin)
+
+ggplot(lat_band,
+       aes(x = lat_bin, y = n)) +
+  geom_col(fill = "darkgreen") +
+  labs(
+    title = "Nombre d'arbres par bande de 5° de latitude",
+    x = "Latitude",
+    y = "Nombre d'observations"
+  ) +
+  theme_minimal()
+# comment sont définies chaque branche longitudinale ? est-ce qu'on peut rendre àa plus ou moins fin ?
+# comment relier ça aux gradients climatiques ?
+
+## Symmetrical distribution
+ggplot(data, aes(x = abs(latitude))) +
+  geom_histogram(binwidth = 2,
+                 fill = "forestgreen",
+                 color = "white") +
+  labs(
+    title = "Distance à l'équateur",
+    x = "Latitude absolue (°)",
+    y = "Nombre d'arbres"
+  ) +
+  theme_minimal()
+# pas forcément le plus intéressant, est-ce qu'on peut vraiment en tirer de l'information au vu de la répartition des observations (à comparer avec le planisphère)
+
+## Lattitude and specific richness
+richness <- data %>%
+  mutate(lat_bin = floor(latitude / 5) * 5) %>%
+  group_by(lat_bin) %>%
+  summarise(richesse = n_distinct(species_key))
+
+ggplot(richness,
+       aes(lat_bin, richesse)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(
+    title = "Richesse spécifique selon la latitude",
+    x = "Latitude",
+    y = "Nombre d'espèces"
+  ) +
+  theme_minimal()
+# interpréter la différence de richesse spécifique en fonction de la latitude
