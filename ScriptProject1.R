@@ -1,6 +1,6 @@
 data <- read.csv("~/Documents/AGROPARISTECH/ErasmusBHT/DataVisualisation/Project/GlobalGeoTree-10kEval-90.csv", header=TRUE)
 
-## Presentation of the data set
+## Presentation of the data set============================================================================
 #... "insert text about the context of the data set"
 # Number of observations
 n_obs <- nrow(data)
@@ -16,20 +16,19 @@ feat_names
 # Brief summary of the dataset
 summary(data)
 
-# ... "Explanation of each feature, its limites and what it means"
+# ... "Explanation of each feature, its boundaries and what it means"
 
-## Repartition of the data depending on the countries (number of data for each country)
-# histogram ou boxplot
+## Repartition of the data depending on the countries (number of data for each country) ====================
+# histogram or boxplot
 library(dplyr)
 library(ggplot2)
 
-# Comptage par pays
+# Count for each country
 country_counts <- data %>%
   count(country_code, sort = TRUE)
 
 head(country_counts)
 
-#
 ggplot(country_counts,
        aes(x = reorder(country_code, n),
            y = n)) +
@@ -42,7 +41,7 @@ ggplot(country_counts,
   )
   
 
-# Only the first 20 countries
+# same principle but only the first 20 countries
 country_counts %>%
   slice_max(n, n = 20) %>%
   ggplot(aes(x = reorder(country_code, n), y = n)) +
@@ -55,8 +54,7 @@ country_counts %>%
   )
 # add + theme.minimal() to have it in white
 
-## Distribution of the data for each year and each country
-
+# Distribution of the data for each year and each country
 top20_countries <- data %>%
   count(country_code, sort = TRUE) %>%
   slice_head(n = 20)
@@ -91,6 +89,7 @@ ggplot(country_year_counts,
   ) +
   theme_minimal()
 
+## Repartition of the observations among the tree categories ans species ============================================
 # Number of trees for each category
 #count of the number of tree for each category
 category_count <- data %>%
@@ -191,7 +190,7 @@ ggplot(level0_category,
        aes(x = Category,
            y = n,
            fill = level0)) +
-  geom_col(position = "fill") +
+  geom_col(position = "stack") +
   coord_flip()+
   scale_fill_manual(
     values = c("lightblue", "blue", "darkblue")
@@ -226,3 +225,79 @@ ggplot(level1_count,
     )
   )
 
+# arbre hiérarchique présentant les catégories, espèces et taxon de chaque obervation possible
+# chack whether the relationships are linear or not
+data %>%
+  distinct(level0, level1_family) %>%
+  count(level1_family) %>%
+  filter(n > 1)
+
+data %>%
+  distinct(level1_family, level2_genus) %>%
+  count(level2_genus) %>%
+  filter(n > 1)
+
+data %>%
+  distinct(level0, level1_family) %>%
+  filter(level1_family %in%
+           c("Ericaceae",
+             "Euphorbiaceae",
+             "Fabaceae",
+             "Rhamnaceae",
+             "Sapindaceae")) %>%
+  arrange(level1_family)
+## tree not possible with the three categories because the relationships are not linears
+
+## tree with level1 and level2
+# construction of the couples
+taxonomy_fg <- data %>%
+  distinct(level1_family, level2_genus)
+
+library(tidygraph)
+library(ggraph)
+library(dplyr)
+
+edges <- taxonomy_fg %>%
+  rename(from = level1_family,
+         to   = level2_genus)
+
+graph <- tbl_graph(edges = edges)
+
+ggraph(graph, layout = "dendrogram") +
+  geom_edge_diagonal() +
+  #geom_node_point(size = 2) +
+  geom_node_text(aes(label = name),
+                 size = 4,
+                 repel = TRUE) +
+  coord_flip() +
+  theme_void()
+
+
+## autre solution pour arbre avec angles droits
+library(dplyr)
+library(tidygraph)
+library(ggraph)
+
+# Couples famille-genre
+edges_fg <- data %>%
+  distinct(level1_family, level2_genus)
+
+# Ajouter une racine unique
+edges <- bind_rows(
+  tibble(from = "Plants", to = unique(edges_fg$level1_family)),
+  edges_fg %>%
+    rename(from = level1_family,
+           to   = level2_genus)
+)
+
+graph <- tbl_graph(edges = edges)
+
+ggraph(graph, layout = "dendrogram") +
+  geom_edge_elbow(colour = "grey50") +
+  geom_node_text(
+    aes(label = name),
+    hjust = -0.1,
+    size = 3
+  ) +
+  coord_flip() +
+  theme_void()
