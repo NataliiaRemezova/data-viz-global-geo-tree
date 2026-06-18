@@ -1,4 +1,4 @@
----
+# ---
 title: "Germany Tree Observations: Frequency, Sources, Bundesländer, and Climate Zones"
 author: "GlobalGeoTree team"
 format:

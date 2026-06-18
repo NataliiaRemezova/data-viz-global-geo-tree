@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="GlobalGeoTree team">
+
+<title>GlobalGeoTree Baden-Württemberg: Observations, Sources, Districts, and Common Names</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/popper.min.js"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Baden_Wuerttemberg_observations_common_names_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Baden_Wuerttemberg_observations_common_names_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Baden_Wuerttemberg_observations_common_names_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Baden_Wuerttemberg_observations_common_names_files/libs/bootstrap/bootstrap-7df91e7c987534b356ad96ed05d4452c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">1</span> Purpose</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">2</span> Setup</a></li>
+  <li><a href="#load-observations" id="toc-load-observations" class="nav-link" data-scroll-target="#load-observations"><span class="header-section-number">3</span> Load observations</a></li>
+  <li><a href="#preview-of-the-dataset" id="toc-preview-of-the-dataset" class="nav-link" data-scroll-target="#preview-of-the-dataset"><span class="header-section-number">4</span> Preview of the dataset</a></li>
+  <li><a href="#load-baden-württemberg-boundaries" id="toc-load-baden-württemberg-boundaries" class="nav-link" data-scroll-target="#load-baden-württemberg-boundaries"><span class="header-section-number">5</span> Load Baden-Württemberg boundaries</a></li>
+  <li><a href="#filter-observations-to-baden-württemberg" id="toc-filter-observations-to-baden-württemberg" class="nav-link" data-scroll-target="#filter-observations-to-baden-württemberg"><span class="header-section-number">6</span> Filter observations to Baden-Württemberg</a></li>
+  <li><a href="#optional-add-rarecommonfrequent-categories" id="toc-optional-add-rarecommonfrequent-categories" class="nav-link" data-scroll-target="#optional-add-rarecommonfrequent-categories"><span class="header-section-number">7</span> Optional: add Rare/Common/Frequent categories</a></li>
+  <li><a href="#optional-add-english-and-german-common-names" id="toc-optional-add-english-and-german-common-names" class="nav-link" data-scroll-target="#optional-add-english-and-german-common-names"><span class="header-section-number">8</span> Optional: add English and German common names</a></li>
+  <li><a href="#baden-württemberg-observations-and-species" id="toc-baden-württemberg-observations-and-species" class="nav-link" data-scroll-target="#baden-württemberg-observations-and-species"><span class="header-section-number">9</span> Baden-Württemberg observations and species</a></li>
+  <li><a href="#sources-of-baden-württemberg-observations" id="toc-sources-of-baden-württemberg-observations" class="nav-link" data-scroll-target="#sources-of-baden-württemberg-observations"><span class="header-section-number">10</span> Sources of Baden-Württemberg observations</a></li>
+  <li><a href="#baden-württemberg-observation-map" id="toc-baden-württemberg-observation-map" class="nav-link" data-scroll-target="#baden-württemberg-observation-map"><span class="header-section-number">11</span> Baden-Württemberg observation map</a></li>
+  <li><a href="#baden-württemberg-districts-observations-and-species" id="toc-baden-württemberg-districts-observations-and-species" class="nav-link" data-scroll-target="#baden-württemberg-districts-observations-and-species"><span class="header-section-number">12</span> Baden-Württemberg districts: observations and species</a></li>
+  <li><a href="#sources-on-the-baden-württemberg-map" id="toc-sources-on-the-baden-württemberg-map" class="nav-link" data-scroll-target="#sources-on-the-baden-württemberg-map"><span class="header-section-number">13</span> Sources on the Baden-Württemberg map</a></li>
+  <li><a href="#top-recorded-species-with-common-names" id="toc-top-recorded-species-with-common-names" class="nav-link" data-scroll-target="#top-recorded-species-with-common-names"><span class="header-section-number">14</span> Top recorded species with common names</a></li>
+  <li><a href="#category-composition-if-available" id="toc-category-composition-if-available" class="nav-link" data-scroll-target="#category-composition-if-available"><span class="header-section-number">15</span> Category composition, if available</a></li>
+  <li><a href="#interpretation-notes" id="toc-interpretation-notes" class="nav-link" data-scroll-target="#interpretation-notes"><span class="header-section-number">16</span> Interpretation notes</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">GlobalGeoTree Baden-Württemberg: Observations, Sources, Districts, and Common Names</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>GlobalGeoTree team </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="purpose" class="level2" data-number="1">
+<h2 data-number="1" class="anchored" data-anchor-id="purpose"><span class="header-section-number">1</span> Purpose</h2>
+<p>This report focuses on <strong>Baden-Württemberg</strong>. It answers four practical inspection questions:</p>
+<ol type="1">
+<li>How many GlobalGeoTree observations are located in Baden-Württemberg?</li>
+<li>How many recorded species are located in Baden-Württemberg?</li>
+<li>Which data sources contribute Baden-Württemberg observations?</li>
+<li>How are tree observations distributed across Baden-Württemberg districts?</li>
+</ol>
+<p>The report also includes an <strong>optional common-name enrichment step</strong>. Scientific names remain the primary identifier, but the script can try to add English and German common names using GBIF through the optional <code>rgbif</code> package. Results are cached in a local CSV file so the report does not need to query GBIF every time.</p>
+<blockquote class="blockquote">
+<p>Important note: common names are not globally standardized. The report treats German and English names as <em>GBIF vernacular names where available</em>, not as guaranteed official names.</p>
+</blockquote>
+</section>
+<section id="setup" class="level2" data-number="2">
+<h2 data-number="2" class="anchored" data-anchor-id="setup"><span class="header-section-number">2</span> Setup</h2>
+</section>
+<section id="load-observations" class="level2" data-number="3">
+<h2 data-number="3" class="anchored" data-anchor-id="load-observations"><span class="header-section-number">3</span> Load observations</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Input data summary</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Input file</td>
+<td style="text-align: left;">GlobalGeoTree.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rows in input file</td>
+<td style="text-align: left;">6,263,345</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rows after coordinate/species cleaning</td>
+<td style="text-align: left;">6,263,345</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Countries after cleaning</td>
+<td style="text-align: left;">221</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="preview-of-the-dataset" class="level2" data-number="4">
+<h2 data-number="4" class="anchored" data-anchor-id="preview-of-the-dataset"><span class="header-section-number">4</span> Preview of the dataset</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>First 10 cleaned rows</caption>
+<colgroup>
+<col style="width: 4%">
+<col style="width: 5%">
+<col style="width: 8%">
+<col style="width: 6%">
+<col style="width: 5%">
+<col style="width: 10%">
+<col style="width: 12%">
+<col style="width: 30%">
+<col style="width: 5%">
+<col style="width: 2%">
+<col style="width: 4%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">sample_id</th>
+<th style="text-align: left;">country_code</th>
+<th style="text-align: left;">level0</th>
+<th style="text-align: left;">level1_family</th>
+<th style="text-align: left;">level2_genus</th>
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">location</th>
+<th style="text-align: left;">source</th>
+<th style="text-align: right;">species_key</th>
+<th style="text-align: right;">year</th>
+<th style="text-align: right;">longitude</th>
+<th style="text-align: right;">latitude</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">MW</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes formosissimus</td>
+<td style="text-align: left;">Malawi</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">5,576,177</td>
+<td style="text-align: right;">2,024</td>
+<td style="text-align: right;">34.770179</td>
+<td style="text-align: right;">-16.244345</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes formosissimus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">5,576,177</td>
+<td style="text-align: right;">2,018</td>
+<td style="text-align: right;">34.342119</td>
+<td style="text-align: right;">-18.961792</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes sessiliflorus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">7,264,409</td>
+<td style="text-align: right;">2,022</td>
+<td style="text-align: right;">34.339832</td>
+<td style="text-align: right;">-18.600213</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes sessiliflorus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">7,264,409</td>
+<td style="text-align: right;">2,015</td>
+<td style="text-align: right;">34.340500</td>
+<td style="text-align: right;">-18.599860</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">TZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia marina</td>
+<td style="text-align: left;">Tanzania, United Republic of</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">2,925,403</td>
+<td style="text-align: right;">2,023</td>
+<td style="text-align: right;">39.490521</td>
+<td style="text-align: right;">-6.148904</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">KE</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Kenya</td>
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: right;">2,925,398</td>
+<td style="text-align: right;">2,023</td>
+<td style="text-align: right;">39.945604</td>
+<td style="text-align: right;">-3.285171</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Biodiversity of Some Coastal Communities in Akwa-Ibom State, Nigeria</td>
+<td style="text-align: right;">2,925,398</td>
+<td style="text-align: right;">2,021</td>
+<td style="text-align: right;">8.031336</td>
+<td style="text-align: right;">4.556238</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Biodiversity of Some Coastal Communities in Akwa-Ibom State, Nigeria</td>
+<td style="text-align: right;">2,925,398</td>
+<td style="text-align: right;">2,021</td>
+<td style="text-align: right;">8.038207</td>
+<td style="text-align: right;">4.557545</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Flora of Coastal Environment in Cross-River State, Nigeria</td>
+<td style="text-align: right;">2,925,398</td>
+<td style="text-align: right;">2,019</td>
+<td style="text-align: right;">8.519425</td>
+<td style="text-align: right;">4.779849</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Flora of Coastal Environment in Cross-River State, Nigeria</td>
+<td style="text-align: right;">2,925,398</td>
+<td style="text-align: right;">2,019</td>
+<td style="text-align: right;">8.450121</td>
+<td style="text-align: right;">4.787425</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="load-baden-württemberg-boundaries" class="level2" data-number="5">
+<h2 data-number="5" class="anchored" data-anchor-id="load-baden-württemberg-boundaries"><span class="header-section-number">5</span> Load Baden-Württemberg boundaries</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Boundary data status</caption>
+<colgroup>
+<col style="width: 38%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">NUTS1 boundary status</td>
+<td style="text-align: left;">Loaded NUTS1 from data/external/germany_nuts1_2021.geojson</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NUTS3 boundary status</td>
+<td style="text-align: left;">Downloaded NUTS3 from GISCO.</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg boundary available</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg district polygons</td>
+<td style="text-align: left;">44</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="filter-observations-to-baden-württemberg" class="level2" data-number="6">
+<h2 data-number="6" class="anchored" data-anchor-id="filter-observations-to-baden-württemberg"><span class="header-section-number">6</span> Filter observations to Baden-Württemberg</h2>
+<p>If NUTS boundaries are available, the report identifies Baden-Württemberg observations by spatially joining German observations to the Baden-Württemberg polygon. If boundaries are not available, it falls back to an approximate Baden-Württemberg bounding box.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Baden-Württemberg summary</caption>
+<colgroup>
+<col style="width: 26%">
+<col style="width: 73%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Filter method</td>
+<td style="text-align: left;">Baden-Württemberg observations were identified using the official NUTS1 Baden-Württemberg boundary.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg observations</td>
+<td style="text-align: left;">28,112</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg recorded species</td>
+<td style="text-align: left;">287</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg recorded genera</td>
+<td style="text-align: left;">129</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg recorded families</td>
+<td style="text-align: left;">58</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Years represented</td>
+<td style="text-align: left;">2015–2024</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="optional-add-rarecommonfrequent-categories" class="level2" data-number="7">
+<h2 data-number="7" class="anchored" data-anchor-id="optional-add-rarecommonfrequent-categories"><span class="header-section-number">7</span> Optional: add Rare/Common/Frequent categories</h2>
+<p>The full GlobalGeoTree file may not contain <code>category</code>. If not, this report tries to add category labels from the larger evaluation file. This only labels species present in the evaluation lookup, so category coverage may be incomplete.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Category coverage in Baden-Württemberg</caption>
+<colgroup>
+<col style="width: 30%">
+<col style="width: 70%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Category method</td>
+<td style="text-align: left;">Category was joined from GlobalGeoTree-10kEval-900.csv by species_key where possible, then by scientific species name.</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg observations with known category</td>
+<td style="text-align: left;">8,576</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg species with known category</td>
+<td style="text-align: left;">90</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="optional-add-english-and-german-common-names" class="level2" data-number="8">
+<h2 data-number="8" class="anchored" data-anchor-id="optional-add-english-and-german-common-names"><span class="header-section-number">8</span> Optional: add English and German common names</h2>
+<p>This section first checks for a local cache file <code>species_common_names_gbif.csv</code>. If common names for some Baden-Württemberg species are missing and <code>rgbif</code> is installed, the report tries to retrieve English and German vernacular names from GBIF and updates the cache.</p>
+<p>If this section is too slow, set <code>enable_gbif_lookup &lt;- FALSE</code> in the setup chunk. The report will still render using scientific names.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Common-name coverage</caption>
+<colgroup>
+<col style="width: 38%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Common-name method</td>
+<td style="text-align: left;">Common names were updated using GBIF and cached in species_common_names_gbif.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg species total</td>
+<td style="text-align: left;">287</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg species with English common name</td>
+<td style="text-align: left;">279</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Baden-Württemberg species with German common name</td>
+<td style="text-align: left;">269</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="baden-württemberg-observations-and-species" class="level2" data-number="9">
+<h2 data-number="9" class="anchored" data-anchor-id="baden-württemberg-observations-and-species"><span class="header-section-number">9</span> Baden-Württemberg observations and species</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Baden-Württemberg observations and taxonomic coverage</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: right;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Observations</td>
+<td style="text-align: right;">28,112</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Recorded species</td>
+<td style="text-align: right;">287</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Recorded genera</td>
+<td style="text-align: right;">129</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Recorded families</td>
+<td style="text-align: right;">58</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Data sources</td>
+<td style="text-align: right;">21</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="sources-of-baden-württemberg-observations" class="level2" data-number="10">
+<h2 data-number="10" class="anchored" data-anchor-id="sources-of-baden-württemberg-observations"><span class="header-section-number">10</span> Sources of Baden-Württemberg observations</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top 15 data sources in Baden-Württemberg</caption>
+<colgroup>
+<col style="width: 81%">
+<col style="width: 12%">
+<col style="width: 5%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">source</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: left;">15,947</td>
+<td style="text-align: left;">56.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">6,020</td>
+<td style="text-align: left;">21.4%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">2,370</td>
+<td style="text-align: left;">8.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pl@ntNet observations</td>
+<td style="text-align: left;">1,750</td>
+<td style="text-align: left;">6.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Observation.org, Nature data from around the World</td>
+<td style="text-align: left;">1,474</td>
+<td style="text-align: left;">5.2%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EOD – eBird Observation Dataset</td>
+<td style="text-align: left;">428</td>
+<td style="text-align: left;">1.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Swiss National Databank of Vascular Plants</td>
+<td style="text-align: left;">30</td>
+<td style="text-align: left;">0.1%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Xeno-canto - Bird sounds from around the world</td>
+<td style="text-align: left;">30</td>
+<td style="text-align: left;">0.1%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">The Fungal, Lichen and Plant Collections at the Herbarium Marburgense</td>
+<td style="text-align: left;">16</td>
+<td style="text-align: left;">0.1%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ArtenFinder</td>
+<td style="text-align: left;">13</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Occurrence Data of Vascular Plants collected or compiled for the Flora of Bavaria</td>
+<td style="text-align: left;">11</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fungus Collections at Staatliches Museum für Naturkunde Karlsruhe (Herbarium KR)</td>
+<td style="text-align: left;">10</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">50c9509d-22c7-4a22-a47d-8c48425ef4a7</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Anymals+plants - Citizen Science Data</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Birda - Global Observation Dataset</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/source-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="baden-württemberg-observation-map" class="level2" data-number="11">
+<h2 data-number="11" class="anchored" data-anchor-id="baden-württemberg-observation-map"><span class="header-section-number">11</span> Baden-Württemberg observation map</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/nrw-map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="baden-württemberg-districts-observations-and-species" class="level2" data-number="12">
+<h2 data-number="12" class="anchored" data-anchor-id="baden-württemberg-districts-observations-and-species"><span class="header-section-number">12</span> Baden-Württemberg districts: observations and species</h2>
+<p>The district analysis uses <strong>NUTS3 regions</strong> in Baden-Württemberg. In Germany these correspond approximately to Kreise and kreisfreie Städte.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top 15 Baden-Württemberg districts by observation count</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">district_id</th>
+<th style="text-align: left;">district_name</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: right;">species</th>
+<th style="text-align: right;">sources</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">DE132</td>
+<td style="text-align: left;">Breisgau-Hochschwarzwald</td>
+<td style="text-align: left;">2,337</td>
+<td style="text-align: right;">159</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE128</td>
+<td style="text-align: left;">Rhein-Neckar-Kreis</td>
+<td style="text-align: left;">1,322</td>
+<td style="text-align: right;">128</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE116</td>
+<td style="text-align: left;">Rems-Murr-Kreis</td>
+<td style="text-align: left;">1,281</td>
+<td style="text-align: right;">110</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE123</td>
+<td style="text-align: left;">Karlsruhe, Landkreis</td>
+<td style="text-align: left;">1,258</td>
+<td style="text-align: right;">118</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE134</td>
+<td style="text-align: left;">Ortenaukreis</td>
+<td style="text-align: left;">1,097</td>
+<td style="text-align: right;">98</td>
+<td style="text-align: right;">10</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE147</td>
+<td style="text-align: left;">Bodenseekreis</td>
+<td style="text-align: left;">1,063</td>
+<td style="text-align: right;">107</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE138</td>
+<td style="text-align: left;">Konstanz</td>
+<td style="text-align: left;">979</td>
+<td style="text-align: right;">109</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE139</td>
+<td style="text-align: left;">Lörrach</td>
+<td style="text-align: left;">966</td>
+<td style="text-align: right;">105</td>
+<td style="text-align: right;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE141</td>
+<td style="text-align: left;">Reutlingen</td>
+<td style="text-align: left;">896</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE113</td>
+<td style="text-align: left;">Esslingen</td>
+<td style="text-align: left;">886</td>
+<td style="text-align: right;">87</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE148</td>
+<td style="text-align: left;">Ravensburg</td>
+<td style="text-align: left;">862</td>
+<td style="text-align: right;">80</td>
+<td style="text-align: right;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE115</td>
+<td style="text-align: left;">Ludwigsburg</td>
+<td style="text-align: left;">787</td>
+<td style="text-align: right;">103</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE112</td>
+<td style="text-align: left;">Böblingen</td>
+<td style="text-align: left;">771</td>
+<td style="text-align: right;">85</td>
+<td style="text-align: right;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DE12A</td>
+<td style="text-align: left;">Calw</td>
+<td style="text-align: left;">739</td>
+<td style="text-align: right;">91</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DE13A</td>
+<td style="text-align: left;">Waldshut</td>
+<td style="text-align: left;">688</td>
+<td style="text-align: right;">95</td>
+<td style="text-align: right;">7</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/district-barplot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/district-species-barplot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/district-map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="sources-on-the-baden-württemberg-map" class="level2" data-number="13">
+<h2 data-number="13" class="anchored" data-anchor-id="sources-on-the-baden-württemberg-map"><span class="header-section-number">13</span> Sources on the Baden-Württemberg map</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/source-map-1.png" class="img-fluid figure-img" width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="top-recorded-species-with-common-names" class="level2" data-number="14">
+<h2 data-number="14" class="anchored" data-anchor-id="top-recorded-species-with-common-names"><span class="header-section-number">14</span> Top recorded species with common names</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top 20 recorded species in Baden-Württemberg</caption>
+<colgroup>
+<col style="width: 34%">
+<col style="width: 16%">
+<col style="width: 19%">
+<col style="width: 16%">
+<col style="width: 9%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">display_name</th>
+<th style="text-align: left;">scientific_name</th>
+<th style="text-align: left;">german_common_name</th>
+<th style="text-align: left;">english_common_name</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Blutbuche (Fagus sylvatica)</td>
+<td style="text-align: left;">Fagus sylvatica</td>
+<td style="text-align: left;">Blutbuche</td>
+<td style="text-align: left;">Beech</td>
+<td style="text-align: left;">3,020</td>
+<td style="text-align: left;">10.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Attich (Sambucus ebulus)</td>
+<td style="text-align: left;">Sambucus ebulus</td>
+<td style="text-align: left;">Attich</td>
+<td style="text-align: left;">Danewort</td>
+<td style="text-align: left;">1,397</td>
+<td style="text-align: left;">5.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Wolfsmilchgewächse (Croton laccifer)</td>
+<td style="text-align: left;">Croton laccifer</td>
+<td style="text-align: left;">Wolfsmilchgewächse</td>
+<td style="text-align: left;">Euphorbia family</td>
+<td style="text-align: left;">1,269</td>
+<td style="text-align: left;">4.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Seifenbaumgewächse (Cupania sylvatica)</td>
+<td style="text-align: left;">Cupania sylvatica</td>
+<td style="text-align: left;">Seifenbaumgewächse</td>
+<td style="text-align: left;">Litchi family</td>
+<td style="text-align: left;">1,263</td>
+<td style="text-align: left;">4.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kleiner Mehlbaum (Viburnum lantana)</td>
+<td style="text-align: left;">Viburnum lantana</td>
+<td style="text-align: left;">Kleiner Mehlbaum</td>
+<td style="text-align: left;">Mealytree</td>
+<td style="text-align: left;">1,138</td>
+<td style="text-align: left;">4.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Blaubeere, Heidelbeere (Vaccinium myrtillus)</td>
+<td style="text-align: left;">Vaccinium myrtillus</td>
+<td style="text-align: left;">Blaubeere, Heidelbeere</td>
+<td style="text-align: left;">Bilberry</td>
+<td style="text-align: left;">1,113</td>
+<td style="text-align: left;">4.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schwarzspecht (Dryocopus martius)</td>
+<td style="text-align: left;">Dryocopus martius</td>
+<td style="text-align: left;">Schwarzspecht</td>
+<td style="text-align: left;">Black Woodpecker</td>
+<td style="text-align: left;">1,090</td>
+<td style="text-align: left;">3.9%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ahlkirsche (Prunus padus)</td>
+<td style="text-align: left;">Prunus padus</td>
+<td style="text-align: left;">Ahlkirsche</td>
+<td style="text-align: left;">Bird Cherry</td>
+<td style="text-align: left;">1,089</td>
+<td style="text-align: left;">3.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Artengruppe Schlehe (Prunus spinosa)</td>
+<td style="text-align: left;">Prunus spinosa</td>
+<td style="text-align: left;">Artengruppe Schlehe</td>
+<td style="text-align: left;">Blackthorn</td>
+<td style="text-align: left;">915</td>
+<td style="text-align: left;">3.3%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Eberesche (Sorbus aucuparia)</td>
+<td style="text-align: left;">Sorbus aucuparia</td>
+<td style="text-align: left;">Eberesche</td>
+<td style="text-align: left;">European Mountain-ash</td>
+<td style="text-align: left;">843</td>
+<td style="text-align: left;">3.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Bergholunder (Sambucus racemosa)</td>
+<td style="text-align: left;">Sambucus racemosa</td>
+<td style="text-align: left;">Bergholunder</td>
+<td style="text-align: left;">American red elderberry</td>
+<td style="text-align: left;">765</td>
+<td style="text-align: left;">2.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Europäische Hasel (Corylus avellana)</td>
+<td style="text-align: left;">Corylus avellana</td>
+<td style="text-align: left;">Europäische Hasel</td>
+<td style="text-align: left;">Barcelona-nuts</td>
+<td style="text-align: left;">730</td>
+<td style="text-align: left;">2.6%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Europäische Stechpalme (Ilex aquifolium)</td>
+<td style="text-align: left;">Ilex aquifolium</td>
+<td style="text-align: left;">Europäische Stechpalme</td>
+<td style="text-align: left;">English holly</td>
+<td style="text-align: left;">625</td>
+<td style="text-align: left;">2.2%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Europäisches Pfaffenhütchen (Euonymus europaeus)</td>
+<td style="text-align: left;">Euonymus europaeus</td>
+<td style="text-align: left;">Europäisches Pfaffenhütchen</td>
+<td style="text-align: left;">Common Spindle</td>
+<td style="text-align: left;">608</td>
+<td style="text-align: left;">2.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Gemeiner Schneeball (Viburnum opulus)</td>
+<td style="text-align: left;">Viburnum opulus</td>
+<td style="text-align: left;">Gemeiner Schneeball</td>
+<td style="text-align: left;">Crampbark</td>
+<td style="text-align: left;">553</td>
+<td style="text-align: left;">2.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Blutroter Hartriegel (Cornus sanguinea)</td>
+<td style="text-align: left;">Cornus sanguinea</td>
+<td style="text-align: left;">Blutroter Hartriegel</td>
+<td style="text-align: left;">Bloodtwig dogwood</td>
+<td style="text-align: left;">495</td>
+<td style="text-align: left;">1.8%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Araliengewächse (Schefflera macrophylla)</td>
+<td style="text-align: left;">Schefflera macrophylla</td>
+<td style="text-align: left;">Araliengewächse</td>
+<td style="text-align: left;">Aralia and Ivy family</td>
+<td style="text-align: left;">443</td>
+<td style="text-align: left;">1.6%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Artengruppe Wiesen-Salbei (Salvia pratensis)</td>
+<td style="text-align: left;">Salvia pratensis</td>
+<td style="text-align: left;">Artengruppe Wiesen-Salbei</td>
+<td style="text-align: left;">Introduced sage</td>
+<td style="text-align: left;">432</td>
+<td style="text-align: left;">1.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Gemeiner Liguster (Ligustrum vulgare)</td>
+<td style="text-align: left;">Ligustrum vulgare</td>
+<td style="text-align: left;">Gemeiner Liguster</td>
+<td style="text-align: left;">Common Privet</td>
+<td style="text-align: left;">395</td>
+<td style="text-align: left;">1.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Einjähriges Berufkraut (Erigeron annuus)</td>
+<td style="text-align: left;">Erigeron annuus</td>
+<td style="text-align: left;">Einjähriges Berufkraut</td>
+<td style="text-align: left;">Annual Fleabane</td>
+<td style="text-align: left;">382</td>
+<td style="text-align: left;">1.4%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/top-species-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="category-composition-if-available" class="level2" data-number="15">
+<h2 data-number="15" class="anchored" data-anchor-id="category-composition-if-available"><span class="header-section-number">15</span> Category composition, if available</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Rare/Common/Frequent coverage in Baden-Württemberg, where known</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">category</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: right;">species</th>
+<th style="text-align: left;">observation_share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">8,551</td>
+<td style="text-align: right;">83</td>
+<td style="text-align: left;">99.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">24</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">0.3%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rare</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Baden_Wuerttemberg_observations_common_names_files/figure-html/category-plot-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="interpretation-notes" class="level2" data-number="16">
+<h2 data-number="16" class="anchored" data-anchor-id="interpretation-notes"><span class="header-section-number">16</span> Interpretation notes</h2>
+<p>The Baden-Württemberg subset gives a regional view of GlobalGeoTree observations. The observation map and district-level charts describe where data are concentrated, but they should not be interpreted directly as true tree abundance. High counts may reflect a combination of tree presence, citizen-science activity, institutional data availability, and source-specific sampling behavior.</p>
+<p>The common-name enrichment is useful for making the report more readable. However, common names are incomplete and not standardized across all languages or regions. For reproducibility, all analysis should continue to use scientific names or species keys as the stable identifiers.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

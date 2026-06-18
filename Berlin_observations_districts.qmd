@@ -1,0 +1,599 @@
+---
+title: "GlobalGeoTree Berlin: Observations, Sources, and District Distribution"
+author: "GlobalGeoTree team"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+    code-fold: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Purpose
+
+This report focuses only on **Berlin**. It answers three questions:
+
+1. How many GlobalGeoTree observations and recorded species are available for Berlin?
+2. Which data sources contribute Berlin observations?
+3. How are tree observations distributed across Berlin districts?
+
+The district-level analysis requires Berlin district polygons. The report first tries to read a local GeoJSON file. If no local file exists, it tries to download a simple Berlin district GeoJSON. If neither option works, the report falls back to a Berlin bounding-box analysis and shows a point-density map without district borders.
+
+## Setup
+
+```{r setup}
+# Required packages only
+library(data.table)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(sf)
+
+set.seed(42)
+
+# -------------------------------------------------------------------------
+# User configuration
+# -------------------------------------------------------------------------
+
+# Main observations file. Put the full 6M file in the same folder if possible.
+if (file.exists("GlobalGeoTree.csv")) {
+  observations_path <- "GlobalGeoTree.csv"
+} else if (file.exists("GlobalGeoTree-10kEval-900.csv")) {
+  observations_path <- "GlobalGeoTree-10kEval-900.csv"
+} else if (file.exists("GlobalGeoTree-10kEval-90.csv")) {
+  observations_path <- "GlobalGeoTree-10kEval-90.csv"
+} else {
+  stop("No observations file found. Expected GlobalGeoTree_full.csv, GlobalGeoTree-10kEval-900.csv, or GlobalGeoTree-10kEval-90.csv in the same folder as this QMD.")
+}
+
+# Optional local Berlin district polygons. Recommended for stable rendering.
+# Expected format: GeoJSON with one polygon per Berlin district.
+local_district_path <- "berlin_districts.geojson"
+external_district_path <- "data/external/berlin_districts.geojson"
+
+# If no local file is available, the report can try this public GeoJSON.
+# If you work offline, download a Berlin districts GeoJSON manually and save it as berlin_districts.geojson.
+berlin_district_url <- "https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/berlin.geojson"
+
+# Approximate Berlin bounding box used as fallback if district polygons are unavailable.
+berlin_bbox <- list(
+  lon_min = 13.088,
+  lon_max = 13.761,
+  lat_min = 52.338,
+  lat_max = 52.675
+)
+
+# Number of points to plot on maps. Keeps HTML rendering readable.
+max_points_on_map <- 5000
+```
+
+```{r theme-functions}
+theme_gtree <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", size = base_size + 3),
+      plot.subtitle = element_text(size = base_size, color = "gray35"),
+      plot.caption = element_text(size = base_size - 2, color = "gray45"),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold")
+    )
+}
+
+sample_points_for_plot <- function(data, max_n = 5000) {
+  if (nrow(data) <= max_n) {
+    data
+  } else {
+    dplyr::slice_sample(data, n = max_n)
+  }
+}
+
+nice_table <- function(data, caption = NULL) {
+  knitr::kable(data, caption = caption, format.args = list(big.mark = ","))
+}
+```
+
+## Load observations
+
+```{r load-data}
+obs_raw <- data.table::fread(observations_path, showProgress = FALSE)
+
+# Standardize column names without using janitor.
+names(obs_raw) <- names(obs_raw) |>
+  stringr::str_trim() |>
+  stringr::str_replace_all("[^A-Za-z0-9]+", "_") |>
+  stringr::str_replace_all("_+", "_") |>
+  stringr::str_replace_all("_$", "") |>
+  stringr::str_to_lower()
+
+required_cols <- c("country_code", "level3_species", "longitude", "latitude")
+missing_cols <- setdiff(required_cols, names(obs_raw))
+if (length(missing_cols) > 0) {
+  stop("The observations file is missing required columns: ", paste(missing_cols, collapse = ", "))
+}
+
+obs <- obs_raw |>
+  mutate(
+    across(where(is.character), str_squish),
+    country_code = str_to_upper(country_code),
+    level3_species = str_squish(level3_species),
+    longitude = as.numeric(longitude),
+    latitude = as.numeric(latitude),
+    year = if ("year" %in% names(obs_raw)) as.integer(year) else NA_integer_,
+    source = if ("source" %in% names(obs_raw)) str_squish(as.character(source)) else "Unknown"
+  ) |>
+  filter(
+    !is.na(longitude), !is.na(latitude),
+    between(longitude, -180, 180),
+    between(latitude, -90, 90),
+    !is.na(level3_species), level3_species != ""
+  )
+
+file_summary <- tibble::tibble(
+  item = c("Input file", "Rows in input file", "Rows after coordinate/species cleaning", "Countries after cleaning"),
+  value = c(
+    observations_path,
+    format(nrow(obs_raw), big.mark = ","),
+    format(nrow(obs), big.mark = ","),
+    format(n_distinct(obs$country_code), big.mark = ",")
+  )
+)
+
+nice_table(file_summary, "Input data summary")
+```
+
+## Preview of the dataset
+
+The table below shows the first rows of the cleaned observations file. This is useful for checking column names and whether fields such as `source`, `year`, `longitude`, and `latitude` are available.
+
+```{r head-table}
+obs |>
+  select(any_of(c(
+    "sample_id", "country_code", "level0", "level1_family", "level2_genus",
+    "level3_species", "location", "source", "species_key", "year", "longitude", "latitude", "category"
+  ))) |>
+  head(10) |>
+  nice_table("First 10 cleaned rows")
+```
+
+## Load Berlin district boundaries
+
+```{r load-districts}
+read_districts <- function() {
+  candidate_paths <- c(local_district_path, external_district_path)
+  existing_path <- candidate_paths[file.exists(candidate_paths)][1]
+
+  if (!is.na(existing_path)) {
+    districts <- sf::st_read(existing_path, quiet = TRUE)
+    source_note <- paste("Loaded district boundaries from", existing_path)
+  } else {
+    districts <- NULL
+    source_note <- "No local district boundary file found."
+
+    # Try public fallback. This may fail if internet access is unavailable.
+    tmp_geojson <- tempfile(fileext = ".geojson")
+    try_download <- try(
+      utils::download.file(berlin_district_url, tmp_geojson, quiet = TRUE, mode = "wb"),
+      silent = TRUE
+    )
+
+    if (!inherits(try_download, "try-error") && file.exists(tmp_geojson)) {
+      districts <- try(sf::st_read(tmp_geojson, quiet = TRUE), silent = TRUE)
+      if (!inherits(districts, "try-error")) {
+        source_note <- paste("Downloaded district boundaries from", berlin_district_url)
+      } else {
+        districts <- NULL
+      }
+    }
+  }
+
+  if (is.null(districts)) {
+    return(list(districts = NULL, source_note = source_note))
+  }
+
+  districts <- sf::st_make_valid(districts) |>
+    sf::st_transform(4326)
+
+  # Guess a usable district-name column.
+  possible_name_cols <- c("name", "Name", "NAME", "bezirk", "Bezirk", "BEZIRK", "district", "District", "Gemeinde_name", "GEN")
+  name_col <- possible_name_cols[possible_name_cols %in% names(districts)][1]
+
+  if (is.na(name_col)) {
+    districts$district <- paste("District", seq_len(nrow(districts)))
+  } else {
+    districts$district <- as.character(districts[[name_col]])
+  }
+
+  districts <- districts |>
+    select(district, geometry) |>
+    filter(!is.na(district), district != "")
+
+  list(districts = districts, source_note = source_note)
+}
+
+district_result <- read_districts()
+berlin_districts <- district_result$districts
+district_source_note <- district_result$source_note
+
+boundary_summary <- tibble::tibble(
+  item = c("District boundary status", "Number of district polygons"),
+  value = c(
+    district_source_note,
+    ifelse(is.null(berlin_districts), "0", format(nrow(berlin_districts), big.mark = ","))
+  )
+)
+
+nice_table(boundary_summary, "Berlin district boundary status")
+```
+
+## Filter observations to Berlin
+
+If district polygons are available, Berlin observations are identified by spatially joining Germany observations to Berlin district polygons. This is the preferred method because it avoids relying on text fields such as `location`.
+
+If district polygons are not available, the report uses an approximate Berlin bounding box. This fallback is useful for a quick check, but it is less precise than district polygons.
+
+```{r berlin-filter}
+# First reduce to Germany if the country code is available.
+germany_obs <- obs |>
+  filter(country_code == "DE")
+
+if (!is.null(berlin_districts)) {
+  germany_points <- germany_obs |>
+    sf::st_as_sf(coords = c("longitude", "latitude"), crs = 4326, remove = FALSE)
+
+  # Filter to the district bounding box first for speed.
+  district_bbox <- sf::st_bbox(berlin_districts)
+  germany_points_bbox <- germany_points |>
+    filter(
+      longitude >= district_bbox[["xmin"]], longitude <= district_bbox[["xmax"]],
+      latitude >= district_bbox[["ymin"]], latitude <= district_bbox[["ymax"]]
+    )
+
+  berlin_joined <- sf::st_join(
+    germany_points_bbox,
+    berlin_districts,
+    left = FALSE,
+    join = sf::st_within
+  )
+
+  berlin_obs <- berlin_joined |>
+    sf::st_drop_geometry() |>
+    as_tibble()
+
+  berlin_filter_method <- "Spatial join to Berlin district polygons"
+} else {
+  berlin_obs <- germany_obs |>
+    filter(
+      longitude >= berlin_bbox$lon_min,
+      longitude <= berlin_bbox$lon_max,
+      latitude >= berlin_bbox$lat_min,
+      latitude <= berlin_bbox$lat_max
+    ) |>
+    mutate(district = NA_character_)
+
+  berlin_filter_method <- "Approximate Berlin bounding box fallback"
+}
+
+berlin_summary <- tibble::tibble(
+  metric = c(
+    "Berlin filtering method",
+    "Berlin observations",
+    "Berlin recorded species",
+    "Available source values",
+    "Available years"
+  ),
+  value = c(
+    berlin_filter_method,
+    format(nrow(berlin_obs), big.mark = ","),
+    format(n_distinct(berlin_obs$level3_species), big.mark = ","),
+    format(n_distinct(berlin_obs$source), big.mark = ","),
+    ifelse(all(is.na(berlin_obs$year)), "No year column", paste(range(berlin_obs$year, na.rm = TRUE), collapse = "–"))
+  )
+)
+
+nice_table(berlin_summary, "Berlin observation summary")
+```
+
+## How many observations and species are available for Berlin?
+
+```{r berlin-basic-bars, fig.width=8, fig.height=4.8, fig.cap="Berlin observation and species totals in the selected GlobalGeoTree file."}
+berlin_counts <- tibble::tibble(
+  metric = c("Observations", "Species"),
+  count = c(nrow(berlin_obs), n_distinct(berlin_obs$level3_species))
+)
+
+ggplot(berlin_counts, aes(x = metric, y = count)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = comma(count)), vjust = -0.4, fontface = "bold") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.12))) +
+  labs(
+    title = "Berlin has many observations but fewer distinct recorded species",
+    subtitle = "Observation count measures records; species count measures unique taxonomic names.",
+    x = NULL,
+    y = "Count"
+  ) +
+  theme_gtree() +
+  theme(legend.position = "none")
+```
+
+## What are the sources of Berlin observations?
+
+```{r source-summary}
+source_summary <- berlin_obs |>
+  mutate(source = if_else(is.na(source) | source == "", "Unknown", source)) |>
+  count(source, sort = TRUE, name = "observations") |>
+  mutate(share = observations / sum(observations))
+
+source_summary |>
+  head(15) |>
+  mutate(share = percent(share, accuracy = 0.1)) |>
+  nice_table("Top Berlin data sources")
+```
+
+```{r source-bar-chart, fig.width=9, fig.height=5.5, fig.cap="The largest sources shape where Berlin tree observations appear in the dataset."}
+top_sources <- source_summary |>
+  slice_head(n = 10) |>
+  pull(source)
+
+source_plot_data <- berlin_obs |>
+  mutate(source_group = if_else(source %in% top_sources, source, "Other sources")) |>
+  count(source_group, name = "observations") |>
+  mutate(source_group = reorder(source_group, observations))
+
+ggplot(source_plot_data, aes(x = source_group, y = observations)) +
+  geom_col(width = 0.75) +
+  geom_text(aes(label = comma(observations)), hjust = -0.1, size = 3.2) +
+  coord_flip() +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+  labs(
+    title = "Berlin observations are concentrated in a small number of sources",
+    subtitle = "Less common sources are grouped as 'Other sources'.",
+    x = NULL,
+    y = "Observations"
+  ) +
+  theme_gtree()
+```
+
+## Spatial distribution of Berlin observations
+
+```{r berlin-density-map, fig.width=8, fig.height=7, fig.cap="The density map shows where observations are concentrated inside Berlin. If district boundaries are available, they are drawn on top of the density layer."}
+berlin_points_for_map <- sample_points_for_plot(berlin_obs, max_points_on_map)
+
+if (!is.null(berlin_districts)) {
+  ggplot() +
+    stat_density_2d_filled(
+      data = berlin_points_for_map,
+      aes(x = longitude, y = latitude, fill = after_stat(level)),
+      contour_var = "ndensity",
+      alpha = 0.75
+    ) +
+    geom_sf(data = berlin_districts, fill = NA, color = "gray25", linewidth = 0.35) +
+    geom_point(
+      data = berlin_points_for_map,
+      aes(x = longitude, y = latitude),
+      alpha = 0.15,
+      size = 0.35
+    ) +
+    coord_sf() +
+    labs(
+      title = "Tree observation density in Berlin",
+      subtitle = "Filled contours show observation density; district borders provide spatial context.",
+      x = NULL,
+      y = NULL,
+      fill = "Density"
+    ) +
+    theme_gtree()
+} else {
+  ggplot(berlin_points_for_map, aes(x = longitude, y = latitude)) +
+    stat_density_2d_filled(contour_var = "ndensity", alpha = 0.8) +
+    geom_point(alpha = 0.12, size = 0.35) +
+    coord_fixed() +
+    labs(
+      title = "Tree observation density in Berlin",
+      subtitle = "District borders were unavailable, so this map uses a Berlin bounding-box fallback.",
+      x = "Longitude",
+      y = "Latitude",
+      fill = "Density"
+    ) +
+    theme_gtree()
+}
+```
+
+## Tree distribution by Berlin district
+
+```{r district-summary}
+if (!is.null(berlin_districts) && "district" %in% names(berlin_obs)) {
+  district_summary <- berlin_obs |>
+    filter(!is.na(district), district != "") |>
+    group_by(district) |>
+    summarise(
+      observations = n(),
+      species = n_distinct(level3_species),
+      sources = n_distinct(source),
+      .groups = "drop"
+    ) |>
+    arrange(desc(observations))
+} else {
+  district_summary <- tibble::tibble(
+    district = character(),
+    observations = integer(),
+    species = integer(),
+    sources = integer()
+  )
+}
+
+if (nrow(district_summary) > 0) {
+  district_summary |>
+    nice_table("Observation, species, and source counts by Berlin district")
+} else {
+  tibble::tibble(
+    note = "District-level summary is unavailable because Berlin district polygons could not be loaded."
+  ) |>
+    nice_table("District-level summary status")
+}
+```
+
+```{r district-observation-bar, fig.width=9, fig.height=5.8, fig.cap="District-level observation counts show whether records are evenly distributed across Berlin or concentrated in specific districts."}
+if (nrow(district_summary) > 0) {
+  ggplot(district_summary, aes(x = reorder(district, observations), y = observations)) +
+    geom_col(width = 0.75) +
+    geom_text(aes(label = comma(observations)), hjust = -0.1, size = 3.1) +
+    coord_flip() +
+    scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+    labs(
+      title = "Berlin observations by district",
+      subtitle = "Higher values can reflect tree presence, recording effort, or both.",
+      x = NULL,
+      y = "Observations"
+    ) +
+    theme_gtree()
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "District polygons unavailable", size = 5) +
+    theme_void()
+}
+```
+
+```{r district-species-bar, fig.width=9, fig.height=5.8, fig.cap="Species counts by district summarize taxonomic richness observed in each district."}
+if (nrow(district_summary) > 0) {
+  ggplot(district_summary, aes(x = reorder(district, species), y = species)) +
+    geom_col(width = 0.75) +
+    geom_text(aes(label = comma(species)), hjust = -0.1, size = 3.1) +
+    coord_flip() +
+    scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+    labs(
+      title = "Recorded species by Berlin district",
+      subtitle = "This shows distinct species recorded in the dataset, not total biological richness.",
+      x = NULL,
+      y = "Recorded species"
+    ) +
+    theme_gtree()
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "District polygons unavailable", size = 5) +
+    theme_void()
+}
+```
+
+```{r district-choropleth, fig.width=8, fig.height=7, fig.cap="The district choropleth maps observation frequency to Berlin districts."}
+if (nrow(district_summary) > 0) {
+  berlin_districts_summary <- berlin_districts |>
+    left_join(district_summary, by = "district") |>
+    mutate(
+      observations = if_else(is.na(observations), 0L, observations),
+      species = if_else(is.na(species), 0L, species)
+    )
+
+  ggplot(berlin_districts_summary) +
+    geom_sf(aes(fill = observations), color = "white", linewidth = 0.35) +
+    geom_sf_text(aes(label = district), size = 2.5, check_overlap = TRUE) +
+    scale_fill_viridis_c(labels = comma, option = "C", direction = -1) +
+    labs(
+      title = "Observation frequency by Berlin district",
+      subtitle = "Districts with more records are darker.",
+      fill = "Observations"
+    ) +
+    theme_gtree() +
+    theme(axis.text = element_blank(), axis.title = element_blank(), panel.grid = element_blank())
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "District polygons unavailable", size = 5) +
+    theme_void()
+}
+```
+
+## Source patterns across districts
+
+```{r source-district-heatmap, fig.width=9, fig.height=6, fig.cap="The heatmap shows which sources dominate specific Berlin districts."}
+if (nrow(district_summary) > 0) {
+  top_sources_district <- source_summary |>
+    slice_head(n = 8) |>
+    pull(source)
+
+  source_district <- berlin_obs |>
+    filter(!is.na(district), district != "") |>
+    mutate(source_group = if_else(source %in% top_sources_district, source, "Other sources")) |>
+    count(district, source_group, name = "observations") |>
+    group_by(district) |>
+    mutate(share = observations / sum(observations)) |>
+    ungroup()
+
+  ggplot(source_district, aes(x = source_group, y = district, fill = share)) +
+    geom_tile(color = "white", linewidth = 0.25) +
+    scale_fill_viridis_c(labels = percent, option = "C", direction = -1) +
+    labs(
+      title = "Source composition by Berlin district",
+      subtitle = "Each row sums to 100%; darker cells show stronger source dominance within a district.",
+      x = "Source",
+      y = NULL,
+      fill = "Share"
+    ) +
+    theme_gtree() +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1))
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "District polygons unavailable", size = 5) +
+    theme_void()
+}
+```
+
+## Top recorded species in Berlin
+
+```{r top-species}
+top_species <- berlin_obs |>
+  count(level3_species, sort = TRUE, name = "observations") |>
+  mutate(share = observations / sum(observations))
+
+top_species |>
+  head(15) |>
+  mutate(share = percent(share, accuracy = 0.1)) |>
+  nice_table("Top recorded species in Berlin")
+```
+
+```{r top-species-bar, fig.width=9, fig.height=5.8, fig.cap="The most observed species may reflect both Berlin vegetation and observation behavior."}
+top_species |>
+  slice_head(n = 15) |>
+  mutate(level3_species = reorder(level3_species, observations)) |>
+  ggplot(aes(x = level3_species, y = observations)) +
+  geom_col(width = 0.75) +
+  geom_text(aes(label = comma(observations)), hjust = -0.1, size = 3.1) +
+  coord_flip() +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+  labs(
+    title = "Most recorded tree species in Berlin",
+    subtitle = "Counts show observations, not necessarily true abundance of trees in the city.",
+    x = NULL,
+    y = "Observations"
+  ) +
+  theme_gtree()
+```
+
+## Interpretation notes
+
+The key distinction in this Berlin analysis is between **observation frequency** and **tree abundance**. A district with many records may have many trees, but it may also have more active observers, better platform coverage, or more accessible public spaces. Similarly, a frequently recorded species is not automatically the most common biological species in Berlin; it is the most common species in this dataset.
+
+District-level maps are therefore best interpreted as maps of **recorded tree observations**, not direct ecological census maps.
+
+## Reproducibility notes
+
+For stable district maps, save a Berlin district GeoJSON file as:
+
+```text
+berlin_districts.geojson
+```
+
+or:
+
+```text
+data/external/berlin_districts.geojson
+```
+
+If no district file is found, this report tries to download one automatically. If the download fails, district-level visualizations are replaced with a fallback note and a Berlin bounding-box density map.

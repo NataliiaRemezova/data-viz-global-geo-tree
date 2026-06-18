@@ -1,0 +1,2055 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="GlobalGeoTree team">
+
+<title>Germany Check: Full Dataset, Species Counts, and Category Lookup</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="Germany_dataset_check_v4_eval900_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/popper.min.js"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Germany_dataset_check_v4_eval900_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Germany_dataset_check_v4_eval900_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Germany_dataset_check_v4_eval900_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Germany_dataset_check_v4_eval900_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Germany_dataset_check_v4_eval900_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Germany_dataset_check_v4_eval900_files/libs/bootstrap/bootstrap-7df91e7c987534b356ad96ed05d4452c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="Germany_dataset_check_v4_eval900_files/libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet">
+<script src="Germany_dataset_check_v4_eval900_files/libs/pagedtable-1.1/js/pagedtable.js"></script>
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">1</span> Purpose</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">2</span> Setup</a></li>
+  <li><a href="#input-files" id="toc-input-files" class="nav-link" data-scroll-target="#input-files"><span class="header-section-number">3</span> Input files</a></li>
+  <li><a href="#load-data-and-inspect-the-head" id="toc-load-data-and-inspect-the-head" class="nav-link" data-scroll-target="#load-data-and-inspect-the-head"><span class="header-section-number">4</span> Load data and inspect the head</a></li>
+  <li><a href="#germany-observation-and-species-counts" id="toc-germany-observation-and-species-counts" class="nav-link" data-scroll-target="#germany-observation-and-species-counts"><span class="header-section-number">5</span> Germany observation and species counts</a></li>
+  <li><a href="#category-source-and-lookup-logic" id="toc-category-source-and-lookup-logic" class="nav-link" data-scroll-target="#category-source-and-lookup-logic"><span class="header-section-number">6</span> Category source and lookup logic</a></li>
+  <li><a href="#category-coverage-in-germany" id="toc-category-coverage-in-germany" class="nav-link" data-scroll-target="#category-coverage-in-germany"><span class="header-section-number">7</span> Category coverage in Germany</a></li>
+  <li><a href="#rare-common-and-frequent-relation" id="toc-rare-common-and-frequent-relation" class="nav-link" data-scroll-target="#rare-common-and-frequent-relation"><span class="header-section-number">8</span> Rare, Common, and Frequent relation</a></li>
+  <li><a href="#which-germany-species-received-a-category" id="toc-which-germany-species-received-a-category" class="nav-link" data-scroll-target="#which-germany-species-received-a-category"><span class="header-section-number">9</span> Which Germany species received a category?</a></li>
+  <li><a href="#which-germany-species-are-still-unmatched" id="toc-which-germany-species-are-still-unmatched" class="nav-link" data-scroll-target="#which-germany-species-are-still-unmatched"><span class="header-section-number">10</span> Which Germany species are still unmatched?</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">11</span> Conclusion</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Germany Check: Full Dataset, Species Counts, and Category Lookup</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>GlobalGeoTree team </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="purpose" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Purpose</h1>
+<p>This short diagnostic report checks Germany in the GlobalGeoTree observations file.</p>
+<p>It answers three questions:</p>
+<ol type="1">
+<li>How many observations are available for Germany?</li>
+<li>How many recorded species are available for Germany?</li>
+<li>How many Germany observations and species can be assigned to the dataset-defined categories <code>Rare</code>, <code>Common</code>, and <code>Frequent</code>?</li>
+</ol>
+<p>The category check is especially important because the full observations dataset may not contain a <code>Category</code> column. In that case, this report uses the larger evaluation dataset <code>GlobalGeoTree-10kEval-900.csv</code> as a category lookup table.</p>
+</section>
+<section id="setup" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Setup</h1>
+</section>
+<section id="input-files" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Input files</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Files used in this diagnostic report</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">file_role</th>
+<th style="text-align: left;">file_path</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Main observations file</td>
+<td style="text-align: left;">GlobalGeoTree.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Category lookup file</td>
+<td style="text-align: left;">GlobalGeoTree-10kEval-900.csv</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Optional species catalog</td>
+<td style="text-align: left;">Tree_species_catalog.csv</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="load-data-and-inspect-the-head" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Load data and inspect the head</h1>
+<p>The table below shows the first rows of the main observations dataset. This is useful for checking which variables are available before any filtering or joins.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>First 10 rows of the main observations dataset</caption>
+<colgroup>
+<col style="width: 4%">
+<col style="width: 5%">
+<col style="width: 8%">
+<col style="width: 6%">
+<col style="width: 5%">
+<col style="width: 10%">
+<col style="width: 12%">
+<col style="width: 30%">
+<col style="width: 5%">
+<col style="width: 2%">
+<col style="width: 4%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">sample_id</th>
+<th style="text-align: left;">country_code</th>
+<th style="text-align: left;">level0</th>
+<th style="text-align: left;">level1_family</th>
+<th style="text-align: left;">level2_genus</th>
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">location</th>
+<th style="text-align: left;">source</th>
+<th style="text-align: left;">species_key</th>
+<th style="text-align: right;">year</th>
+<th style="text-align: right;">longitude</th>
+<th style="text-align: right;">latitude</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">MW</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes formosissimus</td>
+<td style="text-align: left;">Malawi</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">5576177</td>
+<td style="text-align: right;">2024</td>
+<td style="text-align: right;">34.770179</td>
+<td style="text-align: right;">-16.244345</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes formosissimus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">5576177</td>
+<td style="text-align: right;">2018</td>
+<td style="text-align: right;">34.342119</td>
+<td style="text-align: right;">-18.961792</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes sessiliflorus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">7264409</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">34.339832</td>
+<td style="text-align: right;">-18.600213</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: left;">MZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Anisotes</td>
+<td style="text-align: left;">Anisotes sessiliflorus</td>
+<td style="text-align: left;">Mozambique</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">7264409</td>
+<td style="text-align: right;">2015</td>
+<td style="text-align: right;">34.340500</td>
+<td style="text-align: right;">-18.599860</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">TZ</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia marina</td>
+<td style="text-align: left;">Tanzania, United Republic of</td>
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: left;">2925403</td>
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">39.490521</td>
+<td style="text-align: right;">-6.148904</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">KE</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Kenya</td>
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">2925398</td>
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">39.945604</td>
+<td style="text-align: right;">-3.285171</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">7</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Biodiversity of Some Coastal Communities in Akwa-Ibom State, Nigeria</td>
+<td style="text-align: left;">2925398</td>
+<td style="text-align: right;">2021</td>
+<td style="text-align: right;">8.031336</td>
+<td style="text-align: right;">4.556238</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Biodiversity of Some Coastal Communities in Akwa-Ibom State, Nigeria</td>
+<td style="text-align: left;">2925398</td>
+<td style="text-align: right;">2021</td>
+<td style="text-align: right;">8.038207</td>
+<td style="text-align: right;">4.557545</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">9</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Flora of Coastal Environment in Cross-River State, Nigeria</td>
+<td style="text-align: left;">2925398</td>
+<td style="text-align: right;">2019</td>
+<td style="text-align: right;">8.519425</td>
+<td style="text-align: right;">4.779849</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10</td>
+<td style="text-align: left;">NG</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Acanthaceae</td>
+<td style="text-align: left;">Avicennia</td>
+<td style="text-align: left;">Avicennia spec</td>
+<td style="text-align: left;">Nigeria</td>
+<td style="text-align: left;">Flora of Coastal Environment in Cross-River State, Nigeria</td>
+<td style="text-align: left;">2925398</td>
+<td style="text-align: right;">2019</td>
+<td style="text-align: right;">8.450121</td>
+<td style="text-align: right;">4.787425</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The table below shows the first rows after filtering to Germany.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>First 10 Germany rows after filtering country_code == ‘DE’</caption>
+<colgroup>
+<col style="width: 5%">
+<col style="width: 6%">
+<col style="width: 10%">
+<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 11%">
+<col style="width: 4%">
+<col style="width: 27%">
+<col style="width: 6%">
+<col style="width: 2%">
+<col style="width: 5%">
+<col style="width: 4%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: right;">sample_id</th>
+<th style="text-align: left;">country_code</th>
+<th style="text-align: left;">level0</th>
+<th style="text-align: left;">level1_family</th>
+<th style="text-align: left;">level2_genus</th>
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">location</th>
+<th style="text-align: left;">source</th>
+<th style="text-align: left;">species_key</th>
+<th style="text-align: right;">year</th>
+<th style="text-align: right;">longitude</th>
+<th style="text-align: right;">latitude</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">607427</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Malvaceae</td>
+<td style="text-align: left;">Abutilon</td>
+<td style="text-align: left;">Abutilon theophrasti</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Observation.org, Nature data from around the World</td>
+<td style="text-align: left;">3152614</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">14.25516</td>
+<td style="text-align: right;">51.87012</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">607428</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Evergreen Broadleaf</td>
+<td style="text-align: left;">Malvaceae</td>
+<td style="text-align: left;">Abutilon</td>
+<td style="text-align: left;">Abutilon theophrasti</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Pl@ntNet observations</td>
+<td style="text-align: left;">3152614</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">13.87257</td>
+<td style="text-align: right;">51.27231</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">607429</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2023</td>
+<td style="text-align: right;">13.95652</td>
+<td style="text-align: right;">51.87367</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">607430</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">14.04159</td>
+<td style="text-align: right;">50.97557</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">607431</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Observation.org, Nature data from around the World</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2024</td>
+<td style="text-align: right;">14.20415</td>
+<td style="text-align: right;">51.97633</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">607432</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Observation.org, Nature data from around the World</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2021</td>
+<td style="text-align: right;">13.44270</td>
+<td style="text-align: right;">50.93014</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">607433</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">13.82200</td>
+<td style="text-align: right;">51.16400</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">607434</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">14.68800</td>
+<td style="text-align: right;">51.08700</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">607435</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">14.66000</td>
+<td style="text-align: right;">51.06800</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">607436</td>
+<td style="text-align: left;">DE</td>
+<td style="text-align: left;">Deciduous Broadleaf</td>
+<td style="text-align: left;">Sapindaceae</td>
+<td style="text-align: left;">Aesculus</td>
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">Germany</td>
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: right;">2022</td>
+<td style="text-align: right;">14.07000</td>
+<td style="text-align: right;">52.24700</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="germany-observation-and-species-counts" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Germany observation and species counts</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Germany subset size before category lookup</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Germany observations</td>
+<td style="text-align: left;">205,747</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany recorded species names</td>
+<td style="text-align: left;">464</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Germany recorded species keys</td>
+<td style="text-align: left;">464</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The Germany subset contains <strong>205,747 observations</strong> and <strong>464 recorded species names</strong>.</p>
+</section>
+<section id="category-source-and-lookup-logic" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Category source and lookup logic</h1>
+<p>The category variable is handled in this order:</p>
+<ol type="1">
+<li>If the main observations file already contains <code>category</code>, use it directly.</li>
+<li>If the main observations file does not contain <code>category</code>, use the evaluation dataset as a lookup table.</li>
+<li>Prefer joining by <code>species_key</code> because it is more stable than species names.</li>
+<li>If <code>species_key</code> is not available, fall back to joining by <code>level3_species</code>.</li>
+</ol>
+<p>The species catalog is <strong>not</strong> used to assign <code>Rare</code>, <code>Common</code>, or <code>Frequent</code>, because the catalog does not normally contain category labels. It is a taxonomy reference, not a category lookup.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Category lookup source and coverage</caption>
+<colgroup>
+<col style="width: 59%">
+<col style="width: 40%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Lookup file used</td>
+<td style="text-align: left;">GlobalGeoTree-10kEval-900.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Lookup rows</td>
+<td style="text-align: left;">901</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Lookup species keys with category</td>
+<td style="text-align: left;">900</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Lookup species names with category</td>
+<td style="text-align: left;">900</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Species keys with conflicting category rows</td>
+<td style="text-align: left;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The main observations file does not contain category. Categories were joined from GlobalGeoTree-10kEval-900.csv using species_key first and species name as fallback.</p>
+</section>
+<section id="category-coverage-in-germany" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Category coverage in Germany</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Known and unknown category coverage for Germany</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+<th style="text-align: left;">share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Germany observations</td>
+<td style="text-align: left;">205,747</td>
+<td style="text-align: left;">100.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany recorded species</td>
+<td style="text-align: left;">464</td>
+<td style="text-align: left;">100.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Germany observations with known category</td>
+<td style="text-align: left;">72,911</td>
+<td style="text-align: left;">35.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany recorded species with known category</td>
+<td style="text-align: left;">121</td>
+<td style="text-align: left;">26.1%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Germany observations without known category</td>
+<td style="text-align: left;">132,836</td>
+<td style="text-align: left;">64.6%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany recorded species without known category</td>
+<td style="text-align: left;">343</td>
+<td style="text-align: left;">73.9%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>Interpretation:</p>
+<ul>
+<li><code>Germany observations with known category</code> counts observation rows whose species could be matched to <code>Rare</code>, <code>Common</code>, or <code>Frequent</code>.</li>
+<li><code>Germany recorded species with known category</code> counts unique species names in Germany whose category is known.</li>
+<li>If the full dataset does not contain <code>category</code>, these values depend on how much overlap exists between Germany species and the eval lookup file.</li>
+</ul>
+</section>
+<section id="rare-common-and-frequent-relation" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Rare, Common, and Frequent relation</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Germany observations by known category</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">category</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share_observations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">72,698</td>
+<td style="text-align: left;">99.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">199</td>
+<td style="text-align: left;">0.3%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rare</td>
+<td style="text-align: left;">14</td>
+<td style="text-align: left;">0.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Germany recorded species by known category</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">category</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: left;">share_species</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">105</td>
+<td style="text-align: left;">86.8%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">14</td>
+<td style="text-align: left;">11.6%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rare</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">1.7%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Germany_dataset_check_v4_eval900_files/figure-html/category-observation-chart-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Germany_dataset_check_v4_eval900_files/figure-html/category-species-chart-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="which-germany-species-received-a-category" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Which Germany species received a category?</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Germany species with known category</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">species_key</th>
+<th style="text-align: left;">category</th>
+<th style="text-align: left;">observations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Salvia officinalis</td>
+<td style="text-align: left;">2927004</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">105</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Corylus colurna</td>
+<td style="text-align: left;">2875968</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">43</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Larix kaempferi</td>
+<td style="text-align: left;">2686157</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">23</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Betula humilis</td>
+<td style="text-align: left;">5331629</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">10</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Populus canescens</td>
+<td style="text-align: left;">3040185</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Amelanchier arborea</td>
+<td style="text-align: left;">3024052</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hedlundia mougeotii</td>
+<td style="text-align: left;">9312105</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Carya alba</td>
+<td style="text-align: left;">3054302</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Carya illinoiensis</td>
+<td style="text-align: left;">3054287</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cornus kousa</td>
+<td style="text-align: left;">3082274</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cytisus villosus</td>
+<td style="text-align: left;">5354639</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Euonymus japonicus</td>
+<td style="text-align: left;">7102937</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Juniperus horizontalis</td>
+<td style="text-align: left;">2684410</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sigesbeckia jorullensis</td>
+<td style="text-align: left;">3125893</td>
+<td style="text-align: left;">Common</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Dryocopus martius</td>
+<td style="text-align: left;">2477872</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">11,353</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vaccinium myrtillus</td>
+<td style="text-align: left;">2882833</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">10,424</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Prunus padus</td>
+<td style="text-align: left;">3021037</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">7,988</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus spinosa</td>
+<td style="text-align: left;">3023221</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">6,487</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schefflera macrophylla</td>
+<td style="text-align: left;">8800</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">3,818</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Carpinus betulus</td>
+<td style="text-align: left;">2875818</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2,991</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sambucus nigra</td>
+<td style="text-align: left;">2888728</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2,534</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vaccinium vitis-idaea</td>
+<td style="text-align: left;">2882835</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2,492</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veronica officinalis</td>
+<td style="text-align: left;">3172049</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2,483</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fraxinus excelsior</td>
+<td style="text-align: left;">3172358</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1,670</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Berberis vulgaris</td>
+<td style="text-align: left;">3033894</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1,184</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Erica excelsa</td>
+<td style="text-align: left;">2882780</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1,179</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Pinus sylvestris</td>
+<td style="text-align: left;">5285637</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1,131</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Robinia pseudoacacia</td>
+<td style="text-align: left;">5352251</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1,094</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hypericum perforatum</td>
+<td style="text-align: left;">3189486</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">972</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Salvia glutinosa</td>
+<td style="text-align: left;">2927026</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">948</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rhamnus cathartica</td>
+<td style="text-align: left;">3039491</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">892</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Populus alba</td>
+<td style="text-align: left;">3040233</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">868</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Mahonia aquifolium</td>
+<td style="text-align: left;">3033865</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">835</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Taxus baccata</td>
+<td style="text-align: left;">5284517</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">789</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veronica persica</td>
+<td style="text-align: left;">3172077</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">771</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Larix decidua</td>
+<td style="text-align: left;">2686212</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">637</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Syringa vulgaris</td>
+<td style="text-align: left;">5415039</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">587</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Chenopodium album</td>
+<td style="text-align: left;">3083838</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">567</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Prunus cerasifera</td>
+<td style="text-align: left;">3021730</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">558</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Malva moschata</td>
+<td style="text-align: left;">3152379</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">509</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Juglans regia</td>
+<td style="text-align: left;">3054368</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">493</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Phytolacca americana</td>
+<td style="text-align: left;">3084015</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">489</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ulmus glabra</td>
+<td style="text-align: left;">5361866</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">462</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ribes uva-crispa</td>
+<td style="text-align: left;">2986185</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">411</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Taxodium distichum</td>
+<td style="text-align: left;">2684191</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">403</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rhus typhina</td>
+<td style="text-align: left;">3190538</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">383</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Myrica gale</td>
+<td style="text-align: left;">5414202</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">340</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Docynia delavayi</td>
+<td style="text-align: left;">3001068</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">331</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veronica sublobata</td>
+<td style="text-align: left;">3725447</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">306</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sonchus arvensis</td>
+<td style="text-align: left;">3105813</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">286</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veronica filiformis</td>
+<td style="text-align: left;">3172100</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">269</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Amelanchier ovalis</td>
+<td style="text-align: left;">3023878</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">268</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Alnus incana</td>
+<td style="text-align: left;">9148577</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">211</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ailanthus altissima</td>
+<td style="text-align: left;">3190653</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">207</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Betula pubescens</td>
+<td style="text-align: left;">9118014</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">159</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ulmus minor</td>
+<td style="text-align: left;">5361865</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">140</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ulmus laevis</td>
+<td style="text-align: left;">7303616</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">137</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cormus domestica</td>
+<td style="text-align: left;">3013215</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">130</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ribes nigrum</td>
+<td style="text-align: left;">2986192</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">112</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ptelea trifoliata</td>
+<td style="text-align: left;">3190411</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">102</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Paulownia tomentosa</td>
+<td style="text-align: left;">3170823</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">95</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pinus mugo</td>
+<td style="text-align: left;">5285385</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">94</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Salix cinerea</td>
+<td style="text-align: left;">5372605</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">86</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Veronica scutellata</td>
+<td style="text-align: left;">3172072</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">80</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Salix viminalis</td>
+<td style="text-align: left;">5372933</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">77</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Veronica longifolia</td>
+<td style="text-align: left;">3172118</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">66</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cotinus coggygria</td>
+<td style="text-align: left;">3190522</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Salix repens</td>
+<td style="text-align: left;">9148812</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">58</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Pinus nigra</td>
+<td style="text-align: left;">5284809</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">55</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Alnus alnobetula</td>
+<td style="text-align: left;">8956987</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">52</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rhododendron ferrugineum</td>
+<td style="text-align: left;">2883073</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">52</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Thuja plicata</td>
+<td style="text-align: left;">2684171</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">50</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veronica anagallis-aquatica</td>
+<td style="text-align: left;">3172086</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">48</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Salix triandra</td>
+<td style="text-align: left;">7103891</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">33</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cornus sericea</td>
+<td style="text-align: left;">3082244</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">29</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Abutilon theophrasti</td>
+<td style="text-align: left;">3152614</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">27</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Prunus persica</td>
+<td style="text-align: left;">8149923</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">27</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tsuga heterophylla</td>
+<td style="text-align: left;">2687210</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">23</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Erigeron sumatrensis</td>
+<td style="text-align: left;">3146683</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">22</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Vaccinium macrocarpon</td>
+<td style="text-align: left;">2882841</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">22</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ficus carica</td>
+<td style="text-align: left;">5361909</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">21</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus virginiana</td>
+<td style="text-align: left;">3022668</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">20</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Tsuga canadensis</td>
+<td style="text-align: left;">2687182</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">20</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Salix myrsinifolia</td>
+<td style="text-align: left;">5372875</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">19</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ilex macrophylla</td>
+<td style="text-align: left;">10792217</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">17</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rhamnus alpina</td>
+<td style="text-align: left;">2407</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">15</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Caragana arborescens</td>
+<td style="text-align: left;">2943190</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Picea sitchensis</td>
+<td style="text-align: left;">5284827</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Arctostaphylos spec</td>
+<td style="text-align: left;">2882486</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ipomoea purpurea</td>
+<td style="text-align: left;">2928576</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Symphoricarpos orbiculatus</td>
+<td style="text-align: left;">2888636</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Thuja occidentalis</td>
+<td style="text-align: left;">2684178</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Betula nana</td>
+<td style="text-align: left;">5332004</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cryptomeria japonica</td>
+<td style="text-align: left;">5284237</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Morus alba</td>
+<td style="text-align: left;">5361889</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ricinus communis</td>
+<td style="text-align: left;">5380041</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Clethra alnifolia</td>
+<td style="text-align: left;">2888323</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Erigeron strigosus</td>
+<td style="text-align: left;">3146632</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Liquidambar styraciflua</td>
+<td style="text-align: left;">3152824</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Spiraea tomentosa</td>
+<td style="text-align: left;">3026819</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Viburnum tinus</td>
+<td style="text-align: left;">2888585</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cotoneaster acutifolius</td>
+<td style="text-align: left;">3025770</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Elaeagnus umbellata</td>
+<td style="text-align: left;">3039267</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Populus trichocarpa</td>
+<td style="text-align: left;">6362904</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">3</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Alnus rubra</td>
+<td style="text-align: left;">2876176</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Broussonetia papyrifera</td>
+<td style="text-align: left;">5361944</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cornus canadensis</td>
+<td style="text-align: left;">3082270</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cornus suecica</td>
+<td style="text-align: left;">3082246</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Euonymus alatus</td>
+<td style="text-align: left;">3169120</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pereskia bleo</td>
+<td style="text-align: left;">2519</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Punica granatum</td>
+<td style="text-align: left;">5420901</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Yucca filamentosa</td>
+<td style="text-align: left;">2775561</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">2</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Acer platanoides</td>
+<td style="text-align: left;">3189846</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Asimina spec</td>
+<td style="text-align: left;">3158021</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cinnamomum cassia</td>
+<td style="text-align: left;">6688</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fraxinus angustifolia</td>
+<td style="text-align: left;">7325877</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hamamelis virginiana</td>
+<td style="text-align: left;">3152827</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mahonia repens</td>
+<td style="text-align: left;">3033850</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Oxalis montana</td>
+<td style="text-align: left;">2891760</td>
+<td style="text-align: left;">Frequent</td>
+<td style="text-align: left;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Aria danubialis</td>
+<td style="text-align: left;">9573476</td>
+<td style="text-align: left;">Rare</td>
+<td style="text-align: left;">12</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cotoneaster ambiguus</td>
+<td style="text-align: left;">3025858</td>
+<td style="text-align: left;">Rare</td>
+<td style="text-align: left;">2</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="which-germany-species-are-still-unmatched" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Which Germany species are still unmatched?</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top 30 Germany species without a known category</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">species_key</th>
+<th style="text-align: left;">observations</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Fagus sylvatica</td>
+<td style="text-align: left;">2882316</td>
+<td style="text-align: left;">20,441</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cupania sylvatica</td>
+<td style="text-align: left;">6657</td>
+<td style="text-align: left;">10,609</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sorbus aucuparia</td>
+<td style="text-align: left;">3012167</td>
+<td style="text-align: left;">7,799</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Croton laccifer</td>
+<td style="text-align: left;">4691</td>
+<td style="text-align: left;">7,022</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ilex aquifolium</td>
+<td style="text-align: left;">5414222</td>
+<td style="text-align: left;">5,998</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sambucus racemosa</td>
+<td style="text-align: left;">2888723</td>
+<td style="text-align: left;">5,972</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Corylus avellana</td>
+<td style="text-align: left;">2875979</td>
+<td style="text-align: left;">5,079</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Euonymus europaeus</td>
+<td style="text-align: left;">3169131</td>
+<td style="text-align: left;">4,815</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Viburnum lantana</td>
+<td style="text-align: left;">2888615</td>
+<td style="text-align: left;">3,989</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Quercus oblongata</td>
+<td style="text-align: left;">2877951</td>
+<td style="text-align: left;">3,854</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Viburnum opulus</td>
+<td style="text-align: left;">2888605</td>
+<td style="text-align: left;">3,728</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sambucus ebulus</td>
+<td style="text-align: left;">2888722</td>
+<td style="text-align: left;">3,234</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Populus tremula</td>
+<td style="text-align: left;">3040249</td>
+<td style="text-align: left;">2,796</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cornus sanguinea</td>
+<td style="text-align: left;">3082234</td>
+<td style="text-align: left;">2,636</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cytisus scoparius</td>
+<td style="text-align: left;">5354656</td>
+<td style="text-align: left;">2,588</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Alnus glutinosa</td>
+<td style="text-align: left;">2876213</td>
+<td style="text-align: left;">2,299</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Prunus serotina</td>
+<td style="text-align: left;">3021850</td>
+<td style="text-align: left;">1,964</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Salvia pratensis</td>
+<td style="text-align: left;">2927007</td>
+<td style="text-align: left;">1,776</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Castanea sativa</td>
+<td style="text-align: left;">5333294</td>
+<td style="text-align: left;">1,760</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Erigeron annuus</td>
+<td style="text-align: left;">3117449</td>
+<td style="text-align: left;">1,750</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Cornus mas</td>
+<td style="text-align: left;">3082263</td>
+<td style="text-align: left;">1,734</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ligustrum vulgare</td>
+<td style="text-align: left;">3172300</td>
+<td style="text-align: left;">1,529</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Aesculus spec</td>
+<td style="text-align: left;">3189801</td>
+<td style="text-align: left;">1,442</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Veronica beccabunga</td>
+<td style="text-align: left;">3172062</td>
+<td style="text-align: left;">1,398</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Picea abies</td>
+<td style="text-align: left;">5284884</td>
+<td style="text-align: left;">1,222</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus avium</td>
+<td style="text-align: left;">3020791</td>
+<td style="text-align: left;">1,053</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Frangula alnus</td>
+<td style="text-align: left;">3039454</td>
+<td style="text-align: left;">921</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Viburnum rhytidophyllum</td>
+<td style="text-align: left;">2888625</td>
+<td style="text-align: left;">843</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Dombeya acerifolia</td>
+<td style="text-align: left;">6685</td>
+<td style="text-align: left;">780</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Crataegus monogyna</td>
+<td style="text-align: left;">9220780</td>
+<td style="text-align: left;">761</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="conclusion" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Conclusion</h1>
+<p>This diagnostic report separates two questions that are easy to confuse:</p>
+<ol type="1">
+<li><p><strong>How many observations and species exist for Germany in the main dataset?</strong><br>
+This is calculated directly from the full observations file after filtering <code>country_code == 'DE'</code>.</p></li>
+<li><p><strong>How many Germany observations and species have a known <code>Rare</code>, <code>Common</code>, or <code>Frequent</code> category?</strong><br>
+This depends on whether the main file contains <code>category</code>. If it does not, category can only be assigned to species that overlap with the eval lookup dataset.</p></li>
+</ol>
+<p>Therefore, if the category comes from <code>GlobalGeoTree-10kEval-900.csv</code>, the Rare/Common/Frequent analysis is a <strong>matched-subset analysis</strong>, not a complete classification of all Germany species.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

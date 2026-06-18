@@ -26,6 +26,12 @@ params <- list(html=knitr::is_html_output())
 knitr::opts_chunk$set(echo = params$html)
 ```
 
+```{r}
+data <- read.csv("path/to/your/file.csv")
+
+head(data)
+```
+
 # First chapter
 
 Quarto (Allaire et al. 2026) is the latest tool for integrating analysis and reporting. It handles R, Python and Julia, and possibly further languages. In this brief demo, I demonstrate some basic aspects of its use. Using it with R requires **knitr** (see, e.g., https://yihui.org/knitr/), and the possibilities of that package can also be used. It is possible to incorporate not only R code (like in this demo), but also, e.g., Python or Julia code with the respective code chunks.
