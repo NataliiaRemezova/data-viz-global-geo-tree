@@ -1,6 +1,16 @@
 data <- read.csv("~/Documents/AGROPARISTECH/ErasmusBHT/DataVisualisation/Project/GlobalGeoTree-10kEval-90.csv", header=TRUE)
 
-## Presentation of the data set============================================================================
+## Data treatment ============================================================================
+# looking for missing data
+any(is.na(data))
+sum(is.na(data))
+# No missing data in this file (it's a refined dataset so it makes sens, to be clear of NA data)
+
+##  ============================================================================
+##                    Presentation of the data set
+##  ============================================================================
+
+## What is the gobal and evident structure of the dataset? =====================
 #... "insert text about the context of the data set"
 # Number of observations
 n_obs <- nrow(data)
@@ -18,17 +28,14 @@ summary(data)
 
 # ... "Explanation of each feature, its boundaries and what it means"
 
-## Repartition of the data depending on the countries (number of data for each country) ====================
-# histogram or boxplot
+## How are the data spread across the different countries (number of observations for each country) ?=======
 library(dplyr)
 library(ggplot2)
-
 # Count for each country
 country_counts <- data %>%
   count(country_code, sort = TRUE)
-
 head(country_counts)
-
+# Histogram plot
 ggplot(country_counts,
        aes(x = reorder(country_code, n),
            y = n)) +
@@ -39,9 +46,8 @@ ggplot(country_counts,
     y = "Number of observations",
     title = "Number of observations for each country"
   )
-  
 
-# same principle but only the first 20 countries
+# Histogram of the 20 first countries only
 country_counts %>%
   slice_max(n, n = 20) %>%
   ggplot(aes(x = reorder(country_code, n), y = n)) +
@@ -54,20 +60,18 @@ country_counts %>%
   )
 # add + theme.minimal() to have it in white
 
-# Distribution of the data for each year and each country
+## How are the data distributed troughout the years in different countries? Do we see an evoution? ==========
 top20_countries <- data %>%
   count(country_code, sort = TRUE) %>%
   slice_head(n = 20)
 
-# Counting of every data for each country per year
 country_year_counts <- data %>%
-  filter(country_code %in% top20_countries$country_code) %>%
+  filter(country_code %in% top20_countries$country_code) %>% # Counting of every data for each country per year
   count(country_code, year)
 
-# Order of the years : recent -> old
 country_year_counts$year <- factor(
   country_year_counts$year,
-  levels = sort(unique(country_year_counts$year), decreasing = TRUE)
+  levels = sort(unique(country_year_counts$year), decreasing = TRUE) # Order of the years : recent -> old
 )
 
 ggplot(country_year_counts,
@@ -78,7 +82,7 @@ ggplot(country_year_counts,
   coord_flip() +
   scale_fill_manual(
     values = colorRampPalette(
-      c("darkblue", "grey")
+      c("darkblue", "red")
     )(length(unique(country_year_counts$year)))
   ) +
   labs(
@@ -89,9 +93,10 @@ ggplot(country_year_counts,
   ) +
   theme_minimal()
 
-## Repartition of the observations among the tree categories ans species ============================================
+
+## What are the different proportions of tree categories among the observations? =========
 # Number of trees for each category
-#count of the number of tree for each category
+
 category_count <- data %>%
   count(Category, sort = TRUE)
 ggplot(category_count,
@@ -108,23 +113,21 @@ ggplot(category_count,
     axis.text.x = element_text(size = 14),
     axis.title.x = element_text(size = 16),
     axis.title.y = element_text(size = 16)
-  )
+  ) #count of the number of tree for each category
 
 ## Dispertion of the species by difficulty in every contry
 top20_countries_category <- data %>%
   count(country_code, sort = TRUE) %>%
   slice_head(n = 20)
 
-# Counting of every data for each country per category
 country_category_counts <- data %>%
   filter(country_code %in% top20_countries_category$country_code) %>%
-  count(country_code, Category)
+  count(country_code, Category) # Counting of every data for each country per category
 
-# Order of the categories
 country_category_counts$Category <- factor(
   country_category_counts$Category,
   levels = sort(unique(country_category_counts$Category))
-)
+) # Order of the categories
 
 ggplot(country_category_counts,
        aes(x = reorder(country_code, n, FUN = sum),
@@ -144,8 +147,12 @@ ggplot(country_category_counts,
     title = "Proportion of each category for the 20 most represented countries"
   ) +
   theme_minimal()
+## This representation has to be taken carefully because some of the countries don't present any rare obervation
+## This does NOT means that there are no rare trees in this area, it only means that they haven't been observed
+## However, we can say that Common and Frequent treed are much more largely observed (which make sens because thay should appear more often)
 
-## Description of the different species of trees
+## What are the different tree species referenced in thsi dataset? ================================
+
 # Number of different broad vegetation category and dispertion within the categories
 level0_count <- data %>%
   count(level0, sort = TRUE)
@@ -160,8 +167,15 @@ ggplot(level0_count,
     title = "Number of observations for each plant category"
   ) +
   theme_minimal()
+## chack again for missing values
+## plot each category geographycally
 
-# Dispersion of each rarety category depending on the the categiry specie
+# Definition of each tree category:
+# Evergreen Needleleaf: An evergreen needleleaf refers to woody vegetation that retains needle-like or scale-like foliage year-round
+# Evergreen Broadleaf: An evergreen broadleaf is a plant or tree that has wide, flat leaves (rather than needles or scales) and retains its foliage year-round
+# Deciduous Broadleaf:  a diverse group of flowering plants (angiosperms) characterized by flat leaves that are shed annually before winter
+
+# Dispersion of each rarety category depending on the the category of the specie
 level0_category <- data %>%
   count(level0, Category)
 
@@ -203,10 +217,10 @@ ggplot(level0_category,
   ) +
   theme_minimal()
 
+## What are the different taxonomic families represented in this dataset and in which proportion are they represented?
 
-# Number of level1_categories
 level1_count <- data %>%
-  count(level1_family, sort=TRUE)
+  count(level1_family, sort=TRUE) # Number of level1_categories
 
 ggplot(level1_count,
        aes(x = reorder(level1_family, n),
@@ -225,45 +239,43 @@ ggplot(level1_count,
     )
   )
 
-# arbre hiérarchique présentant les catégories, espèces et taxon de chaque obervation possible
-# chack whether the relationships are linear or not
-data %>%
-  distinct(level0, level1_family) %>%
-  count(level1_family) %>%
-  filter(n > 1)
-
-data %>%
-  distinct(level1_family, level2_genus) %>%
-  count(level2_genus) %>%
-  filter(n > 1)
-
-data %>%
-  distinct(level0, level1_family) %>%
-  filter(level1_family %in%
-           c("Ericaceae",
-             "Euphorbiaceae",
-             "Fabaceae",
-             "Rhamnaceae",
-             "Sapindaceae")) %>%
-  arrange(level1_family)
-## tree not possible with the three categories because the relationships are not linears
-
-
+## =============================================================================
+## Geographical repartition of the dataset 
+## =============================================================================
 
 ## How are the trees distributed depending on the latitude ? ===================
 
-## distribution depending on the latitude
-
-# histogramme
 ggplot(data, aes(x = latitude)) +
   geom_histogram(binwidth = 2, fill = "forestgreen", color = "white") +
+  scale_x_reverse() +
   labs(
-    title = "Tree distrbution depending on the latitude",
+    title = "Distribution of the observations depending on the latitude",
     x = "Latitude (°)",
     y = "Number of observations"
   ) +
-  theme_minimal()
-# ajouter où est le nord et le sud et faire en sorte que la latitude 0 soit au milieu
+  annotate(
+    "text",
+    x = min(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "South",
+    vjust = 1,
+    hjust = 0,
+    col="darkgreen"
+  ) +
+  annotate(
+    "text",
+    x = max(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "North",
+    vjust = 1,
+    hjust = 1,
+    col="darkgreen"
+  ) +
+  theme_minimal() +
+  coord_cartesian(clip = "off") +
+  theme(
+    plot.margin = margin(10, 10, 30, 10)
+  )
 
 # density curve
 ggplot(data, aes(x = latitude)) +
@@ -273,10 +285,32 @@ ggplot(data, aes(x = latitude)) +
     x = "Latitude (°)",
     y = "Density"
   ) +
-  theme_minimal()
-# ajouter où est le nord et le sud et faire en sorte que la latitude 0 soit au milieu
-
-## Number of tree in each longitudinal branch
+  theme_minimal() +
+  annotate(
+    "text",
+    x = min(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "South",
+    vjust = 2,
+    hjust = 0,
+    col="darkgreen"
+  ) +
+  annotate(
+    "text",
+    x = max(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "North",
+    vjust = 2,
+    hjust = 1,
+    col="darkgreen"
+  ) +
+  coord_cartesian(clip = "off") +
+  theme(
+    plot.margin = margin(10, 10, 30, 10)
+  )
+  
+## What is the repartition of the trees among the latitudinal bands? ===========
+#(Number of tree in each longitudinal branch)
 library(dplyr)
 
 lat_band <- data %>%
@@ -287,13 +321,15 @@ ggplot(lat_band,
        aes(x = lat_bin, y = n)) +
   geom_col(fill = "darkgreen") +
   labs(
-    title = "Nombre d'arbres par bande de 5° de latitude",
+    title = "Number of trees for each band of 5° latitude",
     x = "Latitude",
-    y = "Nombre d'observations"
+    y = "Number of observations"
   ) +
   theme_minimal()
-# comment sont définies chaque branche longitudinale ? est-ce qu'on peut rendre àa plus ou moins fin ?
-# comment relier ça aux gradients climatiques ?
+# We usually take 5° slices because it is small enough to find local tendencies 
+# but also big enough to avoid noise and too much non useful information
+# generally fine enough to reveal geographical patterns
+# (climatic gradients, biodiversity, species distribution, etc.) without creating too much noise.
 
 ## Symmetrical distribution
 ggplot(data, aes(x = abs(latitude))) +
@@ -308,7 +344,7 @@ ggplot(data, aes(x = abs(latitude))) +
   theme_minimal()
 # pas forcément le plus intéressant, est-ce qu'on peut vraiment en tirer de l'information au vu de la répartition des observations (à comparer avec le planisphère)
 
-## Lattitude and specific richness
+## How does the latitude influences the different species observed? (Lattitude and specific richness)=====
 richness <- data %>%
   mutate(lat_bin = floor(latitude / 5) * 5) %>%
   group_by(lat_bin) %>%
@@ -323,5 +359,89 @@ ggplot(richness,
     x = "Latitude",
     y = "Nombre d'espèces"
   ) +
+  theme_minimal()+
+  scale_x_reverse()
+# Species richness: simple count of the number of different species present in a 
+# specific biological community, landscape, or region
+# Much more important in the north hemisphere than in the south hemisphere
+# more important in tempered areas, much lower at the equador and near the poles
+
+## How does the longitude influences the diffrent species observed (longitude and specifi richness)=======
+richness_long <- data %>%
+  mutate(long_bin = floor(longitude / 5) * 5) %>%
+  group_by(long_bin) %>%
+  summarise(richesse_long = n_distinct(species_key))
+
+ggplot(richness_long,
+       aes(long_bin, richesse_long)) +
+  geom_line(linewidth = 1) +
+  geom_point() +
+  labs(
+    title = "Richesse spécifique selon la longitude",
+    x = "Longitude",
+    y = "Number of species observed"
+  ) +
+  theme_minimal()+
+  scale_x_reverse()
+
+## What is the local specific richness across the world? =======================
+library(dplyr)
+
+richness_grid <- data %>% # specie richness in each sqare of 5x5°
+  mutate(
+    lat_bin = floor(latitude / 1) * 1,
+    long_bin = floor(longitude / 1) * 1
+  ) %>%
+  group_by(lat_bin, long_bin) %>%
+  summarise(
+    richness = n_distinct(species_key),
+    .groups = "drop"
+  )
+
+library(ggplot2)
+library(maps)
+
+world <- map_data("world")
+
+ggplot() + #pot of the map
+  geom_tile(
+    data = richness_grid,
+    aes(
+      x = long_bin + 2.5,
+      y = lat_bin + 2.5,
+      fill = richness
+    )
+  ) +
+  geom_polygon(
+    data = world,
+    aes(long, lat, group = group),
+    fill = NA,
+    color = "black",
+    linewidth = 0.2
+  ) +
+  scale_fill_gradientn(
+    colours = c(
+      "yellow",
+      "orange",
+      "darkred"
+    ),
+    name = "Species richness"
+  ) +
+  coord_fixed(1.3) +
+  labs(
+    title = "Global tree species richness",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
   theme_minimal()
-# interpréter la différence de richesse spécifique en fonction de la latitude
+
+## Looking for correlations in the data ========================================
+# Selection of the numerical values only
+data_num <- data[sapply(data, is.numeric)]
+
+# Correlation Matrix
+cor_mat <- cor(data_num, use = "pairwise.complete.obs")
+
+# Heatmap
+library(corrplot)
+corrplot(cor_mat, method = "color")
