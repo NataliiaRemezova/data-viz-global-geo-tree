@@ -1,0 +1,817 @@
+---
+title: "United States Tree Observations and Species Range Patterns"
+subtitle: "A focused GlobalGeoTree analysis with regional context"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    theme: cosmo
+  pdf:
+    toc: true
+    toc-depth: 2
+    number-sections: false
+    documentclass: article
+    pdf-engine: xelatex
+    geometry: margin=1in
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+# Required packages:
+# install.packages(c("data.table", "dplyr", "stringr", "ggplot2", "scales"))
+#
+# Optional for US state outlines:
+# install.packages("maps")
+
+library(data.table)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+
+theme_gtree <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", size = base_size + 3),
+      plot.subtitle = element_text(color = "gray35"),
+      plot.caption = element_text(color = "gray45", size = base_size - 2),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold"),
+      strip.background = element_rect(fill = "gray94", color = NA),
+      plot.margin = margin(8, 14, 8, 8)
+    )
+}
+
+theme_set(theme_gtree())
+
+category_palette <- c(
+  "Rare" = "#B23A48",
+  "Common" = "#3A7CA5",
+  "Frequent" = "#2A9D8F",
+  "Unknown category" = "gray55"
+)
+```
+
+# Research Focus
+
+This report focuses on the **United States** while keeping a short regional context.
+
+**RQ3 - Regional and Country-Level Distribution**  
+How are tree observations and recorded species distributed in the United States compared with major reference regions and countries?
+
+**RQ4 - Species Range and Category Patterns**  
+Do observations of the same species, or species in the same Rare/Common/Frequent category, tend to cluster in similar geographic areas?
+
+The report is intentionally selective. It uses fewer figures than the exploratory version so that each visualization has a clear role in the argument.
+
+# Data Loading
+
+```{r user-config}
+# -------------------------------------------------------------------------
+# User configuration
+# -------------------------------------------------------------------------
+
+# Put this .qmd in the same folder as the full dataset.
+# The full dataset is called GlobalGeoTree, without "_full".
+observations_path <- "GlobalGeoTree.csv"
+
+# Optional category lookup. Used only if GlobalGeoTree itself has no category
+# column. This enables Rare/Common/Frequent analysis for matched species.
+eval_category_path <- "GlobalGeoTree-10kEval-900.csv"
+
+focus_country_values <- c("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA")
+focus_country_label <- "United States"
+
+comparison_country_values <- c(
+  "US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA",
+  "DE", "GERMANY",
+  "FR", "FRANCE"
+)
+
+use_subsample <- FALSE
+sample_n <- 500000
+set.seed(2026)
+
+top_n_species <- 12
+top_n_species_maps <- 4
+min_obs_per_species <- 30
+max_points_for_us_maps <- 160000
+top_n_hotspot_cells <- 90
+max_points_per_category <- 25000
+max_points_per_species_map <- 18000
+```
+
+```{r helper-functions}
+normalize_names <- function(x) {
+  x |>
+    str_replace_all("([a-z0-9])([A-Z])", "\\1_\\2") |>
+    str_replace_all("[^A-Za-z0-9]+", "_") |>
+    str_replace_all("_+", "_") |>
+    str_replace_all("^_|_$", "") |>
+    str_to_lower()
+}
+
+first_existing <- function(data, candidates, label, required = TRUE) {
+  found <- candidates[candidates %in% names(data)]
+
+  if (length(found) > 0) {
+    return(found[[1]])
+  }
+
+  if (required) {
+    stop(
+      paste0(
+        "Could not find a column for ", label, ". Tried: ",
+        paste(candidates, collapse = ", "),
+        "\nAvailable columns are:\n",
+        paste(names(data), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  NA_character_
+}
+
+region_label <- function(country_value) {
+  north_america <- c("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA", "CA", "CANADA", "MX", "MEXICO", "GL", "GREENLAND")
+  europe <- c(
+    "AD", "AL", "AT", "BA", "BE", "BG", "BY", "CH", "CY", "CZ", "DE", "DK", "EE", "ES", "FI", "FR",
+    "GB", "GR", "HR", "HU", "IE", "IS", "IT", "LI", "LT", "LU", "LV", "MC", "MD", "ME", "MK", "MT",
+    "NL", "NO", "PL", "PT", "RO", "RS", "RU", "SE", "SI", "SK", "SM", "UA", "VA",
+    "AUSTRIA", "BELGIUM", "DENMARK", "FRANCE", "GERMANY", "ITALY", "NETHERLANDS", "NORWAY",
+    "SPAIN", "SWEDEN", "SWITZERLAND", "UNITED KINGDOM", "UK"
+  )
+
+  case_when(
+    country_value %in% north_america ~ "North America",
+    country_value %in% europe ~ "Europe",
+    TRUE ~ "Other"
+  )
+}
+
+comparison_country_label <- function(country_value) {
+  case_when(
+    country_value %in% c("US", "USA", "UNITED STATES", "UNITED STATES OF AMERICA") ~ "United States",
+    country_value %in% c("DE", "GERMANY") ~ "Germany",
+    country_value %in% c("FR", "FRANCE") ~ "France",
+    TRUE ~ country_value
+  )
+}
+
+haversine_km <- function(lon1, lat1, lon2, lat2) {
+  radius <- 6371
+  to_rad <- pi / 180
+  dlon <- (lon2 - lon1) * to_rad
+  dlat <- (lat2 - lat1) * to_rad
+  a <- sin(dlat / 2)^2 + cos(lat1 * to_rad) * cos(lat2 * to_rad) * sin(dlon / 2)^2
+  2 * radius * atan2(sqrt(a), sqrt(1 - a))
+}
+
+sample_up_to <- function(data, n) {
+  if (nrow(data) > n) {
+    slice_sample(data, n = n)
+  } else {
+    data
+  }
+}
+
+sample_up_to_grouped <- function(data, n_per_group) {
+  if (nrow(data) == 0) {
+    return(ungroup(data))
+  }
+
+  data |>
+    group_modify(~ slice_sample(.x, n = min(nrow(.x), n_per_group))) |>
+    ungroup()
+}
+
+first_non_missing <- function(x) {
+  x <- x[!is.na(x) & x != ""]
+  if (length(x) == 0) {
+    NA_character_
+  } else {
+    as.character(x[[1]])
+  }
+}
+```
+
+```{r load-data}
+if (!file.exists(observations_path)) {
+  stop(
+    paste0(
+      "Could not find ", observations_path, ". Put this QMD in the same folder ",
+      "as GlobalGeoTree.csv, or edit observations_path in the configuration chunk."
+    ),
+    call. = FALSE
+  )
+}
+
+GlobalGeoTree <- fread(observations_path, showProgress = FALSE)
+names(GlobalGeoTree) <- normalize_names(names(GlobalGeoTree))
+
+if (use_subsample && nrow(GlobalGeoTree) > sample_n) {
+  GlobalGeoTree <- GlobalGeoTree |>
+    slice_sample(n = sample_n)
+}
+
+country_col <- first_existing(
+  GlobalGeoTree,
+  c("country_code", "countrycode", "iso_a2", "iso2", "country", "level0_country", "country_name"),
+  "country"
+)
+
+species_col <- first_existing(
+  GlobalGeoTree,
+  c("level3_species", "species", "scientific_name", "scientificname", "accepted_scientific_name", "taxon_name"),
+  "species"
+)
+
+genus_col <- first_existing(GlobalGeoTree, c("level2_genus", "genus"), "genus", required = FALSE)
+family_col <- first_existing(GlobalGeoTree, c("level1_family", "family"), "family", required = FALSE)
+
+species_key_col <- first_existing(
+  GlobalGeoTree,
+  c("species_key", "specieskey", "taxon_key", "taxonkey", "gbif_species_key", "gbif_taxon_key"),
+  "species key",
+  required = FALSE
+)
+
+lat_col <- first_existing(GlobalGeoTree, c("latitude", "decimal_latitude", "decimallatitude", "lat", "y"), "latitude")
+lon_col <- first_existing(GlobalGeoTree, c("longitude", "decimal_longitude", "decimallongitude", "lon", "lng", "x"), "longitude")
+
+category_col <- first_existing(
+  GlobalGeoTree,
+  c("category", "frequency_category", "species_category", "rarity_category"),
+  "Rare/Common/Frequent category",
+  required = FALSE
+)
+
+GlobalGeoTree <- GlobalGeoTree |>
+  mutate(
+    country_value = str_to_upper(str_squish(as.character(.data[[country_col]]))),
+    country_label = comparison_country_label(country_value),
+    region = region_label(country_value),
+    species_value = str_squish(as.character(.data[[species_col]])),
+    genus_value = if (!is.na(genus_col)) str_squish(as.character(.data[[genus_col]])) else NA_character_,
+    family_value = if (!is.na(family_col)) str_squish(as.character(.data[[family_col]])) else NA_character_,
+    species_key_value = if (!is.na(species_key_col)) str_squish(as.character(.data[[species_key_col]])) else NA_character_,
+    category_value = if (!is.na(category_col)) str_squish(as.character(.data[[category_col]])) else NA_character_,
+    latitude_value = suppressWarnings(as.numeric(.data[[lat_col]])),
+    longitude_value = suppressWarnings(as.numeric(.data[[lon_col]]))
+  ) |>
+  filter(
+    !is.na(country_value),
+    !is.na(species_value),
+    !is.na(latitude_value),
+    !is.na(longitude_value),
+    between(latitude_value, -90, 90),
+    between(longitude_value, -180, 180)
+  )
+
+category_source_label <- if (!is.na(category_col)) {
+  "GlobalGeoTree category column"
+} else {
+  "Not available"
+}
+```
+
+```{r optional-category-lookup}
+if (is.na(category_col) && file.exists(eval_category_path)) {
+  eval_data <- fread(eval_category_path, showProgress = FALSE)
+  names(eval_data) <- normalize_names(names(eval_data))
+
+  eval_category_col <- first_existing(
+    eval_data,
+    c("category", "frequency_category", "species_category", "rarity_category"),
+    "evaluation category",
+    required = FALSE
+  )
+
+  eval_species_key_col <- first_existing(
+    eval_data,
+    c("species_key", "specieskey", "taxon_key", "taxonkey", "gbif_species_key", "gbif_taxon_key"),
+    "evaluation species key",
+    required = FALSE
+  )
+
+  eval_species_col <- first_existing(
+    eval_data,
+    c("level3_species", "species", "scientific_name", "scientificname", "accepted_scientific_name", "taxon_name"),
+    "evaluation species",
+    required = FALSE
+  )
+
+  if (!is.na(eval_category_col)) {
+    if (!is.na(species_key_col) && !is.na(eval_species_key_col)) {
+      category_lookup <- eval_data |>
+        transmute(
+          species_key_value = str_squish(as.character(.data[[eval_species_key_col]])),
+          category_lookup = str_squish(as.character(.data[[eval_category_col]]))
+        ) |>
+        filter(!is.na(species_key_value), species_key_value != "", !is.na(category_lookup), category_lookup != "") |>
+        group_by(species_key_value) |>
+        summarise(category_lookup = first(category_lookup), .groups = "drop")
+
+      GlobalGeoTree <- GlobalGeoTree |>
+        left_join(category_lookup, by = "species_key_value") |>
+        mutate(category_value = category_lookup) |>
+        select(-category_lookup)
+
+      category_source_label <- paste0(eval_category_path, " joined by species_key")
+    } else if (!is.na(eval_species_col)) {
+      category_lookup <- eval_data |>
+        transmute(
+          species_value = str_squish(as.character(.data[[eval_species_col]])),
+          category_lookup = str_squish(as.character(.data[[eval_category_col]]))
+        ) |>
+        filter(!is.na(species_value), species_value != "", !is.na(category_lookup), category_lookup != "") |>
+        group_by(species_value) |>
+        summarise(category_lookup = first(category_lookup), .groups = "drop")
+
+      GlobalGeoTree <- GlobalGeoTree |>
+        left_join(category_lookup, by = "species_value") |>
+        mutate(category_value = category_lookup) |>
+        select(-category_lookup)
+
+      category_source_label <- paste0(eval_category_path, " joined by species name")
+    }
+  }
+}
+```
+
+```{r subsets-and-summary}
+regional_data <- GlobalGeoTree |>
+  filter(region %in% c("North America", "Europe"))
+
+comparison_data <- GlobalGeoTree |>
+  filter(country_value %in% comparison_country_values) |>
+  mutate(country_label = factor(country_label, levels = c("United States", "Germany", "France")))
+
+us_data <- GlobalGeoTree |>
+  filter(country_value %in% focus_country_values)
+
+if (nrow(us_data) == 0) {
+  stop("No United States observations were found. Check the country code/name values in the dataset.", call. = FALSE)
+}
+
+us_map_data <- us_data |>
+  filter(between(longitude_value, -130, -60), between(latitude_value, 20, 55))
+
+if (nrow(us_map_data) == 0) {
+  stop("No continental United States observations were found inside the plotting bounds.", call. = FALSE)
+}
+
+category_known_us_observations <- sum(!is.na(us_data$category_value) & us_data$category_value != "")
+category_known_us_species <- us_data |>
+  filter(!is.na(category_value), category_value != "") |>
+  summarise(n_species = n_distinct(species_value)) |>
+  pull(n_species)
+
+us_metrics <- tibble(
+  Metric = c(
+    "US observations",
+    "US recorded species",
+    "US recorded genera",
+    "US recorded families",
+    "US observations with known category",
+    "US species with known category"
+  ),
+  Value = c(
+    comma(nrow(us_data)),
+    comma(n_distinct(us_data$species_value)),
+    comma(n_distinct(us_data$genus_value, na.rm = TRUE)),
+    comma(n_distinct(us_data$family_value, na.rm = TRUE)),
+    comma(category_known_us_observations),
+    comma(category_known_us_species)
+  )
+)
+
+knitr::kable(us_metrics, align = "ll")
+```
+
+Category source: **`r category_source_label`**.
+
+# Regional Context
+
+```{r context-summaries}
+regional_summary <- regional_data |>
+  mutate(grid_5deg = paste(floor(latitude_value / 5) * 5, floor(longitude_value / 5) * 5, sep = "_")) |>
+  group_by(region) |>
+  summarise(
+    observations = n(),
+    species = n_distinct(species_value),
+    genera = n_distinct(genus_value, na.rm = TRUE),
+    families = n_distinct(family_value, na.rm = TRUE),
+    occupied_grid_cells = n_distinct(grid_5deg),
+    observations_per_grid_cell = observations / occupied_grid_cells,
+    .groups = "drop"
+  )
+
+comparison_summary <- comparison_data |>
+  group_by(country_label) |>
+  summarise(
+    observations = n(),
+    species = n_distinct(species_value),
+    genera = n_distinct(genus_value, na.rm = TRUE),
+    families = n_distinct(family_value, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+comparison_long <- bind_rows(
+  comparison_summary |> transmute(country_label, metric = "Observations", value = observations),
+  comparison_summary |> transmute(country_label, metric = "Species", value = species),
+  comparison_summary |> transmute(country_label, metric = "Genera", value = genera),
+  comparison_summary |> transmute(country_label, metric = "Families", value = families)
+)
+```
+
+```{r regional-context-plot, fig.width=8.8, fig.height=4.8}
+regional_context <- bind_rows(
+  regional_summary |> transmute(region, metric = "Observations", value = observations),
+  regional_summary |> transmute(region, metric = "Species", value = species)
+)
+
+ggplot(regional_context, aes(x = region, y = value, fill = region)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_y_continuous(labels = comma) +
+  scale_fill_manual(values = c("North America" = "#4E79A7", "Europe" = "#2A9D8F")) +
+  labs(
+    title = "North America and Europe as regional context",
+    subtitle = "North America is strongly influenced by the large US contribution in GlobalGeoTree.",
+    x = NULL,
+    y = NULL
+  )
+```
+
+```{r country-comparison-plot, fig.width=8.8, fig.height=5}
+ggplot(comparison_long, aes(x = country_label, y = value, fill = country_label)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  facet_wrap(~ metric, scales = "free_y") +
+  scale_y_continuous(labels = comma) +
+  scale_fill_manual(values = c("United States" = "#4E79A7", "Germany" = "#2A9D8F", "France" = "#E9C46A")) +
+  labs(
+    title = "United States, Germany, and France comparison",
+    subtitle = "The US contributes far more observations and recorded taxa in this dataset.",
+    x = NULL,
+    y = NULL
+  )
+```
+
+**Interpretation.** The United States is the main driver of the North American subset. Comparisons with Germany and France should therefore be interpreted as comparisons of dataset coverage and recording intensity, not only as biological richness.
+
+# United States Hotspots
+
+```{r us-map-setup}
+us_state_outline <- NULL
+if (requireNamespace("maps", quietly = TRUE)) {
+  us_state_outline <- ggplot2::map_data("state")
+}
+
+us_map_sample <- us_map_data |>
+  sample_up_to(max_points_for_us_maps)
+
+us_hotspot_cells <- us_map_data |>
+  mutate(
+    lat_cell = floor(latitude_value),
+    lon_cell = floor(longitude_value)
+  ) |>
+  count(lat_cell, lon_cell, name = "observations") |>
+  mutate(
+    latitude_mid = lat_cell + 0.5,
+    longitude_mid = lon_cell + 0.5
+  ) |>
+  arrange(desc(observations)) |>
+  slice_head(n = top_n_hotspot_cells)
+```
+
+```{r us-hotspot-bubble-map, fig.width=9.2, fig.height=5.7}
+p <- ggplot()
+
+if (!is.null(us_state_outline)) {
+  p <- p +
+    geom_polygon(
+      data = us_state_outline,
+      aes(x = long, y = lat, group = group),
+      fill = "gray97",
+      color = "gray82",
+      linewidth = 0.15,
+      inherit.aes = FALSE
+    )
+}
+
+p +
+  geom_point(
+    data = us_hotspot_cells,
+    aes(x = longitude_mid, y = latitude_mid, size = observations),
+    shape = 21,
+    fill = "#E76F51",
+    color = "#7A2E1D",
+    alpha = 0.68,
+    stroke = 0.25
+  ) +
+  coord_quickmap(xlim = c(-126, -66), ylim = c(24, 50), expand = FALSE) +
+  scale_size_area(max_size = 8, labels = comma) +
+  labs(
+    title = "Largest US observation hotspot areas",
+    subtitle = paste0("Circles show the ", top_n_hotspot_cells, " highest-count 1-degree grid cells."),
+    x = "Longitude",
+    y = "Latitude",
+    size = "Records",
+    caption = "Hotspot circles summarize observation concentration without using rectangular heatmap cells."
+  ) +
+  theme(
+    legend.position = "bottom",
+    legend.key.width = grid::unit(0.8, "cm")
+  )
+```
+
+```{r us-point-map, fig.width=9.2, fig.height=5.6}
+p <- ggplot()
+
+if (!is.null(us_state_outline)) {
+  p <- p +
+    geom_polygon(
+      data = us_state_outline,
+      aes(x = long, y = lat, group = group),
+      fill = "gray97",
+      color = "gray82",
+      linewidth = 0.15,
+      inherit.aes = FALSE
+    )
+}
+
+p +
+  geom_point(
+    data = us_map_sample,
+    aes(x = longitude_value, y = latitude_value),
+    alpha = 0.08,
+    size = 0.22,
+    color = "#1F5B74"
+  ) +
+  coord_quickmap(xlim = c(-126, -66), ylim = c(24, 50), expand = FALSE) +
+  labs(
+    title = "Spatial footprint of US observations",
+    subtitle = "The sampled point map shows concentration along the coasts and eastern US.",
+    x = "Longitude",
+    y = "Latitude",
+    caption = "Points are sampled for readability."
+  )
+```
+
+**Interpretation.** US observations are not evenly distributed. The strongest concentrations are visible in the eastern US, West Coast, Florida, the Pacific Northwest, and parts of the Great Lakes region. Sparse areas may represent fewer observations, lower platform use, lower population density, access limitations, or genuinely different tree distributions.
+
+# Most Recorded US Species
+
+```{r top-species-data}
+us_top_species <- us_data |>
+  count(species_value, sort = TRUE, name = "observations") |>
+  slice_head(n = top_n_species) |>
+  mutate(species_value = reorder(species_value, observations))
+```
+
+```{r top-species-bar, fig.width=8.8, fig.height=5.2}
+ggplot(us_top_species, aes(x = species_value, y = observations)) +
+  geom_col(fill = "#2A7F62", width = 0.72) +
+  geom_text(aes(label = comma(observations)), hjust = -0.08, size = 3.1) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.16))) +
+  labs(
+    title = "Most recorded US taxa in GlobalGeoTree",
+    subtitle = "High observation counts may reflect popularity, detectability, and platform coverage.",
+    x = NULL,
+    y = "US observations",
+    caption = "This chart uses the dataset's species labels as supplied; it does not reclassify tree status."
+  )
+```
+
+**Interpretation.** The most recorded taxa are not necessarily the most abundant trees in the United States. They are the most recorded taxa in this dataset.
+
+# Species Range Patterns
+
+```{r species-spread-data}
+us_spread_data <- us_map_data |>
+  mutate(
+    grid_1deg = paste(floor(latitude_value), floor(longitude_value), sep = "_"),
+    category_value = if_else(is.na(category_value) | category_value == "", NA_character_, category_value)
+  )
+
+species_spread <- us_spread_data |>
+  group_by(species_value) |>
+  mutate(
+    centroid_lat = mean(latitude_value, na.rm = TRUE),
+    centroid_lon = mean(longitude_value, na.rm = TRUE),
+    distance_to_centroid_km = haversine_km(longitude_value, latitude_value, centroid_lon, centroid_lat)
+  ) |>
+  summarise(
+    observations = n(),
+    grid_cells = n_distinct(grid_1deg),
+    lat_range = max(latitude_value, na.rm = TRUE) - min(latitude_value, na.rm = TRUE),
+    lon_range = max(longitude_value, na.rm = TRUE) - min(longitude_value, na.rm = TRUE),
+    median_distance_to_centroid_km = median(distance_to_centroid_km, na.rm = TRUE),
+    category_value = first_non_missing(category_value),
+    .groups = "drop"
+  ) |>
+  filter(observations >= min_obs_per_species) |>
+  mutate(category_value = if_else(is.na(category_value), "Unknown category", category_value))
+
+localized_species <- species_spread |>
+  arrange(median_distance_to_centroid_km) |>
+  slice_head(n = 2)
+
+widespread_species <- species_spread |>
+  arrange(desc(median_distance_to_centroid_km)) |>
+  slice_head(n = 2)
+
+selected_species <- bind_rows(localized_species, widespread_species) |>
+  distinct(species_value, .keep_all = TRUE) |>
+  slice_head(n = top_n_species_maps) |>
+  pull(species_value)
+```
+
+```{r spread-scatter, fig.width=8.8, fig.height=5.4}
+ggplot(species_spread, aes(x = observations, y = grid_cells, color = category_value)) +
+  geom_point(alpha = 0.68, size = 1.9) +
+  scale_x_log10(labels = comma) +
+  scale_y_continuous(labels = comma) +
+  scale_color_manual(values = category_palette) +
+  labs(
+    title = "US species differ strongly in spatial spread",
+    subtitle = "Each point is one species with enough observations for spread analysis.",
+    x = "US observations, log scale",
+    y = "Occupied 1-degree grid cells",
+    color = "Category"
+  )
+```
+
+```{r selected-species-map-data}
+selected_species_map_data <- us_spread_data |>
+  filter(species_value %in% selected_species) |>
+  group_by(species_value) |>
+  sample_up_to_grouped(max_points_per_species_map)
+```
+
+```{r selected-species-maps, fig.width=9.2, fig.height=6.2}
+if (nrow(selected_species_map_data) > 0) {
+  p <- ggplot()
+
+  if (!is.null(us_state_outline)) {
+    p <- p +
+      geom_polygon(
+        data = us_state_outline,
+        aes(x = long, y = lat, group = group),
+        fill = "gray97",
+        color = "gray82",
+        linewidth = 0.12,
+        inherit.aes = FALSE
+      )
+  }
+
+  p +
+    geom_point(
+      data = selected_species_map_data,
+      aes(x = longitude_value, y = latitude_value),
+      alpha = 0.25,
+      size = 0.3,
+      color = "#1F5B74"
+    ) +
+    facet_wrap(~ species_value, ncol = 2) +
+    coord_quickmap(xlim = c(-126, -66), ylim = c(24, 50), expand = FALSE) +
+    labs(
+      title = "Examples of localized and widespread US species",
+      subtitle = "Selected species show low and high median distance to their species center.",
+      x = "Longitude",
+      y = "Latitude"
+    )
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No species passed the minimum-observation threshold.", size = 4) +
+    theme_void()
+}
+```
+
+**Interpretation.** Some species occupy many spatial grid cells, while others are tightly localized. However, a localized pattern can reflect true range limits, low observation effort, or the way a species entered GlobalGeoTree.
+
+# Rare, Common, and Frequent Categories
+
+```{r category-spread-data}
+category_spread_data <- species_spread |>
+  filter(category_value %in% c("Rare", "Common", "Frequent")) |>
+  mutate(category_value = factor(category_value, levels = c("Rare", "Common", "Frequent")))
+
+us_category_data <- us_spread_data |>
+  filter(category_value %in% c("Rare", "Common", "Frequent")) |>
+  mutate(category_value = factor(category_value, levels = c("Rare", "Common", "Frequent"))) |>
+  group_by(category_value) |>
+  sample_up_to_grouped(max_points_per_category)
+
+category_country <- comparison_data |>
+  filter(category_value %in% c("Rare", "Common", "Frequent")) |>
+  mutate(category_value = factor(category_value, levels = c("Rare", "Common", "Frequent"))) |>
+  group_by(country_label, category_value) |>
+  summarise(
+    observations = n(),
+    species = n_distinct(species_value),
+    .groups = "drop"
+  ) |>
+  group_by(country_label) |>
+  mutate(species_share = species / sum(species)) |>
+  ungroup()
+```
+
+```{r category-spread-boxplot, fig.width=8.6, fig.height=4.9}
+if (nrow(category_spread_data) > 0) {
+  ggplot(category_spread_data, aes(x = category_value, y = median_distance_to_centroid_km, color = category_value)) +
+    geom_jitter(width = 0.18, alpha = 0.65, size = 1.9) +
+    stat_summary(fun = median, geom = "crossbar", width = 0.45, color = "black", linewidth = 0.35) +
+    scale_y_continuous(labels = comma) +
+    scale_color_manual(values = category_palette) +
+    labs(
+      title = "Spatial spread differs by category",
+      subtitle = "Each point is one categorized species; black bars show medians.",
+      x = "Category",
+      y = "Median distance to species center (km)",
+      color = "Category"
+    ) +
+    theme(legend.position = "none")
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No category labels were available for enough US species.", size = 4) +
+    theme_void()
+}
+```
+
+```{r category-faceted-map, fig.width=9.2, fig.height=6.4}
+if (nrow(us_category_data) > 0) {
+  p <- ggplot()
+
+  if (!is.null(us_state_outline)) {
+    p <- p +
+      geom_polygon(
+        data = us_state_outline,
+        aes(x = long, y = lat, group = group),
+        fill = "gray97",
+        color = "gray82",
+        linewidth = 0.12,
+        inherit.aes = FALSE
+      )
+  }
+
+  p +
+    geom_point(
+      data = us_category_data,
+      aes(x = longitude_value, y = latitude_value, color = category_value),
+      alpha = 0.16,
+      size = 0.25
+    ) +
+    facet_wrap(~ category_value, ncol = 1) +
+    coord_quickmap(xlim = c(-126, -66), ylim = c(24, 50), expand = FALSE) +
+    scale_color_manual(values = category_palette) +
+    labs(
+      title = "US locations by species category",
+      subtitle = "Mapped only for observations whose species matched Rare/Common/Frequent labels.",
+      x = "Longitude",
+      y = "Latitude",
+      color = "Category"
+    ) +
+    theme(legend.position = "none")
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No category labels were available for US map observations.", size = 4) +
+    theme_void()
+}
+```
+
+```{r category-country-plot, fig.width=8.8, fig.height=4.8}
+if (nrow(category_country) > 0) {
+  ggplot(category_country, aes(x = country_label, y = species_share, fill = category_value)) +
+    geom_col(width = 0.7) +
+    scale_y_continuous(labels = percent) +
+    scale_fill_manual(values = category_palette) +
+    labs(
+      title = "Category composition across the US, Germany, and France",
+      subtitle = "Bars show the category composition of species with known category labels.",
+      x = NULL,
+      y = "Share of categorized species",
+      fill = "Category"
+    )
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No category labels were available for the country comparison.", size = 4) +
+    theme_void()
+}
+```
+
+**Interpretation.** Category results apply only to species matched to a category label. In this run, the US has **`r comma(category_known_us_observations)`** observations and **`r comma(category_known_us_species)`** species with known categories. The category analysis should therefore be treated as a categorized subset, not the full US dataset.
+
+# Overall Interpretation
+
+The United States is the dominant part of the North American subset in GlobalGeoTree. Within the US, observations are spatially concentrated rather than evenly distributed, with strong hotspots along the coasts and in the eastern half of the country. Species also differ strongly in spatial spread: some are widespread across many grid cells, while others appear localized. Category patterns suggest that Frequent species tend to be more spatially widespread than Rare species, but this conclusion depends on the matched category subset and should not be generalized to all US species without checking category coverage.
