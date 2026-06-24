@@ -97,3 +97,248 @@ df <- df |>
   )
 
 colSums(is.na(df))
+
+
+library(dplyr)
+library(corrplot)
+
+aux_corr <- df |>
+  select(where(is.numeric)) |>
+  select(-sample_id) |>
+  na.omit()
+
+cor_mat <- cor(aux_corr, method = "pearson")
+
+corrplot(
+  cor_mat,
+  method = "color",
+  type = "upper",
+  tl.cex = 0.7,
+  tl.col = "black"
+)
+  
+cor_long <- as.data.frame(as.table(cor_mat)) |>
+filter(Var1 != Var2) |>
+mutate(abs_corr = abs(Freq)) |>
+arrange(desc(abs_corr))
+
+head(cor_long, 20)
+
+cor_long <- as.data.frame(as.table(cor_mat)) |))>
+  filter(as.character(Var1) < as.character(Var2)) |>
+  mutate(abs_corr = abs(Freq)) |>
+  arrange(desc(abs_corr))
+
+head(cor_long, 20)
+
+high_corr <- cor_long |>
+  filter(abs_corr > 0.9)
+
+high_corr
+
+ggplot(df, aes(x = level0, y = annual_mean_temp / 10)) +
+  geom_boxplot() +
+  coord_flip()
+
+ggplot(df, aes(x = level0, y = annual_precipitation)) +
+  geom_boxplot() +
+  coord_flip()
+
+df_core <- df |>
+  select(
+    species,
+    level0,
+    family,
+    genus,
+    longitude,
+    latitude,
+    elevation,
+    slope,
+    aspect,
+    annual_mean_temp,
+    temp_seasonality,
+    temp_annual_range,
+    annual_precipitation,
+    precip_seasonality,
+    precip_driest_month,
+    precip_wettest_month,
+    soil_moisture_0_5cm
+  )
+
+aux_corr <- df_core |>
+  select(where(is.numeric)) |>
+  na.omit()
+
+cor_mat <- cor(aux_corr, method = "pearson")
+
+corrplot(
+  cor_mat,
+  method = "color",
+  type = "upper",
+  tl.cex = 0.7,
+  tl.col = "black"
+)
+
+cor_long <- as.data.frame(as.table(cor_mat)) |>
+  filter(as.character(Var1) < as.character(Var2)) |>
+  mutate(abs_corr = abs(Freq)) |>
+  arrange(desc(abs_corr))
+
+head(cor_long, 20)
+
+high_corr <- cor_long |>
+  filter(abs_corr > 0.9)
+
+high_corr
+
+library(dplyr)
+library(ggplot2)
+
+pca_data <- df_core |>
+  select(where(is.numeric)) |>
+  na.omit()
+
+pca_scaled <- scale(pca_data)
+
+pca <- prcomp(pca_scaled, center = TRUE, scale. = TRUE)
+
+summary(pca)
+
+pca_loadings <- as.data.frame(pca$rotation[, 1:3])
+
+pca_loadings |>
+  mutate(variable = rownames(pca_loadings)) |>
+  arrange(desc(abs(PC1)))
+
+pca_scores <- as.data.frame(pca$x) |>
+  bind_cols(df_core |> select(level0, family, genus, species) |> slice(as.numeric(rownames(pca_data))))
+
+ggplot(pca_scores, aes(x = PC1, y = PC2, color = level0)) +
+  geom_point(alpha = 0.5, size = 1) +
+  theme_minimal() +
+  labs(
+    title = "PCA of auxiliary environmental variables",
+    x = "PC1",
+    y = "PC2",
+    color = "Tree type"
+  )
+
+biplot(pca, scale = 0)
+
+pca_loadings <- as.data.frame(pca$rotation[, 1:2])
+pca_loadings$variable <- rownames(pca_loadings)
+
+arrow_scale <- 4
+
+ggplot(pca_scores, aes(PC1, PC2, color = level0)) +
+  geom_point(alpha = 0.35, size = 1) +
+  geom_segment(
+    data = pca_loadings,
+    aes(
+      x = 0,
+      y = 0,
+      xend = PC1 * arrow_scale,
+      yend = PC2 * arrow_scale
+    ),
+    inherit.aes = FALSE,
+    arrow = arrow(length = unit(0.2, "cm")),
+    color = "black"
+  ) +
+  geom_text(
+    data = pca_loadings,
+    aes(
+      x = PC1 * arrow_scale * 1.15,
+      y = PC2 * arrow_scale * 1.15,
+      label = variable
+    ),
+    inherit.aes = FALSE,
+    size = 3
+  ) +
+  theme_minimal() +
+  labs(
+    title = "PCA biplot",
+    x = "PC1",
+    y = "PC2",
+    color = "Tree type"
+  )
+
+# Install Rtsne once if it is not installed yet
+# install.packages("Rtsne")
+
+library(Rtsne)
+library(dplyr)
+library(ggplot2)
+
+# ------------------------------------------------------------
+# Prepare numeric auxiliary data
+# ------------------------------------------------------------
+
+# Keep only numeric columns and remove rows with missing values
+tsne_data <- df_core |>
+  select(where(is.numeric)) |>
+  na.omit()
+
+# Scale variables so that large-value variables do not dominate
+tsne_scaled <- scale(tsne_data)
+
+# ------------------------------------------------------------
+# Run t-SNE
+# ------------------------------------------------------------
+
+set.seed(123)
+
+tsne <- Rtsne(
+  tsne_scaled,
+  dims = 2,
+  perplexity = 30,
+  theta = 0.5,
+  pca = TRUE,
+  check_duplicates = FALSE
+)
+
+# ------------------------------------------------------------
+# Create plotting table
+# ------------------------------------------------------------
+
+# Extract t-SNE coordinates
+tsne_plot <- as.data.frame(tsne$Y)
+names(tsne_plot) <- c("TSNE1", "TSNE2")
+
+# Add labels back to the t-SNE result
+tsne_plot <- tsne_plot |>
+  bind_cols(
+    df_core |>
+      select(level0, family, genus, species) |>
+      slice(as.numeric(rownames(tsne_data)))
+  )
+
+# ------------------------------------------------------------
+# Plot by broad tree type
+# ------------------------------------------------------------
+
+ggplot(tsne_plot, aes(TSNE1, TSNE2, color = level0)) +
+  geom_point(alpha = 0.5, size = 1) +
+  theme_minimal() +
+  labs(
+    title = "t-SNE of auxiliary environmental variables",
+    color = "Tree type"
+  )
+
+# ------------------------------------------------------------
+# Plot top 10 families
+# ------------------------------------------------------------
+
+top_families <- tsne_plot |>
+  count(family, sort = TRUE) |>
+  slice_head(n = 10) |>
+  pull(family)
+
+tsne_plot |>
+  filter(family %in% top_families) |>
+  ggplot(aes(TSNE1, TSNE2, color = family)) +
+  geom_point(alpha = 0.6, size = 1) +
+  theme_minimal() +
+  labs(
+    title = "t-SNE of auxiliary environmental variables: top families",
+    color = "Family"
+  )
