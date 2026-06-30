@@ -1,0 +1,492 @@
+---
+title: "RQ3 - Temporal Development in GlobalGeoTree"
+subtitle: "Changes in tree observation volume, source composition, and geographic coverage from 2015 to 2024"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    theme: cosmo
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+
+theme_set(
+  theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(face = "bold", size = 15),
+      plot.subtitle = element_text(color = "gray35"),
+      plot.caption = element_text(color = "gray45", size = 9),
+      legend.position = "bottom"
+    )
+)
+
+# colors per source group
+# (GBIF and Institutional collections used to be two similar blues -
+# changed so they don't get confused with iNaturalist in the stacked charts)
+source_colors <- c(
+  "iNaturalist"                = "#8ECAE6",
+  "Pl@ntNet"                   = "#FF9DA7",
+  "GBIF"                       = "#264653",
+  "Wikidata/Wikipedia"         = "#B07AA1",
+  "Institutional collections"  = "#9C6644",
+  "Inventory/survey"           = "#B2DF8A",
+  "Other source"                = "#2CA02C",
+  "Unknown source"             = "#E41A1C"
+)
+
+source_group_levels <- names(source_colors)
+```
+
+# Research Question
+
+**RQ3 - Temporal Development**  
+How has the number and distribution of tree observations changed from **2015 to 2024**?
+
+This report answers four subquestions:
+
+1. Has the number of observations increased over time?
+2. Which years show the strongest growth or decline?
+3. Did geographic coverage expand over time?
+4. Are temporal patterns mainly driven by specific sources?
+
+The key idea is that time trends in GlobalGeoTree may reflect both real changes in observation coverage and the growth of data platforms such as iNaturalist and Pl@ntNet.
+
+# Data Loading
+
+```{r config}
+# settings for this report
+start_year <- 2015
+end_year <- 2024
+
+top_n_sources <- 7
+top_n_countries <- 15
+
+# years used for the small-multiple maps
+snapshot_years <- c(2015, 2018, 2021, 2024)
+max_points_per_snapshot_year <- 25000
+```
+
+```{r load-data}
+# I checked names(read.csv("GlobalGeoTree.csv")) once and the columns I need
+# are called source, country, species, year, latitude, longitude.
+raw <- read.csv("GlobalGeoTree.csv", stringsAsFactors = FALSE)
+
+df <- raw %>%
+  mutate(
+    source_raw = ifelse(is.na(source) | str_trim(source) == "", "Unknown source", str_trim(source)),
+    country_value = str_to_upper(str_trim(country)),
+    species_value = str_trim(species),
+    year_value = as.integer(year),
+    latitude_value = suppressWarnings(as.numeric(latitude)),
+    longitude_value = suppressWarnings(as.numeric(longitude))
+  ) %>%
+  filter(
+    !is.na(year_value), year_value >= start_year, year_value <= end_year,
+    !is.na(country_value), country_value != "",
+    !is.na(species_value), species_value != ""
+  )
+
+has_coordinates <- "latitude" %in% names(raw) & "longitude" %in% names(raw)
+```
+
+```{r data-summary}
+data_summary <- tibble(
+  Measure = c(
+    "Observation file", "Period analysed", "Rows analysed",
+    "Distinct sources", "Distinct source groups", "Distinct countries",
+    "Distinct species", "Coordinate columns available"
+  ),
+  Value = c(
+    "GlobalGeoTree.csv",
+    paste(start_year, end_year, sep = "-"),
+    comma(nrow(df)),
+    comma(n_distinct(df$source_raw)),
+    comma(n_distinct(df$source_group)),
+    comma(n_distinct(df$country_value)),
+    comma(n_distinct(df$species_value)),
+    ifelse(has_coordinates, "Yes", "No")
+  )
+)
+
+knitr::kable(data_summary, align = "ll")
+```
+
+This report uses `r comma(nrow(df))` observations from `r start_year` to `r end_year`.
+
+# Observation Growth Over Time
+
+```{r yearly-counts}
+yearly_counts <- df %>%
+  count(year_value, name = "observations") %>%
+  right_join(tibble(year_value = start_year:end_year), by = "year_value") %>%
+  mutate(observations = ifelse(is.na(observations), 0L, observations)) %>%
+  arrange(year_value) %>%
+  mutate(
+    previous_observations = lag(observations),
+    absolute_change = observations - previous_observations
+  )
+
+growth_summary <- yearly_counts %>% filter(!is.na(absolute_change))
+
+strongest_growth  <- growth_summary %>% slice_max(absolute_change, n = 1, with_ties = FALSE)
+strongest_decline <- growth_summary %>% slice_min(absolute_change, n = 1, with_ties = FALSE)
+
+first_year_count <- yearly_counts$observations[yearly_counts$year_value == start_year]
+last_year_count  <- yearly_counts$observations[yearly_counts$year_value == end_year]
+overall_change   <- (last_year_count - first_year_count) / first_year_count
+```
+
+Between `r start_year` and `r end_year`, observations changed from **`r comma(first_year_count)`** to **`r comma(last_year_count)`**, an overall change of **`r percent(overall_change, accuracy = 0.1)`**.
+
+```{r line-observations-by-year, fig.width=9, fig.height=4.8}
+ggplot(yearly_counts, aes(x = year_value, y = observations)) +
+  geom_line(color = "#2A7F62", linewidth = 1.1) +
+  geom_point(color = "#2A7F62", size = 2.4) +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Number of tree observations by year",
+    subtitle = paste0("Observation volume in GlobalGeoTree from ", start_year, " to ", end_year, "."),
+    x = "Year", y = "Observations"
+  )
+```
+
+```{r yearly-growth-plot, fig.width=9, fig.height=4.8}
+ggplot(growth_summary, aes(x = year_value, y = absolute_change, fill = absolute_change >= 0)) +
+  geom_col(width = 0.72, show.legend = FALSE) +
+  geom_hline(yintercept = 0, color = "gray35", linewidth = 0.4) +
+  geom_text(
+    aes(label = comma(absolute_change)),
+    vjust = ifelse(growth_summary$absolute_change >= 0, -0.35, 1.15),
+    size = 3.1
+  ) +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0.12, 0.16))) +
+  scale_fill_manual(values = c("TRUE" = "#2A7F62", "FALSE" = "#C23B22")) +
+  labs(
+    title = "Year-to-year change in observations",
+    subtitle = "Positive bars indicate growth compared with the previous year.",
+    x = "Year", y = "Change in observations",
+    caption = "Note: 2024 is the last year in the export and may not be complete yet, so part of\nthe apparent decline could be a data-cutoff effect rather than a real drop in recording."
+  )
+```
+
+**Interpretation.** The strongest growth occurs in **`r strongest_growth$year_value`**, with **`r comma(strongest_growth$absolute_change)`** more observations than the previous year. The strongest decline occurs in **`r strongest_decline$year_value`**, with **`r comma(strongest_decline$absolute_change)`** fewer observations than the previous year. Because the 2024 data may have been exported before the year was finished, this "decline" should not automatically be read as a real drop in tree recording &mdash; it needs to be checked again once a full year of 2024 data is available. These changes should also be interpreted together with source composition, because platform growth can create strong temporal trends on its own.
+
+# Are Temporal Patterns Driven by Specific Sources?
+
+```{r source-year-data}
+top_source_groups <- df %>%
+  count(source_group, sort = TRUE) %>%
+  slice_head(n = top_n_sources) %>%
+  pull(source_group) %>%
+  as.character()
+
+source_year <- df %>%
+  mutate(source_group_plot = ifelse(as.character(source_group) %in% top_source_groups,
+                                     as.character(source_group), "Other source")) %>%
+  count(year_value, source_group_plot, name = "observations") %>%
+  right_join(
+    expand.grid(year_value = start_year:end_year, source_group_plot = source_group_levels),
+    by = c("year_value", "source_group_plot")
+  ) %>%
+  mutate(observations = ifelse(is.na(observations), 0L, observations)) %>%
+  group_by(year_value) %>%
+  mutate(share = observations / sum(observations)) %>%
+  ungroup() %>%
+  mutate(source_group_plot = factor(source_group_plot, levels = source_group_levels))
+```
+
+```{r stacked-area-source-year, fig.width=9, fig.height=5.2}
+ggplot(source_year, aes(x = year_value, y = observations, fill = source_group_plot)) +
+  geom_area(alpha = 0.9, linewidth = 0.15, color = "white") +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = comma) +
+  scale_fill_manual(values = source_colors, drop = TRUE) +
+  labs(
+    title = "Observation volume by source group and year",
+    subtitle = "A rising source group can drive the apparent growth of the full dataset.",
+    x = "Year", y = "Observations", fill = "Source group"
+  )
+```
+
+```{r source-share-year, fig.width=9, fig.height=5.2}
+ggplot(source_year, aes(x = year_value, y = share, fill = source_group_plot)) +
+  geom_col(width = 0.9) +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = percent) +
+  scale_fill_manual(values = source_colors, drop = TRUE) +
+  labs(
+    title = "Source composition by year",
+    subtitle = "Bars sum to 100% within each year.",
+    x = "Year", y = "Share of observations", fill = "Source group",
+    caption = "The most recent year may be incomplete depending on the data export date."
+  )
+```
+
+```{r source-growth-plot-data}
+source_growth <- source_year %>%
+  arrange(source_group_plot, year_value) %>%
+  group_by(source_group_plot) %>%
+  mutate(source_change = observations - lag(observations)) %>%
+  ungroup()
+
+largest_source_growth <- source_growth %>%
+  filter(!is.na(source_change)) %>%
+  slice_max(source_change, n = 8, with_ties = FALSE) %>%
+  mutate(label = paste0(year_value, ": ", source_group_plot))
+```
+
+```{r source-growth-plot, fig.width=9, fig.height=4.8}
+ggplot(largest_source_growth, aes(x = reorder(label, source_change), y = source_change, fill = source_group_plot)) +
+  geom_col(width = 0.72, show.legend = FALSE) +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  scale_fill_manual(values = source_colors, drop = TRUE) +
+  labs(
+    title = "Largest source-specific yearly increases",
+    subtitle = "This identifies which source groups contributed most to single-year growth.",
+    x = NULL, y = "Increase from previous year"
+  )
+```
+
+**Interpretation.** If most growth is concentrated in one source group, the temporal trend is source-driven. In that case, the line chart should not be interpreted as a neutral increase in global tree recording. Note also that this chart ranks *absolute* increases, so later years are more likely to appear simply because the dataset as a whole is bigger by then &mdash; a version using *percentage* growth per source would be a useful follow-up to separate "this source grew a lot" from "this source is large in a large year."
+
+# Geographic Coverage Over Time
+
+```{r country-coverage-data}
+country_year <- df %>%
+  count(year_value, country_value, name = "observations")
+
+country_year_complete <- expand.grid(
+    year_value = start_year:end_year,
+    country_value = sort(unique(df$country_value))
+  ) %>%
+  left_join(country_year, by = c("year_value", "country_value")) %>%
+  mutate(observations = ifelse(is.na(observations), 0L, observations))
+
+countries_per_year <- country_year %>%
+  group_by(year_value) %>%
+  summarise(countries_observed = n_distinct(country_value), .groups = "drop")
+
+country_first_year <- country_year %>%
+  group_by(country_value) %>%
+  summarise(first_observed_year = min(year_value), .groups = "drop")
+
+cumulative_countries <- tibble(year_value = start_year:end_year) %>%
+  rowwise() %>%
+  mutate(cumulative_countries = sum(country_first_year$first_observed_year <= year_value)) %>%
+  ungroup()
+```
+
+```{r countries-per-year, fig.width=9, fig.height=4.8}
+# y-axis starts at 0 here on purpose: with only the top part of the range
+# shown, the year-to-year wiggle looks much bigger than it actually is
+ggplot(countries_per_year, aes(x = year_value, y = countries_observed)) +
+  geom_line(color = "#4E79A7", linewidth = 1.1) +
+  geom_point(color = "#4E79A7", size = 2.4) +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = comma, limits = c(0, NA)) +
+  labs(
+    title = "Countries represented each year",
+    subtitle = "Annual country coverage shows whether observations became geographically broader.",
+    x = "Year", y = "Countries with observations"
+  )
+```
+
+```{r cumulative-country-coverage, fig.width=9, fig.height=4.8}
+ggplot(cumulative_countries, aes(x = year_value, y = cumulative_countries)) +
+  geom_area(fill = "#8ECAE6", alpha = 0.55) +
+  geom_line(color = "#1F5B74", linewidth = 1.1) +
+  geom_point(color = "#1F5B74", size = 2.2) +
+  scale_x_continuous(breaks = start_year:end_year) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Cumulative country coverage over time",
+    subtitle = "The curve rises when a country appears in the analysed period for the first time.",
+    x = "Year", y = "Cumulative countries"
+  )
+```
+
+```{r new-countries-by-year, fig.width=9, fig.height=4.6}
+# the first year of the window (2015) is left out of this chart on purpose:
+# every country that has any observation in 2015 automatically counts as
+# "new" just because 2015 is where our data starts, not because it is
+# really a new country for tree recording. Including it would make the
+# 2015 bar huge and misleading, so this chart only shows real new entries
+# from 2016 onward.
+new_countries <- country_first_year %>%
+  filter(first_observed_year > start_year) %>%
+  count(first_observed_year, name = "new_countries") %>%
+  right_join(tibble(first_observed_year = (start_year + 1):end_year), by = "first_observed_year") %>%
+  mutate(new_countries = ifelse(is.na(new_countries), 0L, new_countries)) %>%
+  arrange(first_observed_year)
+
+countries_at_start <- sum(country_first_year$first_observed_year == start_year)
+```
+
+```{r new-countries-plot, fig.width=9, fig.height=4.6}
+ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
+  geom_col(fill = "#4E79A7", width = 0.72) +
+  scale_x_continuous(breaks = (start_year + 1):end_year) +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "New countries entering the dataset by year",
+    subtitle = "New country entries indicate expansion of geographic coverage within the analysed period.",
+    x = "First observed year in period", y = "New countries",
+    caption = paste0(start_year, " is excluded: ", countries_at_start,
+                      " countries already had observations in the first year of the\nwindow, which is not the same as those countries being newly added.")
+  )
+```
+
+**Interpretation.** If the number of countries and cumulative country coverage increase over time, GlobalGeoTree is expanding geographically. If observation counts increase without much country expansion, growth may be concentrated in already well-covered countries.
+
+## Which Countries Drive Temporal Growth?
+
+```{r country-growth-data}
+country_growth <- country_year_complete %>%
+  arrange(country_value, year_value) %>%
+  group_by(country_value) %>%
+  mutate(country_change = observations - lag(observations)) %>%
+  ungroup()
+
+largest_country_growth <- country_growth %>%
+  filter(!is.na(country_change)) %>%
+  slice_max(country_change, n = top_n_countries, with_ties = FALSE) %>%
+  mutate(label = paste0(year_value, ": ", country_value))
+```
+
+```{r country-growth-plot, fig.width=9, fig.height=5}
+ggplot(largest_country_growth, aes(x = reorder(label, country_change), y = country_change)) +
+  geom_col(fill = "#2A7F62", width = 0.72) +
+  coord_flip() +
+  scale_y_continuous(labels = comma) +
+  labs(
+    title = "Largest country-specific yearly increases",
+    subtitle = "Temporal growth may be concentrated in specific countries rather than global.",
+    x = NULL, y = "Increase from previous year"
+  )
+```
+
+# Map Snapshots for Selected Years
+
+```{r map-snapshot-data}
+snapshot_years <- snapshot_years[snapshot_years >= start_year & snapshot_years <= end_year]
+
+if (has_coordinates) {
+  map_data_points <- df %>%
+    filter(
+      year_value %in% snapshot_years,
+      !is.na(latitude_value), !is.na(longitude_value),
+      between(latitude_value, -90, 90), between(longitude_value, -180, 180)
+    ) %>%
+    group_by(year_value) %>%
+    slice_sample(n = max_points_per_snapshot_year) %>%
+    ungroup()
+
+  world_outline <- if (requireNamespace("maps", quietly = TRUE)) ggplot2::map_data("world") else NULL
+}
+```
+
+```{r map-snapshots, fig.width=9.5, fig.height=6.8}
+if (has_coordinates && nrow(map_data_points) > 0) {
+  p <- ggplot()
+
+  if (!is.null(world_outline)) {
+    p <- p + geom_polygon(
+      data = world_outline, aes(x = long, y = lat, group = group),
+      fill = "gray96", color = "gray82", linewidth = 0.12, inherit.aes = FALSE
+    )
+  }
+
+  p +
+    geom_point(
+      data = map_data_points, aes(x = longitude_value, y = latitude_value),
+      alpha = 0.15, size = 0.22, color = "#1F5B74"
+    ) +
+    facet_wrap(~ year_value, ncol = 2) +
+    coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
+    labs(
+      title = "Map snapshots of observations over time",
+      subtitle = "Selected years show whether records spread geographically or intensify in existing regions.",
+      x = "Longitude", y = "Latitude",
+      caption = "Points are sampled per year for readability. Install maps for country outlines."
+    )
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable coordinates were detected, so map snapshots are skipped.", size = 4) +
+    theme_void()
+}
+```
+
+```{r grid-coverage-data}
+if (has_coordinates) {
+  grid_coverage <- df %>%
+    filter(
+      !is.na(latitude_value), !is.na(longitude_value),
+      between(latitude_value, -90, 90), between(longitude_value, -180, 180)
+    ) %>%
+    mutate(
+      lat_bin = floor(latitude_value / 5) * 5,
+      lon_bin = floor(longitude_value / 5) * 5,
+      grid_cell = paste(lat_bin, lon_bin, sep = "_")
+    ) %>%
+    distinct(year_value, grid_cell)
+
+  grid_first_year <- grid_coverage %>%
+    group_by(grid_cell) %>%
+    summarise(first_observed_year = min(year_value), .groups = "drop")
+
+  cumulative_grid_cells <- tibble(year_value = start_year:end_year) %>%
+    rowwise() %>%
+    mutate(cumulative_grid_cells = sum(grid_first_year$first_observed_year <= year_value)) %>%
+    ungroup()
+}
+```
+
+```{r cumulative-grid-coverage, fig.width=9, fig.height=4.8}
+if (has_coordinates && nrow(cumulative_grid_cells) > 0) {
+  ggplot(cumulative_grid_cells, aes(x = year_value, y = cumulative_grid_cells)) +
+    geom_area(fill = "#B2DF8A", alpha = 0.65) +
+    geom_line(color = "#2A7F62", linewidth = 1.1) +
+    geom_point(color = "#2A7F62", size = 2.2) +
+    scale_x_continuous(breaks = start_year:end_year) +
+    scale_y_continuous(labels = comma) +
+    labs(
+      title = "Cumulative spatial grid coverage over time",
+      subtitle = "A 5-degree latitude/longitude grid approximates whether spatial coverage expands.",
+      x = "Year", y = "Cumulative occupied grid cells"
+    )
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable coordinates were detected.", size = 4) +
+    theme_void()
+}
+```
+
+**Interpretation.** Map snapshots and grid coverage distinguish two different processes: more observations in the same places versus expansion into new regions.
+
+# Overall Interpretation
+
+From 2015 to 2024, temporal development in GlobalGeoTree should be interpreted as a combination of:
+
+- changing observation volume,
+- expansion or concentration of geographic coverage,
+- country-specific growth,
+- and source/platform growth.
+
+If the strongest year-to-year increases are driven by citizen-science platforms or a small number of countries, the temporal trend is not purely biological. It is partly a record-production trend. Therefore, temporal analyses should report both total observations and source composition by year.
+
+Two specific things to keep in mind before treating the headline numbers as final:
+
+- **2024 is likely an incomplete year** in this export, so the apparent decline at the end of the series may shrink or disappear once a full year of data is available.
+- **The "new countries" chart excludes 2015** because countries present at the very start of the window are not the same as countries that newly entered the dataset; counting them as new would overstate geographic expansion.
+

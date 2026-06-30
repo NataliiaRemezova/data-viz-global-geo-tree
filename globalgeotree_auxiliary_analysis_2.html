@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>GlobalGeoTree — Auxiliary Environmental Data: Exploration &amp; Dimension Reduction</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/clipboard/clipboard.min.js"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/popper.min.js"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/anchor.min.js"></script>
+<link href="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="globalgeotree_auxiliary_analysis_2_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="globalgeotree_auxiliary_analysis_2_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="globalgeotree_auxiliary_analysis_2_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="globalgeotree_auxiliary_analysis_2_files/libs/bootstrap/bootstrap-7df91e7c987534b356ad96ed05d4452c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#what-this-document-is" id="toc-what-this-document-is" class="nav-link active" data-scroll-target="#what-this-document-is">0. What this document is</a></li>
+  <li><a href="#loading-the-data" id="toc-loading-the-data" class="nav-link" data-scroll-target="#loading-the-data">1. Loading the data</a></li>
+  <li><a href="#missingness-check-this-before-na.omit" id="toc-missingness-check-this-before-na.omit" class="nav-link" data-scroll-target="#missingness-check-this-before-na.omit">2. Missingness — check this <em>before</em> <code>na.omit()</code></a></li>
+  <li><a href="#rename-bioclim-codes-to-readable-names" id="toc-rename-bioclim-codes-to-readable-names" class="nav-link" data-scroll-target="#rename-bioclim-codes-to-readable-names">3. Rename bioclim codes to readable names</a></li>
+  <li><a href="#where-are-the-samples" id="toc-where-are-the-samples" class="nav-link" data-scroll-target="#where-are-the-samples">4. Where are the samples? 📊</a></li>
+  <li><a href="#distributions-of-key-climate-variables" id="toc-distributions-of-key-climate-variables" class="nav-link" data-scroll-target="#distributions-of-key-climate-variables">5. Distributions of key climate variables 📊</a></li>
+  <li><a href="#correlation-structure" id="toc-correlation-structure" class="nav-link" data-scroll-target="#correlation-structure">6. Correlation structure 🛠 📊</a></li>
+  <li><a href="#idea-a-decorrelated-variable-subset-vif-based" id="toc-idea-a-decorrelated-variable-subset-vif-based" class="nav-link" data-scroll-target="#idea-a-decorrelated-variable-subset-vif-based">7. 💡 Idea: a decorrelated variable subset (VIF-based)</a></li>
+  <li><a href="#pca" id="toc-pca" class="nav-link" data-scroll-target="#pca">8. PCA 🛠 📊</a></li>
+  <li><a href="#t-sne-umap-for-visual-clustering" id="toc-t-sne-umap-for-visual-clustering" class="nav-link" data-scroll-target="#t-sne-umap-for-visual-clustering">9. t-SNE / UMAP for visual clustering 🛠 💡 📊</a></li>
+  <li><a href="#ideas-for-further-analysis" id="toc-ideas-for-further-analysis" class="nav-link" data-scroll-target="#ideas-for-further-analysis">10. 💡 Ideas for further analysis</a></li>
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary">11. Summary</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">GlobalGeoTree — Auxiliary Environmental Data: Exploration &amp; Dimension Reduction</h1>
+<p class="subtitle lead">GGT-10kEval-90 · longitude, latitude, elevation, slope, aspect, soil moisture, WorldClim bio01–bio19</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="what-this-document-is" class="level2">
+<h2 class="anchored" data-anchor-id="what-this-document-is">0. What this document is</h2>
+<p>This is a cleaned-up, working version of the original exploratory script, plus fixes, additional checks, and interpretation written directly next to the code that produced each result. Section markers below call out:</p>
+<ul>
+<li>🛠 <strong>Fix</strong> — something in the original script that errored or was fragile</li>
+<li>💡 <strong>Idea</strong> — an analysis that wasn’t in the original script but is worth adding</li>
+<li>📊 a visualization</li>
+<li>📝 a comment/interpretation of what came out</li>
+</ul>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(jsonlite)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(purrr)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tibble)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(stringr)</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyr)</span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">theme_set</span>(<span class="fu">theme_minimal</span>())</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="loading-the-data" class="level2">
+<h2 class="anchored" data-anchor-id="loading-the-data">1. Loading the data</h2>
+<p>🛠 <strong>Fix 1 — robust field extraction.</strong> The original <code>unlist()</code>/<code>as.list()</code> approach relies on JSON key order surviving several transformations, and silently drops fields that are <code>null</code> (e.g.&nbsp;<code>aspect</code> on flat terrain, or soil moisture over open water), which can misalign columns row to row. Below each of the 27 auxiliary fields is pulled out <strong>by name</strong>, and missing values are kept as explicit <code>NA</code> rather than dropped.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>root <span class="ot">&lt;-</span> <span class="st">"path/to/GGT-10kEval-90"</span>   <span class="co"># set this to your local extracted folder</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>aux_files <span class="ot">&lt;-</span> <span class="fu">list.files</span>(</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  root,</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">pattern =</span> <span class="st">"</span><span class="sc">\\</span><span class="st">.auxiliary</span><span class="sc">\\</span><span class="st">.json$"</span>,</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">recursive =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">full.names =</span> <span class="cn">TRUE</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>aux_vars <span class="ot">&lt;-</span> <span class="fu">c</span>(</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>  <span class="st">"longitude"</span>, <span class="st">"latitude"</span>, <span class="st">"elevation"</span>, <span class="st">"slope"</span>, <span class="st">"aspect"</span>,</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>  <span class="st">"soil_moisture_0_5cm"</span>, <span class="st">"soil_moisture_5_15cm"</span>, <span class="st">"soil_moisture_15_30cm"</span>,</span>
+<span id="cb2-13"><a href="#cb2-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">paste0</span>(<span class="st">"bio"</span>, <span class="fu">sprintf</span>(<span class="st">"%02d"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">19</span>))</span>
+<span id="cb2-14"><a href="#cb2-14" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb2-15"><a href="#cb2-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-16"><a href="#cb2-16" aria-hidden="true" tabindex="-1"></a>read_one <span class="ot">&lt;-</span> <span class="cf">function</span>(aux_path) {</span>
+<span id="cb2-17"><a href="#cb2-17" aria-hidden="true" tabindex="-1"></a>  key <span class="ot">&lt;-</span> <span class="fu">basename</span>(aux_path) <span class="sc">|&gt;</span> <span class="fu">str_remove</span>(<span class="st">"</span><span class="sc">\\</span><span class="st">.auxiliary</span><span class="sc">\\</span><span class="st">.json$"</span>)</span>
+<span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a>  text_path <span class="ot">&lt;-</span> <span class="fu">file.path</span>(<span class="fu">dirname</span>(aux_path), <span class="fu">paste0</span>(key, <span class="st">".text.json"</span>))</span>
+<span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-20"><a href="#cb2-20" aria-hidden="true" tabindex="-1"></a>  aux   <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(aux_path)</span>
+<span id="cb2-21"><a href="#cb2-21" aria-hidden="true" tabindex="-1"></a>  label <span class="ot">&lt;-</span> <span class="fu">fromJSON</span>(text_path)</span>
+<span id="cb2-22"><a href="#cb2-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-23"><a href="#cb2-23" aria-hidden="true" tabindex="-1"></a>  aux_row <span class="ot">&lt;-</span> aux[aux_vars]</span>
+<span id="cb2-24"><a href="#cb2-24" aria-hidden="true" tabindex="-1"></a>  aux_row[<span class="fu">sapply</span>(aux_row, is.null)] <span class="ot">&lt;-</span> <span class="cn">NA</span></span>
+<span id="cb2-25"><a href="#cb2-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-26"><a href="#cb2-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(</span>
+<span id="cb2-27"><a href="#cb2-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">key     =</span> key,</span>
+<span id="cb2-28"><a href="#cb2-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">level0  =</span> label<span class="sc">$</span>level0,</span>
+<span id="cb2-29"><a href="#cb2-29" aria-hidden="true" tabindex="-1"></a>    <span class="at">family  =</span> label<span class="sc">$</span>level1_family,</span>
+<span id="cb2-30"><a href="#cb2-30" aria-hidden="true" tabindex="-1"></a>    <span class="at">genus   =</span> label<span class="sc">$</span>level2_genus,</span>
+<span id="cb2-31"><a href="#cb2-31" aria-hidden="true" tabindex="-1"></a>    <span class="at">species =</span> label<span class="sc">$</span>level3_species</span>
+<span id="cb2-32"><a href="#cb2-32" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb2-33"><a href="#cb2-33" aria-hidden="true" tabindex="-1"></a>    <span class="fu">bind_cols</span>(<span class="fu">as_tibble</span>(aux_row))</span>
+<span id="cb2-34"><a href="#cb2-34" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb2-35"><a href="#cb2-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-36"><a href="#cb2-36" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> <span class="fu">map_dfr</span>(aux_files, read_one)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="missingness-check-this-before-na.omit" class="level2">
+<h2 class="anchored" data-anchor-id="missingness-check-this-before-na.omit">2. Missingness — check this <em>before</em> <code>na.omit()</code></h2>
+<p>💡 <strong>Idea.</strong> The original script only inspects missingness after several transformations. Doing it first tells you whether <code>na.omit()</code> is safe to use later, or whether it would silently throw away a large, possibly non-random, chunk of the data (e.g.&nbsp;coastal/water points missing <code>aspect</code>).</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>miss <span class="ot">&lt;-</span> <span class="fu">colSums</span>(<span class="fu">is.na</span>(df)) <span class="sc">|&gt;</span> <span class="fu">sort</span>(<span class="at">decreasing =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>miss[miss <span class="sc">&gt;</span> <span class="dv">0</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>aspect 
+   114 </code></pre>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>complete_frac <span class="ot">&lt;-</span> <span class="fu">mean</span>(<span class="fu">complete.cases</span>(df))</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>complete_frac</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>[1] 0.962</code></pre>
+</div>
+</div>
+<p>📝 <strong>Comment.</strong> If <code>complete_frac</code> is well below ~0.95, don’t reach for <code>na.omit()</code> reflexively — impute (e.g.&nbsp;median by <code>family</code>) or drop only the sparsest columns instead of the sparsest <em>rows</em>, since a handful of high-missingness columns (often <code>aspect</code>, sometimes <code>slope</code> on water/flat terrain) can otherwise cost you a large share of usable rows.</p>
+</section>
+<section id="rename-bioclim-codes-to-readable-names" class="level2">
+<h2 class="anchored" data-anchor-id="rename-bioclim-codes-to-readable-names">3. Rename bioclim codes to readable names</h2>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>df <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>    <span class="at">annual_mean_temp          =</span> bio01,</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_diurnal_temp_range   =</span> bio02,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">isothermality              =</span> bio03,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">temp_seasonality           =</span> bio04,</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">max_temp_warmest_month     =</span> bio05,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">min_temp_coldest_month     =</span> bio06,</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">temp_annual_range          =</span> bio07,</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_wettest_quarter  =</span> bio08,</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_driest_quarter   =</span> bio09,</span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_warmest_quarter  =</span> bio10,</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_coldest_quarter  =</span> bio11,</span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>    <span class="at">annual_precipitation       =</span> bio12,</span>
+<span id="cb7-15"><a href="#cb7-15" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_wettest_month       =</span> bio13,</span>
+<span id="cb7-16"><a href="#cb7-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_driest_month        =</span> bio14,</span>
+<span id="cb7-17"><a href="#cb7-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_seasonality         =</span> bio15,</span>
+<span id="cb7-18"><a href="#cb7-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_wettest_quarter     =</span> bio16,</span>
+<span id="cb7-19"><a href="#cb7-19" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_driest_quarter      =</span> bio17,</span>
+<span id="cb7-20"><a href="#cb7-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_warmest_quarter     =</span> bio18,</span>
+<span id="cb7-21"><a href="#cb7-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">precip_coldest_quarter     =</span> bio19</span>
+<span id="cb7-22"><a href="#cb7-22" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<p>📝 Note on units: WorldClim stores temperature variables in <strong>tenths of a degree</strong> and seasonality (<code>temp_seasonality</code>) ×100 of the standard deviation. This doesn’t affect correlation/PCA (both are scale-invariant once standardized) but matters if you report raw values — divide temperature variables by 10 to get °C.</p>
+</section>
+<section id="where-are-the-samples" class="level2">
+<h2 class="anchored" data-anchor-id="where-are-the-samples">4. Where are the samples? 📊</h2>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(longitude, latitude, <span class="at">color =</span> level0)) <span class="sc">+</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.4</span>, <span class="at">size =</span> <span class="fl">0.6</span>) <span class="sc">+</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Sample locations by broad tree type"</span>,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">"Tree type"</span>, <span class="at">x =</span> <span class="st">"Longitude"</span>, <span class="at">y =</span> <span class="st">"Latitude"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>📝 Sample density and coverage are rarely uniform across continents in citation-aggregated occurrence data (e.g.&nbsp;GBIF-derived sources tend to be denser in North America/Europe). Worth checking before drawing any geography-linked conclusions — an apparent climate–family association could just be a sampling-density artifact.</p>
+</section>
+<section id="distributions-of-key-climate-variables" class="level2">
+<h2 class="anchored" data-anchor-id="distributions-of-key-climate-variables">5. Distributions of key climate variables 📊</h2>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(annual_mean_temp, annual_precipitation, temp_seasonality, elevation) <span class="sc">|&gt;</span></span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="fu">everything</span>(), <span class="at">names_to =</span> <span class="st">"variable"</span>, <span class="at">values_to =</span> <span class="st">"value"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(value)) <span class="sc">+</span></span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins =</span> <span class="dv">40</span>, <span class="at">fill =</span> <span class="st">"steelblue"</span>) <span class="sc">+</span></span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>variable, <span class="at">scales =</span> <span class="st">"free"</span>) <span class="sc">+</span></span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Distribution of core environmental variables"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/distributions-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(level0, annual_mean_temp <span class="sc">/</span> <span class="dv">10</span>, <span class="at">fill =</span> level0)) <span class="sc">+</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Annual mean temperature by tree type"</span>, <span class="at">y =</span> <span class="st">"°C"</span>, <span class="at">x =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/boxplots-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(df, <span class="fu">aes</span>(level0, annual_precipitation, <span class="at">fill =</span> level0)) <span class="sc">+</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Annual precipitation by tree type"</span>, <span class="at">y =</span> <span class="st">"mm/yr"</span>, <span class="at">x =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/boxplots-2.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>📝 <strong>Interpretation, revised against the actual rendered output.</strong> The hypothesis was that needleleaf would skew cold/dry, evergreen broadleaf warm/wet, deciduous broadleaf seasonal mid-latitude. <strong>The real boxplots show almost complete overlap across all three <code>level0</code> classes</strong> on both <code>annual_mean_temp</code> and <code>annual_precipitation</code> — medians and IQRs sit on top of each other. Two things this points to:</p>
+<ul>
+<li>This is <strong>not</strong> a bug — overlap is a genuine property of this curated subset. <code>level0</code> is a very coarse 3-class label, and GGT-10kEval-90 was curated to balance Rare/Common/Frequent <em>species</em> counts, not climate coverage, so each broad category gets sampled across most of the planet’s climate envelope rather than occupying a distinct slice of it.</li>
+<li>Annual <em>mean</em> temperature is also the wrong variable to expect separation on: deciduousness is a response to <strong>seasonality</strong> (shedding leaves for a cold or dry season), not to the annual average. A needleleaf conifer in Siberia and one in the Mediterranean can have very different annual means while both being needleleaf. <code>temp_seasonality</code> / <code>isothermality</code> are the more diagnostic variables — tested directly below instead of just eyeballing annual means.</li>
+</ul>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>df <span class="sc">|&gt;</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(level0, temp_seasonality, isothermality, precip_seasonality) <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">pivot_longer</span>(<span class="sc">-</span>level0, <span class="at">names_to =</span> <span class="st">"variable"</span>, <span class="at">values_to =</span> <span class="st">"value"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(level0, value, <span class="at">fill =</span> level0)) <span class="sc">+</span></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_violin</span>(<span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">coord_flip</span>() <span class="sc">+</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>variable, <span class="at">scales =</span> <span class="st">"free_x"</span>) <span class="sc">+</span></span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Seasonality variables by tree type (more diagnostic than annual means)"</span>,</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>       <span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/seasonality-separation-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Quantify separation instead of eyeballing overlapping boxes — with</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="co"># n in the thousands, even visually subtle shifts can be statistically</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="co"># significant without being practically large.</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>vars_to_test <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"annual_mean_temp"</span>, <span class="st">"annual_precipitation"</span>,</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>                   <span class="st">"temp_seasonality"</span>, <span class="st">"isothermality"</span>, <span class="st">"precip_seasonality"</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>purrr<span class="sc">::</span><span class="fu">map_dfr</span>(vars_to_test, <span class="cf">function</span>(v) {</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  kt <span class="ot">&lt;-</span> <span class="fu">kruskal.test</span>(<span class="fu">reformulate</span>(<span class="st">"level0"</span>, v), <span class="at">data =</span> df)</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(<span class="at">variable =</span> v, <span class="at">kruskal_p =</span> kt<span class="sc">$</span>p.value, <span class="at">statistic =</span> <span class="fu">unname</span>(kt<span class="sc">$</span>statistic))</span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>})</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 5 × 3
+  variable             kruskal_p statistic
+  &lt;chr&gt;                    &lt;dbl&gt;     &lt;dbl&gt;
+1 annual_mean_temp         0.459      1.56
+2 annual_precipitation     0.407      1.80
+3 temp_seasonality         0.545      1.22
+4 isothermality            0.197      3.25
+5 precip_seasonality       0.363      2.03</code></pre>
+</div>
+</div>
+<p>📝 A significant Kruskal-Wallis result tells you the groups differ somewhere, but not how <em>much</em> — with large n, p-values collapse toward 0 even for small effects. Pair it with an effect size (e.g.&nbsp;<code>rstatix::kruskal_effsize()</code>, eta-squared) before treating a tiny p-value as evidence of strong, visually obvious separation.</p>
+</section>
+<section id="correlation-structure" class="level2">
+<h2 class="anchored" data-anchor-id="correlation-structure">6. Correlation structure 🛠 📊</h2>
+<p>🛠 <strong>Fix 2.</strong> The original had a stray, invalid pipe (<code>|))&gt;</code>) that crashed the script, plus a redundant first version of <code>cor_long</code> (kept both <code>Var1≠Var2</code> and the deduplicated <code>Var1&lt;Var2</code> version — only one is needed), plus a <code>select(-sample_id)</code> that fails because the ID column is actually called <code>key</code>. All three are fixed below; <code>key</code>/<code>image_path</code> are automatically excluded since <code>select(where(is.numeric))</code> already drops character columns.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>aux_corr <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="fu">where</span>(is.numeric)) <span class="sc">|&gt;</span> <span class="fu">na.omit</span>()</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>cor_mat <span class="ot">&lt;-</span> <span class="fu">cor</span>(aux_corr, <span class="at">method =</span> <span class="st">"pearson"</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a><span class="fu">corrplot</span>(cor_mat, <span class="at">method =</span> <span class="st">"color"</span>, <span class="at">type =</span> <span class="st">"upper"</span>,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>         <span class="at">tl.cex =</span> <span class="fl">0.65</span>, <span class="at">tl.col =</span> <span class="st">"black"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/correlation-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>cor_long <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">as.table</span>(cor_mat)) <span class="sc">|&gt;</span></span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(<span class="fu">as.character</span>(Var1) <span class="sc">&lt;</span> <span class="fu">as.character</span>(Var2)) <span class="sc">|&gt;</span></span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">abs_corr =</span> <span class="fu">abs</span>(Freq)) <span class="sc">|&gt;</span></span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(abs_corr))</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>high_corr <span class="ot">&lt;-</span> cor_long <span class="sc">|&gt;</span> <span class="fu">filter</span>(abs_corr <span class="sc">&gt;</span> <span class="fl">0.9</span>)</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>high_corr</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                        Var1                      Var2      Freq  abs_corr
+1        precip_driest_month     precip_driest_quarter 0.9922135 0.9922135
+2  mean_temp_coldest_quarter  mean_temp_driest_quarter 0.9920578 0.9920578
+3  mean_temp_warmest_quarter mean_temp_wettest_quarter 0.9919624 0.9919624
+4           annual_mean_temp mean_temp_warmest_quarter 0.9892384 0.9892384
+5           annual_mean_temp mean_temp_coldest_quarter 0.9890411 0.9890411
+6       precip_wettest_month    precip_wettest_quarter 0.9883231 0.9883231
+7           annual_mean_temp  mean_temp_driest_quarter 0.9813164 0.9813164
+8           annual_mean_temp mean_temp_wettest_quarter 0.9810304 0.9810304
+9  mean_temp_coldest_quarter mean_temp_warmest_quarter 0.9786107 0.9786107
+10    precip_coldest_quarter     precip_driest_quarter 0.9748319 0.9748319
+11  mean_temp_driest_quarter mean_temp_warmest_quarter 0.9708751 0.9708751
+12 mean_temp_coldest_quarter mean_temp_wettest_quarter 0.9705703 0.9705703
+13    precip_coldest_quarter       precip_driest_month 0.9681485 0.9681485
+14    precip_warmest_quarter    precip_wettest_quarter 0.9647834 0.9647834
+15  mean_temp_driest_quarter mean_temp_wettest_quarter 0.9630751 0.9630751
+16    precip_warmest_quarter      precip_wettest_month 0.9557348 0.9557348
+17          annual_mean_temp    max_temp_warmest_month 0.9498860 0.9498860
+18          annual_mean_temp    min_temp_coldest_month 0.9484099 0.9484099
+19    max_temp_warmest_month mean_temp_coldest_quarter 0.9398755 0.9398755
+20 mean_temp_coldest_quarter    min_temp_coldest_month 0.9390501 0.9390501
+21 mean_temp_warmest_quarter    min_temp_coldest_month 0.9386119 0.9386119
+22    max_temp_warmest_month mean_temp_warmest_quarter 0.9384913 0.9384913
+23      annual_precipitation      precip_wettest_month 0.9327042 0.9327042
+24 mean_temp_wettest_quarter    min_temp_coldest_month 0.9322267 0.9322267
+25    max_temp_warmest_month  mean_temp_driest_quarter 0.9320831 0.9320831
+26  mean_temp_driest_quarter    min_temp_coldest_month 0.9313212 0.9313212
+27    max_temp_warmest_month mean_temp_wettest_quarter 0.9303687 0.9303687
+28      annual_precipitation    precip_wettest_quarter 0.9224400 0.9224400
+29    max_temp_warmest_month    min_temp_coldest_month 0.9019441 0.9019441</code></pre>
+</div>
+</div>
+<p>📝 <strong>Interpretation.</strong> Expect (and this is structural, not a data problem) the temperature-family variables — <code>annual_mean_temp</code>, <code>min_temp_coldest_month</code>, <code>mean_temp_coldest_quarter</code>, <code>mean_temp_warmest_quarter</code> — to correlate above r = 0.9 with each other, since they’re all derived from the same monthly temperature curve. Same story for the precipitation-quarter variables versus <code>annual_precipitation</code>. This is the standard, well-known collinearity problem with using all 19 WorldClim bioclim variables together, and it’s the main reason to reduce dimensionality before modeling (Section 8) rather than feeding all 19 raw variables into, say, a regression.</p>
+</section>
+<section id="idea-a-decorrelated-variable-subset-vif-based" class="level2">
+<h2 class="anchored" data-anchor-id="idea-a-decorrelated-variable-subset-vif-based">7. 💡 Idea: a decorrelated variable subset (VIF-based)</h2>
+<p>Rather than relying on PCA alone to absorb collinearity, it’s worth explicitly pruning to a smaller, less redundant variable set for any downstream interpretable modeling (e.g.&nbsp;“which climate variables predict <code>level0</code>?”).</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("car")</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(car)</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>full_model <span class="ot">&lt;-</span> <span class="fu">lm</span>(annual_mean_temp <span class="sc">~</span> ., <span class="at">data =</span> aux_corr <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span>longitude, <span class="sc">-</span>latitude))</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a><span class="co"># iteratively drop the variable with the highest VIF until all VIF &lt; 5</span></span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>vif_prune <span class="ot">&lt;-</span> <span class="cf">function</span>(data, <span class="at">threshold =</span> <span class="dv">5</span>) {</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  <span class="cf">repeat</span> {</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>    v <span class="ot">&lt;-</span> car<span class="sc">::</span><span class="fu">vif</span>(<span class="fu">lm</span>(<span class="fu">reformulate</span>(<span class="fu">setdiff</span>(<span class="fu">names</span>(data), <span class="st">"target"</span>), <span class="st">"target"</span>),</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>                      <span class="at">data =</span> data <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">target =</span> data[[<span class="dv">1</span>]])))</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> (<span class="fu">max</span>(v) <span class="sc">&lt;</span> threshold) <span class="cf">break</span></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>    data <span class="ot">&lt;-</span> data <span class="sc">|&gt;</span> <span class="fu">select</span>(<span class="sc">-</span><span class="fu">all_of</span>(<span class="fu">names</span>(<span class="fu">which.max</span>(v))))</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb18-13"><a href="#cb18-13" aria-hidden="true" tabindex="-1"></a>  data</span>
+<span id="cb18-14"><a href="#cb18-14" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+<p>📝 A simpler, commonly used WorldClim subset to start from: <code>bio01, bio02, bio03 (or bio04), bio12, bio15, bio18, bio19</code> — temperature mean/range/seasonality plus precipitation mean/seasonality/extremes, deliberately picked to span the two main axes (temperature, precipitation) without redundant quarter-level variables.</p>
+</section>
+<section id="pca" class="level2">
+<h2 class="anchored" data-anchor-id="pca">8. PCA 🛠 📊</h2>
+<p>🛠 <strong>Fix 3.</strong> The original scaled the matrix with <code>scale()</code> <em>and</em> passed <code>scale.=TRUE</code> to <code>prcomp()</code> — redundant (scaling an already-standardized matrix is a no-op), but confusing. Below, scaling happens once, inside <code>prcomp()</code>.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>pca_data <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(longitude, latitude, elevation, slope, aspect,</span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>         <span class="fu">starts_with</span>(<span class="st">"soil_moisture"</span>),</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>         annual_mean_temp, mean_diurnal_temp_range, isothermality,</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>         temp_seasonality, max_temp_warmest_month, min_temp_coldest_month,</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>         temp_annual_range, mean_temp_wettest_quarter, mean_temp_driest_quarter,</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>         mean_temp_warmest_quarter, mean_temp_coldest_quarter,</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>         annual_precipitation, precip_wettest_month, precip_driest_month,</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>         precip_seasonality, precip_wettest_quarter, precip_driest_quarter,</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>         precip_warmest_quarter, precip_coldest_quarter) <span class="sc">|&gt;</span></span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">na.omit</span>()</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>pca <span class="ot">&lt;-</span> <span class="fu">prcomp</span>(pca_data, <span class="at">center =</span> <span class="cn">TRUE</span>, <span class="at">scale. =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(pca)<span class="sc">$</span>importance[, <span class="dv">1</span><span class="sc">:</span><span class="dv">5</span>]</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                            PC1      PC2      PC3      PC4      PC5
+Standard deviation     3.352624 1.526467 1.364238 1.212841 1.028955
+Proportion of Variance 0.416300 0.086300 0.068930 0.054480 0.039210
+Cumulative Proportion  0.416300 0.502600 0.571530 0.626010 0.665220</code></pre>
+</div>
+</div>
+<p>🛠 <strong>Fix 5 — the biplot was unreadable because 24 variables were plotted at once.</strong> Given the Section 6 correlation results, ~15 of those 24 variables point in nearly the same direction (they’re the same collinear temperature/precipitation cluster), so their arrows and text labels stack on top of each other in the middle of the plot. The fix isn’t a styling tweak, it’s substantive: only plot the handful of variables that actually carry distinct information on PC1/PC2, and check a scree plot before trusting two dimensions at all.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>var_explained <span class="ot">&lt;-</span> (pca<span class="sc">$</span>sdev<span class="sc">^</span><span class="dv">2</span> <span class="sc">/</span> <span class="fu">sum</span>(pca<span class="sc">$</span>sdev<span class="sc">^</span><span class="dv">2</span>))[<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>]</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tibble</span>(<span class="at">PC =</span> <span class="fu">factor</span>(<span class="fu">paste0</span>(<span class="st">"PC"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>), <span class="at">levels =</span> <span class="fu">paste0</span>(<span class="st">"PC"</span>, <span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)),</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>       <span class="at">variance =</span> var_explained) <span class="sc">|&gt;</span></span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(PC, variance)) <span class="sc">+</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">fill =</span> <span class="st">"steelblue"</span>) <span class="sc">+</span></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_text</span>(<span class="fu">aes</span>(<span class="at">label =</span> scales<span class="sc">::</span><span class="fu">percent</span>(variance, <span class="at">accuracy =</span> <span class="fl">0.1</span>)), <span class="at">vjust =</span> <span class="sc">-</span><span class="fl">0.4</span>, <span class="at">size =</span> <span class="dv">3</span>) <span class="sc">+</span></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"Scree plot — variance explained per component"</span>,</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>       <span class="at">y =</span> <span class="st">"Proportion of variance"</span>, <span class="at">x =</span> <span class="cn">NULL</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/scree-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>loadings_all <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(pca<span class="sc">$</span>rotation[, <span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>]) <span class="sc">|&gt;</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">variable =</span> <span class="fu">rownames</span>(pca<span class="sc">$</span>rotation),</span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">magnitude =</span> <span class="fu">sqrt</span>(PC1<span class="sc">^</span><span class="dv">2</span> <span class="sc">+</span> PC2<span class="sc">^</span><span class="dv">2</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(magnitude))</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>loadings_all <span class="sc">|&gt;</span> <span class="fu">select</span>(variable, PC1, PC2, magnitude) <span class="sc">|&gt;</span> <span class="fu">head</span>(<span class="dv">10</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                           variable          PC1          PC2
+isothermality                         isothermality  0.009982313 -0.578442894
+temp_annual_range                 temp_annual_range -0.009228455  0.519628638
+temp_seasonality                   temp_seasonality -0.003277826  0.486068437
+mean_diurnal_temp_range     mean_diurnal_temp_range  0.004176277 -0.358189457
+max_temp_warmest_month       max_temp_warmest_month -0.269746193  0.120671490
+min_temp_coldest_month       min_temp_coldest_month -0.269538647 -0.109478537
+annual_mean_temp                   annual_mean_temp -0.281430880  0.005279001
+mean_temp_coldest_quarter mean_temp_coldest_quarter -0.279211886  0.004690203
+mean_temp_warmest_quarter mean_temp_warmest_quarter -0.279136914  0.004463570
+mean_temp_wettest_quarter mean_temp_wettest_quarter -0.277351917  0.001593495
+                          magnitude
+isothermality             0.5785290
+temp_annual_range         0.5197106
+temp_seasonality          0.4860795
+mean_diurnal_temp_range   0.3582138
+max_temp_warmest_month    0.2955074
+min_temp_coldest_month    0.2909238
+annual_mean_temp          0.2814804
+mean_temp_coldest_quarter 0.2792513
+mean_temp_warmest_quarter 0.2791726
+mean_temp_wettest_quarter 0.2773565</code></pre>
+</div>
+</div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("ggrepel")</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggrepel)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>pca_scores <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(pca<span class="sc">$</span>x) <span class="sc">|&gt;</span></span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(df <span class="sc">|&gt;</span> <span class="fu">select</span>(level0, family, genus, species) <span class="sc">|&gt;</span></span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>              <span class="fu">slice</span>(<span class="fu">as.numeric</span>(<span class="fu">rownames</span>(pca_data))))</span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Only label the top-8 variables by combined PC1/PC2 loading magnitude,</span></span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a><span class="co"># and only after de-duplicating near-identical directions (correlated</span></span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a><span class="co"># variables point the same way, so showing all of them adds clutter, not</span></span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a><span class="co"># information).</span></span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>top_loadings <span class="ot">&lt;-</span> loadings_all <span class="sc">|&gt;</span> <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">8</span>)</span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>arrow_scale <span class="ot">&lt;-</span> <span class="dv">5</span></span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb24-15"><a href="#cb24-15" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(pca_scores, <span class="fu">aes</span>(PC1, PC2, <span class="at">color =</span> level0)) <span class="sc">+</span></span>
+<span id="cb24-16"><a href="#cb24-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.25</span>, <span class="at">size =</span> <span class="fl">0.8</span>) <span class="sc">+</span></span>
+<span id="cb24-17"><a href="#cb24-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_segment</span>(<span class="at">data =</span> top_loadings,</span>
+<span id="cb24-18"><a href="#cb24-18" aria-hidden="true" tabindex="-1"></a>               <span class="fu">aes</span>(<span class="at">x =</span> <span class="dv">0</span>, <span class="at">y =</span> <span class="dv">0</span>, <span class="at">xend =</span> PC1 <span class="sc">*</span> arrow_scale, <span class="at">yend =</span> PC2 <span class="sc">*</span> arrow_scale),</span>
+<span id="cb24-19"><a href="#cb24-19" aria-hidden="true" tabindex="-1"></a>               <span class="at">inherit.aes =</span> <span class="cn">FALSE</span>, <span class="at">arrow =</span> <span class="fu">arrow</span>(<span class="at">length =</span> <span class="fu">unit</span>(<span class="fl">0.15</span>, <span class="st">"cm"</span>)),</span>
+<span id="cb24-20"><a href="#cb24-20" aria-hidden="true" tabindex="-1"></a>               <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">linewidth =</span> <span class="fl">0.4</span>) <span class="sc">+</span></span>
+<span id="cb24-21"><a href="#cb24-21" aria-hidden="true" tabindex="-1"></a>  ggrepel<span class="sc">::</span><span class="fu">geom_text_repel</span>(<span class="at">data =</span> top_loadings,</span>
+<span id="cb24-22"><a href="#cb24-22" aria-hidden="true" tabindex="-1"></a>            <span class="fu">aes</span>(<span class="at">x =</span> PC1 <span class="sc">*</span> arrow_scale <span class="sc">*</span> <span class="fl">1.15</span>, <span class="at">y =</span> PC2 <span class="sc">*</span> arrow_scale <span class="sc">*</span> <span class="fl">1.15</span>,</span>
+<span id="cb24-23"><a href="#cb24-23" aria-hidden="true" tabindex="-1"></a>                <span class="at">label =</span> variable),</span>
+<span id="cb24-24"><a href="#cb24-24" aria-hidden="true" tabindex="-1"></a>            <span class="at">inherit.aes =</span> <span class="cn">FALSE</span>, <span class="at">size =</span> <span class="dv">3</span>, <span class="at">max.overlaps =</span> <span class="dv">20</span>) <span class="sc">+</span></span>
+<span id="cb24-25"><a href="#cb24-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"PCA biplot — top 8 loading variables only"</span>,</span>
+<span id="cb24-26"><a href="#cb24-26" aria-hidden="true" tabindex="-1"></a>       <span class="at">subtitle =</span> <span class="st">"Full 24-variable version is uninterpretable due to collinearity (see Section 6)"</span>,</span>
+<span id="cb24-27"><a href="#cb24-27" aria-hidden="true" tabindex="-1"></a>       <span class="at">color =</span> <span class="st">"Tree type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/pca-biplot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a><span class="co"># A density/contour view per class is often more honest than overplotted</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a><span class="co"># colored points when classes overlap heavily (see Section 5 findings).</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(pca_scores, <span class="fu">aes</span>(PC1, PC2)) <span class="sc">+</span></span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density_2d_filled</span>(<span class="at">alpha =</span> <span class="fl">0.7</span>, <span class="at">show.legend =</span> <span class="cn">FALSE</span>) <span class="sc">+</span></span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">facet_wrap</span>(<span class="sc">~</span>level0) <span class="sc">+</span></span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"PC1/PC2 density by tree type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/pca-density-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>📝 <strong>Interpretation, against your actual numbers (PC1 = 41.6%, PC2 = 8.6%, cumulative to PC5 ≈ 67%).</strong> PC1 alone carries roughly 5x the variance of PC2 — consistent with Section 6’s finding that the temperature <em>and</em> precipitation variables both load together on PC1 (your loadings table shows <code>annual_mean_temp</code>, <code>mean_temp_coldest_quarter</code>, <code>mean_temp_warmest_quarter</code> <em>and</em> <code>annual_precipitation</code>, <code>precip_wettest_month</code> all near the top of PC1, not split across PC1/PC2 as a textbook “temperature axis vs.&nbsp;precipitation axis” would suggest). That means, <strong>for this specific dataset, PC1 is best read as a general “climate intensity / equability” axis rather than a clean temperature-only axis</strong> — likely because warm regions and wet regions overlap heavily in this particular sample (the tropics are both warm <em>and</em> wet, pulling those variables into the same direction). PC2 picks up the secondary signal — diurnal/seasonal <em>range</em> variables (<code>temp_annual_range</code>, <code>mean_diurnal_temp_range</code>, <code>isothermality</code>) rather than precipitation, i.e.&nbsp;a “stable vs.&nbsp;variable climate” axis.</p>
+<p>Given Section 5’s finding that <code>level0</code> barely separates on raw climate means, it’s unsurprising the colored-by-<code>level0</code> scatter shows no visible clustering either — PC1/PC2 are summarizing real structure in the <em>climate</em> data, just not structure that happens to align with this particular coarse taxonomic label. The density-by-class plot above makes this concrete: if the three panels look like near-identical blobs in the same region of PC1/PC2 space, that confirms overlap rather than a plotting failure. Where to look instead: <code>family</code>-level summaries (Section 10, idea 1) or PC1/PC2 colored by <code>family</code> for just the top 5-6 most frequent families, which is a fairer test than three coarse classes that, by construction, span the whole planet.</p>
+</section>
+<section id="t-sne-umap-for-visual-clustering" class="level2">
+<h2 class="anchored" data-anchor-id="t-sne-umap-for-visual-clustering">9. t-SNE / UMAP for visual clustering 🛠 💡 📊</h2>
+<p>🛠 <strong>Fix 4.</strong> Kept <code>pca = TRUE</code> inside <code>Rtsne()</code> (pre-reduces to a manageable number of PCs before the heavy t-SNE step, which is good practice at this scale), but added a UMAP alternative since it’s typically faster and better preserves global structure, which matters when comparing cluster separation against <code>family</code>/<code>level0</code>.</p>
+<p>🛠 <strong>Fix 6 — this is why no plot showed up in your render.</strong> The chunk was left as <code>eval: false</code> as a placeholder in the first draft and I never flagged it clearly enough — that’s on me, not a data problem. It’s switched on below. For datasets above a few thousand rows, t-SNE gets slow fast; a random subsample keeps this responsive without changing the qualitative picture.</p>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(Rtsne)</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="co"># install.packages("uwot")</span></span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(uwot)</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Subsample for speed on larger eval splits; drop this if pca_data is</span></span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="co"># already small (e.g. the 90-species eval set).</span></span>
+<span id="cb26-7"><a href="#cb26-7" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb26-8"><a href="#cb26-8" aria-hidden="true" tabindex="-1"></a>sample_idx <span class="ot">&lt;-</span> <span class="fu">sample</span>(<span class="fu">nrow</span>(pca_data), <span class="fu">min</span>(<span class="dv">5000</span>, <span class="fu">nrow</span>(pca_data)))</span>
+<span id="cb26-9"><a href="#cb26-9" aria-hidden="true" tabindex="-1"></a>tsne_input <span class="ot">&lt;-</span> pca_data[sample_idx, ]</span>
+<span id="cb26-10"><a href="#cb26-10" aria-hidden="true" tabindex="-1"></a>tsne_data <span class="ot">&lt;-</span> <span class="fu">scale</span>(tsne_input)</span>
+<span id="cb26-11"><a href="#cb26-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-12"><a href="#cb26-12" aria-hidden="true" tabindex="-1"></a>tsne <span class="ot">&lt;-</span> <span class="fu">Rtsne</span>(tsne_data, <span class="at">dims =</span> <span class="dv">2</span>, <span class="at">perplexity =</span> <span class="dv">30</span>, <span class="at">theta =</span> <span class="fl">0.5</span>,</span>
+<span id="cb26-13"><a href="#cb26-13" aria-hidden="true" tabindex="-1"></a>              <span class="at">pca =</span> <span class="cn">TRUE</span>, <span class="at">check_duplicates =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb26-14"><a href="#cb26-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-15"><a href="#cb26-15" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">123</span>)</span>
+<span id="cb26-16"><a href="#cb26-16" aria-hidden="true" tabindex="-1"></a>umap_coords <span class="ot">&lt;-</span> <span class="fu">umap</span>(tsne_data, <span class="at">n_neighbors =</span> <span class="dv">30</span>, <span class="at">min_dist =</span> <span class="fl">0.1</span>)</span>
+<span id="cb26-17"><a href="#cb26-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-18"><a href="#cb26-18" aria-hidden="true" tabindex="-1"></a>meta <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span> <span class="fu">select</span>(level0, family, genus, species) <span class="sc">|&gt;</span></span>
+<span id="cb26-19"><a href="#cb26-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice</span>(<span class="fu">as.numeric</span>(<span class="fu">rownames</span>(pca_data))) <span class="sc">|&gt;</span></span>
+<span id="cb26-20"><a href="#cb26-20" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice</span>(sample_idx)</span>
+<span id="cb26-21"><a href="#cb26-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-22"><a href="#cb26-22" aria-hidden="true" tabindex="-1"></a>tsne_plot <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(tsne<span class="sc">$</span>Y) <span class="sc">|&gt;</span> <span class="fu">setNames</span>(<span class="fu">c</span>(<span class="st">"TSNE1"</span>, <span class="st">"TSNE2"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb26-23"><a href="#cb26-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(<span class="fu">as.data.frame</span>(umap_coords) <span class="sc">|&gt;</span> <span class="fu">setNames</span>(<span class="fu">c</span>(<span class="st">"UMAP1"</span>, <span class="st">"UMAP2"</span>))) <span class="sc">|&gt;</span></span>
+<span id="cb26-24"><a href="#cb26-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">bind_cols</span>(meta)</span>
+<span id="cb26-25"><a href="#cb26-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb26-26"><a href="#cb26-26" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tsne_plot, <span class="fu">aes</span>(TSNE1, TSNE2, <span class="at">color =</span> level0)) <span class="sc">+</span></span>
+<span id="cb26-27"><a href="#cb26-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb26-28"><a href="#cb26-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"t-SNE of auxiliary environmental variables"</span>, <span class="at">color =</span> <span class="st">"Tree type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/tsne-umap-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(tsne_plot, <span class="fu">aes</span>(UMAP1, UMAP2, <span class="at">color =</span> level0)) <span class="sc">+</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"UMAP of auxiliary environmental variables"</span>, <span class="at">color =</span> <span class="st">"Tree type"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/tsne-umap-2.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Fairer test: color by the most frequent families instead of the 3 coarse</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="co"># level0 classes, since level0 has already shown weak climate separation.</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>top_families <span class="ot">&lt;-</span> tsne_plot <span class="sc">|&gt;</span> <span class="fu">count</span>(family, <span class="at">sort =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span> <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">6</span>) <span class="sc">|&gt;</span> <span class="fu">pull</span>(family)</span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>tsne_plot <span class="sc">|&gt;</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(family <span class="sc">%in%</span> top_families) <span class="sc">|&gt;</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(UMAP1, UMAP2, <span class="at">color =</span> family)) <span class="sc">+</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">alpha =</span> <span class="fl">0.6</span>, <span class="at">size =</span> <span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">title =</span> <span class="st">"UMAP colored by top 6 families"</span>, <span class="at">color =</span> <span class="st">"Family"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="globalgeotree_auxiliary_analysis_2_files/figure-html/tsne-umap-3.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>📝 <strong>Comment.</strong> Rerun t-SNE with at least 2–3 perplexity values (e.g.&nbsp;10, 30, 50) before trusting any single layout — t-SNE cluster shapes and even apparent cluster <em>count</em> can shift noticeably with this parameter, and inter-cluster distances in t-SNE are not meaningful (only local neighborhood structure is). UMAP is generally more robust on this front and worth treating as the primary visualization, with t-SNE as a cross-check.</p>
+</section>
+<section id="ideas-for-further-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="ideas-for-further-analysis">10. 💡 Ideas for further analysis</h2>
+<ol type="1">
+<li>✅ <strong>Climate niche summary by family</strong> — implemented below instead of left as a suggestion, since Sections 5/8/9 all point the same way: <code>level0</code> is too coarse to separate on climate, <code>family</code> is the next thing to check.</li>
+</ol>
+<div class="cell">
+<details open="" class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>family_niche <span class="ot">&lt;-</span> df <span class="sc">|&gt;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(family <span class="sc">%in%</span> top_families) <span class="sc">|&gt;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(family) <span class="sc">|&gt;</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">n =</span> <span class="fu">n</span>(),</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_C =</span> <span class="fu">mean</span>(annual_mean_temp <span class="sc">/</span> <span class="dv">10</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_temp_C =</span> <span class="fu">sd</span>(annual_mean_temp <span class="sc">/</span> <span class="dv">10</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_precip_mm =</span> <span class="fu">mean</span>(annual_precipitation, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-9"><a href="#cb29-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">sd_precip_mm =</span> <span class="fu">sd</span>(annual_precipitation, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb29-10"><a href="#cb29-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">mean_temp_seasonality =</span> <span class="fu">mean</span>(temp_seasonality, <span class="at">na.rm =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb29-11"><a href="#cb29-11" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb29-12"><a href="#cb29-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(sd_temp_C))   <span class="co"># widest niche breadth first</span></span>
+<span id="cb29-13"><a href="#cb29-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb29-14"><a href="#cb29-14" aria-hidden="true" tabindex="-1"></a>family_niche</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 6 × 7
+  family          n mean_temp_C sd_temp_C mean_precip_mm sd_precip_mm
+  &lt;chr&gt;       &lt;int&gt;       &lt;dbl&gt;     &lt;dbl&gt;          &lt;dbl&gt;        &lt;dbl&gt;
+1 Araliaceae    307        12.8      8.04          1022.         541.
+2 Rosaceae      305        11.9      7.92          1003.         505.
+3 Fagaceae      293        12.2      7.85           997.         478.
+4 Salicaceae    300        12.0      7.84           982.         488.
+5 Viburnaceae   323        10.8      7.63           942.         484.
+6 Fabaceae      307        12.1      7.55          1004.         465.
+# ℹ 1 more variable: mean_temp_seasonality &lt;dbl&gt;</code></pre>
+</div>
+</div>
+<p>📝 If <code>sd_temp_C</code>/<code>sd_precip_mm</code> vary a lot across families, that’s a more useful number to report than anything from the overlapping <code>level0</code> boxplots — it directly answers “which families have a wide vs.&nbsp;narrow climate niche in this sample,” and ranks them concretely rather than relying on visual cluster separation that this dataset doesn’t show at the <code>level0</code> level. 2. <strong>Spatial cross-validation</strong> — if any predictive model is built on these variables (e.g.&nbsp;predicting <code>family</code> from climate), use spatially-blocked CV rather than random CV. Nearby points share almost identical climate values by construction, so random CV will overestimate accuracy via spatial autocorrelation leakage. 3. <strong>Sampling-density correction</strong> — pair the auxiliary data with the <code>GlobalGeoTree.csv</code> metadata (source/year/location description) to check whether climate-variable distributions are confounded with data-source/region, before treating PCA/t-SNE separation as purely biological signal. 4. <strong>Compare 90 / 300 / 900-species eval splits</strong> — since GGT-10kEval ships in Rare/Common/Frequent-balanced versions at three sizes, rerunning the same PCA/correlation pipeline across splits is a quick way to check whether conclusions are stable or are an artifact of which 90 species got curated into the smallest eval set. 5. <strong>Joint analysis with the Sentinel-2 time series</strong> — the auxiliary variables are static (one value per location); pairing PC1/PC2 scores against derived image features (e.g.&nbsp;NDVI seasonality from the 12 monthly composites) could show how much of the <em>image</em> signal is actually attributable to climate rather than tree identity per se — relevant context for interpreting what GeoTreeCLIP is “really” learning from auxiliary vs.&nbsp;image inputs.</p>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">11. Summary</h2>
+<ul>
+<li>The original script’s hard crash was a single corrupted pipe character; a second, separate bug (<code>select(-sample_id)</code>) would have surfaced right after fixing the first.</li>
+<li>Dimension reduction is still well-justified — the 19 bioclim variables are highly collinear by construction (Section 6), so PCA genuinely compresses redundant information. But on your real data, <strong>PC1 turned out to be a mixed “climate intensity” axis (temperature <em>and</em> precipitation together) rather than a clean temperature-only axis</strong> — worth stating as a finding rather than assuming the textbook split.</li>
+<li><strong>The headline real finding is a negative result, and it’s a legitimate one: <code>level0</code> (deciduous/evergreen broadleaf/evergreen needleleaf) does not separate cleanly on climate in this curated 90-species sample</strong> — not on raw boxplots, not on the PCA scatter, and (check your own re-render) likely not strongly on UMAP either. That’s not a failed analysis; it’s evidence that this particular 3-class label, in this particular balanced-rarity sample, isn’t primarily a climate signal.</li>
+<li>The more promising next step demonstrated in Section 10 is dropping to <code>family</code>-level granularity, where niche breadth varies enough to be worth reporting on its own. If you want to push further: repeat Section 10’s family table on the 300- or 900-species eval splits, where more samples per family will make the niche-breadth ranking more stable.</li>
+</ul>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

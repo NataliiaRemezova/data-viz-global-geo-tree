@@ -1,0 +1,1245 @@
+---
+title: "RQ2 - Source and Platform Bias in GlobalGeoTree"
+subtitle: "How data sources shape geographic and taxonomic patterns"
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: false
+    theme: cosmo
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: false
+    documentclass: article
+    pdf-engine: xelatex
+    geometry: margin=1in
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r setup}
+# -------------------------------------------------------------------------
+# Setup
+# -------------------------------------------------------------------------
+# This first chunk loads the R packages and sets the visual style used in
+# the whole report. Keeping the style in one place makes the figures look
+# consistent and avoids repeating theme code in every plot.
+#
+# Required packages:
+# install.packages(c("data.table", "dplyr", "stringr", "ggplot2", "scales"))
+#
+# Optional package for the country map:
+# install.packages("maps")
+
+library(data.table)
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+
+# A simple custom theme for the project.
+# I use a minimal theme because the aim is to make patterns easy to read,
+# not to make the figures look too busy.
+theme_gtree <- function(base_size = 12) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.title = element_text(face = "bold", size = base_size + 3),
+      plot.subtitle = element_text(color = "gray35"),
+      plot.caption = element_text(color = "gray45", size = base_size - 2),
+      axis.title = element_text(face = "bold"),
+      panel.grid.minor = element_blank(),
+      legend.position = "bottom",
+      legend.title = element_text(face = "bold"),
+      strip.text = element_text(face = "bold"),
+      strip.background = element_rect(fill = "gray94", color = NA),
+      plot.margin = margin(8, 14, 8, 8)
+    )
+}
+
+theme_set(theme_gtree())
+
+# Manual colours for source groups.
+# Using the same colours throughout the report helps the reader recognise
+# iNaturalist, Pl@ntNet, unknown sources, etc. across different figures.
+source_palette <- c(
+  "iNaturalist" = "#8ECAE6",
+  "Pl@ntNet" = "#FF9DA7",
+  "GBIF" = "#4E79A7",
+  "Wikidata/Wikipedia" = "#B07AA1",
+  "Institutional collections" = "#1F77B4",
+  "Inventory/survey" = "#B2DF8A",
+  "Other source" = "#2CA02C",
+  "Unknown source" = "#E41A1C",
+  "Other or unclear source" = "#5B8FA8",
+  "Citizen-science source" = "#C97E4F"
+)
+
+# Fixed order for source groups. This keeps legends and stacked bars in a
+# similar order across the report.
+source_group_levels <- c(
+  "iNaturalist",
+  "Pl@ntNet",
+  "GBIF",
+  "Wikidata/Wikipedia",
+  "Institutional collections",
+  "Inventory/survey",
+  "Other source",
+  "Unknown source"
+)
+```
+
+# Research Question
+
+**RQ2 - Source and Platform Bias**  
+To what extent do data sources shape the observed geographic and taxonomic patterns in **GlobalGeoTree**?
+
+This report asks:
+
+1. Which sources contribute the largest share of observations?
+2. Is the dataset dominated by citizen-science platforms such as iNaturalist?
+3. Do different sources cover different countries or regions?
+4. Are some sources associated with specific years, countries, or species groups?
+
+The analysis is descriptive. Strong source-specific patterns should be interpreted as evidence of **recording and platform bias**, not only as biological patterns in tree distributions.
+
+**How to read the visualisations.** Each figure is included for a specific reason: first to show whether a few sources dominate the dataset, then to check whether that dominance changes by country, year, and taxonomic group. The short interpretation after each figure explains what the pattern means and why it matters for answering RQ2.
+
+# Data Loading
+
+```{r user-config}
+# -------------------------------------------------------------------------
+# User configuration
+# -------------------------------------------------------------------------
+
+# Put this .qmd file in the same folder as your data file.
+# This variable makes it easy to change the file name in one place.
+observations_path <- "GlobalGeoTree.csv"
+
+# Optional category lookup.
+# This is only used if GlobalGeoTree itself does not already contain a
+# Rare/Common/Frequent category column.
+eval_category_path <- "GlobalGeoTree-10kEval-900.csv"
+
+# For quick drafts, set use_subsample <- TRUE.
+# For final results, keep this as FALSE so all observations are counted.
+use_subsample <- FALSE
+sample_n <- 500000
+set.seed(2026)
+
+# These values control how many categories appear in the plots.
+# Showing too many sources/countries makes the figures difficult to read.
+top_n_sources <- 10
+top_n_countries <- 15
+top_n_taxa <- 12
+top_n_sources_for_maps <- 4
+
+# Map points are sampled only for readability. The summary statistics above
+# still use the full dataset unless use_subsample is TRUE.
+map_point_sample_n <- 200000
+```
+
+```{r helper-functions}
+# Make column names consistent.
+# Example: "decimalLatitude" becomes "decimal_latitude".
+# This makes the rest of the code more robust to small naming differences.
+normalize_names <- function(x) {
+  x |>
+    str_replace_all("([a-z0-9])([A-Z])", "\\1_\\2") |>
+    str_replace_all("[^A-Za-z0-9]+", "_") |>
+    str_replace_all("_+", "_") |>
+    str_replace_all("^_|_$", "") |>
+    str_to_lower()
+}
+
+# Pick the first column that exists from a list of possible column names.
+# This is useful because different biodiversity exports often use slightly
+# different names for the same idea, for example "country" vs "country_code".
+first_existing <- function(data, candidates, label, required = TRUE) {
+  found <- candidates[candidates %in% names(data)]
+
+  if (length(found) > 0) {
+    return(found[[1]])
+  }
+
+  if (required) {
+    stop(
+      paste0(
+        "Could not find a column for ", label, ". Tried: ",
+        paste(candidates, collapse = ", "),
+        "\nAvailable columns are:\n",
+        paste(names(data), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  NA_character_
+}
+
+# Clean the original source names before grouping them.
+# Empty or missing source names are kept, but labelled clearly as Unknown source.
+clean_source_label <- function(x) {
+  x <- as.character(x)
+  x <- ifelse(is.na(x) | str_trim(x) == "", "Unknown source", x)
+  str_squish(x)
+}
+
+# Group thousands of detailed source names into broader, readable categories.
+# Important change: unknown sources are now detected using exact labels such as
+# "unknown", "missing", "n/a", or "na". The earlier pattern "na" could match
+# normal words such as "nature" or "national", which would over-count unknowns.
+source_group_label <- function(x) {
+  source_clean <- str_to_lower(clean_source_label(x))
+
+  case_when(
+    str_detect(source_clean, "inaturalist|i-naturalist|\\binat\\b") ~ "iNaturalist",
+    str_detect(source_clean, "plantnet|pl@ntnet") ~ "Pl@ntNet",
+    str_detect(source_clean, "gbif") ~ "GBIF",
+    str_detect(source_clean, "wikidata|wikipedia") ~ "Wikidata/Wikipedia",
+    str_detect(source_clean, "herbar|museum|botanic|arboretum") ~ "Institutional collections",
+    str_detect(source_clean, "inventory|census|survey|monitoring") ~ "Inventory/survey",
+    str_detect(source_clean, "^(unknown source|unknown|missing|not available|n/a|na|none|null)$") ~ "Unknown source",
+    TRUE ~ "Other source"
+  )
+}
+
+# Shorten very long source names so they fit on the y-axis.
+shorten_label <- function(x, width = 34) {
+  str_trunc(as.character(x), width = width)
+}
+
+# Wrappers for colour scales.
+# These avoid repeating the same scale_fill_manual() and scale_color_manual()
+# code in every ggplot.
+source_fill_scale <- function(..., na.value = "gray75") {
+  scale_fill_manual(values = source_palette, drop = FALSE, na.value = na.value, ...)
+}
+
+source_color_scale <- function(..., na.value = "gray75") {
+  scale_color_manual(values = source_palette, drop = FALSE, na.value = na.value, ...)
+}
+
+# Shannon diversity measures how mixed the source groups are in each country.
+# exp(Shannon diversity) gives the "effective number" of source groups, which
+# is easier to interpret than the raw Shannon value.
+shannon_diversity <- function(x) {
+  p <- x / sum(x)
+  p <- p[p > 0]
+  -sum(p * log(p))
+}
+```
+
+```{r load-data}
+if (!file.exists(observations_path)) {
+  stop(
+    paste0(
+      "Could not find ", observations_path, ". Put this QMD in the same folder ",
+      "as GlobalGeoTree.csv, or edit observations_path in the configuration chunk."
+    ),
+    call. = FALSE
+  )
+}
+
+# fread() is used because the file is large and data.table reads large CSVs
+# faster than base R read.csv().
+GlobalGeoTree <- fread(observations_path, showProgress = FALSE)
+
+# Standardise column names immediately so all later code can use predictable names.
+names(GlobalGeoTree) <- normalize_names(names(GlobalGeoTree))
+
+# Optional: use a smaller random sample while drafting the report.
+# This should be turned off for final results.
+if (use_subsample && nrow(GlobalGeoTree) > sample_n) {
+  GlobalGeoTree <- GlobalGeoTree |>
+    slice_sample(n = sample_n)
+}
+
+# Detect the most important columns.
+# The report stops only if a required column, such as source/country/species,
+# cannot be found. Optional columns, such as year or coordinates, simply turn
+# some sections off.
+source_col <- first_existing(
+  GlobalGeoTree,
+  c(
+    "source", "sources", "data_source", "dataset_source", "platform",
+    "publisher", "publisher_title", "institution_code", "dataset_name",
+    "basis_of_record", "recorded_by"
+  ),
+  "observation source"
+)
+
+country_col <- first_existing(
+  GlobalGeoTree,
+  c("country_code", "countrycode", "iso_a2", "iso2", "country", "level0_country", "country_name"),
+  "country"
+)
+
+species_col <- first_existing(
+  GlobalGeoTree,
+  c("level3_species", "species", "scientific_name", "scientificname", "accepted_scientific_name", "taxon_name"),
+  "species"
+)
+
+species_key_col <- first_existing(
+  GlobalGeoTree,
+  c("species_key", "specieskey", "taxon_key", "taxonkey", "gbif_species_key", "gbif_taxon_key"),
+  "species key",
+  required = FALSE
+)
+
+genus_col <- first_existing(GlobalGeoTree, c("level2_genus", "genus"), "genus", required = FALSE)
+family_col <- first_existing(GlobalGeoTree, c("level1_family", "family"), "family", required = FALSE)
+year_col <- first_existing(GlobalGeoTree, c("year", "observation_year", "event_year", "recorded_year"), "year", required = FALSE)
+date_col <- first_existing(GlobalGeoTree, c("event_date", "eventdate", "date", "observed_on", "observation_date", "recorded_date"), "date", required = FALSE)
+lat_col <- first_existing(GlobalGeoTree, c("latitude", "decimal_latitude", "decimallatitude", "lat", "y"), "latitude", required = FALSE)
+lon_col <- first_existing(GlobalGeoTree, c("longitude", "decimal_longitude", "decimallongitude", "lon", "lng", "x"), "longitude", required = FALSE)
+category_col <- first_existing(GlobalGeoTree, c("category", "frequency_category", "species_category", "rarity_category"), "Rare/Common/Frequent category", required = FALSE)
+
+# If there is no year column but there is a date column, try to extract the
+# year from the first four characters of the date.
+if (is.na(year_col) && !is.na(date_col)) {
+  GlobalGeoTree <- GlobalGeoTree |>
+    mutate(year_from_date = suppressWarnings(as.integer(str_sub(as.character(.data[[date_col]]), 1, 4))))
+  year_col <- "year_from_date"
+}
+
+# Create clean analysis columns used throughout the report.
+# The original columns are left in the data, but the report uses these
+# standardised *_value fields to avoid repeating cleaning steps later.
+GlobalGeoTree <- GlobalGeoTree |>
+  mutate(
+    source_raw = clean_source_label(.data[[source_col]]),
+    source_group = factor(source_group_label(source_raw), levels = source_group_levels),
+    country_value = str_to_upper(str_squish(as.character(.data[[country_col]]))),
+    species_value = str_squish(as.character(.data[[species_col]])),
+    species_key_value = if (!is.na(species_key_col)) str_squish(as.character(.data[[species_key_col]])) else NA_character_,
+    genus_value = if (!is.na(genus_col)) str_squish(as.character(.data[[genus_col]])) else NA_character_,
+    family_value = if (!is.na(family_col)) str_squish(as.character(.data[[family_col]])) else NA_character_,
+    category_value = if (!is.na(category_col)) str_squish(as.character(.data[[category_col]])) else NA_character_,
+    year_value = if (!is.na(year_col)) suppressWarnings(as.integer(.data[[year_col]])) else NA_integer_,
+    latitude_value = if (!is.na(lat_col)) suppressWarnings(as.numeric(.data[[lat_col]])) else NA_real_,
+    longitude_value = if (!is.na(lon_col)) suppressWarnings(as.numeric(.data[[lon_col]])) else NA_real_
+  ) |>
+  filter(!is.na(source_raw), !is.na(country_value), !is.na(species_value))
+
+category_source_label <- if (!is.na(category_col)) {
+  "GlobalGeoTree category column"
+} else {
+  "Not available"
+}
+```
+
+```{r optional-category-lookup}
+# If categories are not present in the main dataset, try to join them from
+# the optional evaluation file. The join prefers species_key because it is more
+# stable than matching only on species names.
+if (is.na(category_col) && file.exists(eval_category_path)) {
+  eval_data <- fread(eval_category_path, showProgress = FALSE)
+  names(eval_data) <- normalize_names(names(eval_data))
+
+  eval_category_col <- first_existing(
+    eval_data,
+    c("category", "frequency_category", "species_category", "rarity_category"),
+    "evaluation category",
+    required = FALSE
+  )
+
+  eval_species_key_col <- first_existing(
+    eval_data,
+    c("species_key", "specieskey", "taxon_key", "taxonkey", "gbif_species_key", "gbif_taxon_key"),
+    "evaluation species key",
+    required = FALSE
+  )
+
+  eval_species_col <- first_existing(
+    eval_data,
+    c("level3_species", "species", "scientific_name", "scientificname", "accepted_scientific_name", "taxon_name"),
+    "evaluation species",
+    required = FALSE
+  )
+
+  if (!is.na(eval_category_col)) {
+    if (!is.na(species_key_col) && !is.na(eval_species_key_col)) {
+      category_lookup <- eval_data |>
+        transmute(
+          species_key_value = str_squish(as.character(.data[[eval_species_key_col]])),
+          category_lookup = str_squish(as.character(.data[[eval_category_col]]))
+        ) |>
+        filter(!is.na(species_key_value), species_key_value != "", !is.na(category_lookup), category_lookup != "") |>
+        group_by(species_key_value) |>
+        summarise(category_lookup = first(category_lookup), .groups = "drop")
+
+      GlobalGeoTree <- GlobalGeoTree |>
+        left_join(category_lookup, by = "species_key_value") |>
+        mutate(category_value = category_lookup) |>
+        select(-category_lookup)
+
+      category_source_label <- paste0(eval_category_path, " joined by species_key")
+    } else if (!is.na(eval_species_col)) {
+      category_lookup <- eval_data |>
+        transmute(
+          species_value = str_squish(as.character(.data[[eval_species_col]])),
+          category_lookup = str_squish(as.character(.data[[eval_category_col]]))
+        ) |>
+        filter(!is.na(species_value), species_value != "", !is.na(category_lookup), category_lookup != "") |>
+        group_by(species_value) |>
+        summarise(category_lookup = first(category_lookup), .groups = "drop")
+
+      GlobalGeoTree <- GlobalGeoTree |>
+        left_join(category_lookup, by = "species_value") |>
+        mutate(category_value = category_lookup) |>
+        select(-category_lookup)
+
+      category_source_label <- paste0(eval_category_path, " joined by species name")
+    }
+  }
+}
+
+source_note <- if (use_subsample) {
+  paste0("This report uses a random subsample of ", comma(nrow(GlobalGeoTree)), " observations.")
+} else {
+  paste0("This report uses ", comma(nrow(GlobalGeoTree)), " observations.")
+}
+```
+
+```{r data-summary}
+# This table is a quick audit trail for the report. It tells the reader
+# exactly how many rows, sources, countries and species were analysed.
+category_known_observations <- sum(!is.na(GlobalGeoTree$category_value) & GlobalGeoTree$category_value != "")
+category_known_species <- GlobalGeoTree |>
+  filter(!is.na(category_value), category_value != "") |>
+  summarise(n_species = n_distinct(species_value)) |>
+  pull(n_species)
+
+data_summary <- tibble(
+  Measure = c(
+    "Observation file",
+    "Rows analysed",
+    "Distinct sources",
+    "Distinct source groups",
+    "Distinct countries",
+    "Distinct species",
+    "Year column available",
+    "Coordinate columns available",
+    "Category source",
+    "Observations with known category",
+    "Species with known category"
+  ),
+  Value = c(
+    observations_path,
+    comma(nrow(GlobalGeoTree)),
+    comma(n_distinct(GlobalGeoTree$source_raw)),
+    comma(n_distinct(GlobalGeoTree$source_group)),
+    comma(n_distinct(GlobalGeoTree$country_value)),
+    comma(n_distinct(GlobalGeoTree$species_value)),
+    ifelse(!is.na(year_col), "Yes", "No"),
+    ifelse(!is.na(lat_col) && !is.na(lon_col), "Yes", "No"),
+    category_source_label,
+    comma(category_known_observations),
+    comma(category_known_species)
+  )
+)
+
+knitr::kable(data_summary, align = "ll")
+```
+
+`r source_note`
+
+# Headline Result
+
+```{r source-share-data}
+# Count observations by original source name.
+# This answers: "Which sources contribute the largest share of observations?"
+source_counts <- GlobalGeoTree |>
+  count(source_raw, sort = TRUE, name = "observations") |>
+  mutate(
+    share = observations / sum(observations),
+    cumulative_share = cumsum(share),
+    source_rank = row_number(),
+    source_short = reorder(shorten_label(source_raw), observations)
+  )
+
+# Count observations by broad source group. This is easier to interpret than
+# thousands of individual source names.
+source_group_counts <- GlobalGeoTree |>
+  count(source_group, sort = TRUE, name = "observations") |>
+  mutate(
+    share = observations / sum(observations),
+    source_group = factor(source_group, levels = source_group_levels)
+  )
+
+top_sources <- source_counts |>
+  slice_head(n = top_n_sources)
+
+inat_share <- source_group_counts |>
+  filter(source_group == "iNaturalist") |>
+  pull(share)
+
+if (length(inat_share) == 0) {
+  inat_share <- 0
+}
+
+citizen_groups <- c("iNaturalist", "Pl@ntNet")
+citizen_share <- source_group_counts |>
+  filter(source_group %in% citizen_groups) |>
+  summarise(share = sum(share)) |>
+  pull(share)
+
+if (length(citizen_share) == 0) {
+  citizen_share <- 0
+}
+```
+
+The source structure is highly concentrated: **iNaturalist alone contributes `r percent(inat_share, accuracy = 0.1)`** of observations, while **iNaturalist and Pl@ntNet together contribute `r percent(citizen_share, accuracy = 0.1)`**. Therefore, many observed geographic, temporal, and taxonomic patterns should be read partly as platform-coverage patterns.
+
+# Source Concentration
+
+**Why this visualisation is needed.** Before comparing countries, years, or species, we first need to know whether the dataset is balanced across sources. If one source is extremely large, it can shape the whole dataset.
+
+```{r source-share-bar, fig.width=9.5, fig.height=5.8}
+# Horizontal bars are used here because source names are long.
+# The percentage labels show each source's share of all observations.
+ggplot(top_sources, aes(x = source_short, y = observations)) +
+  geom_col(fill = "#2A7F62", width = 0.72) +
+  geom_text(
+    aes(label = percent(share, accuracy = 0.1)),
+    hjust = -0.08,
+    size = 3.2
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.18))) +
+  labs(
+    title = "Largest observation sources in GlobalGeoTree",
+    subtitle = "The top source is large enough to shape the overall dataset.",
+    x = NULL,
+    y = "Observations",
+    caption = "Long source names are shortened for readability."
+  )
+```
+
+**Why this visualisation is needed.** The Pareto chart shows concentration more clearly than a normal table. The bars show individual source shares, while the line shows how quickly the cumulative share rises.
+
+```{r source-pareto, fig.width=9.5, fig.height=5}
+# Keep only the first 50 sources so the plot stays readable.
+pareto_sources <- source_counts |>
+  slice_head(n = 50)
+
+ggplot(pareto_sources, aes(x = source_rank)) +
+  geom_col(aes(y = share), fill = "#2A7F62", alpha = 0.75, width = 0.85) +
+  geom_line(aes(y = cumulative_share), color = "#C23B22", linewidth = 1) +
+  geom_point(aes(y = cumulative_share), color = "#C23B22", size = 1.4) +
+  scale_x_continuous(breaks = c(1, 5, 10, 25, 50)) +
+  scale_y_continuous(labels = percent, limits = c(0, 1)) +
+  labs(
+    title = "A small number of sources explain most observations",
+    subtitle = "Bars show each source's individual share; the red line shows cumulative share.",
+    x = "Source rank",
+    y = "Share of all observations"
+  )
+```
+
+**Why this visualisation is needed.** Individual source names are detailed, but broad groups are easier to discuss. This plot shows whether citizen-science platforms dominate after grouping sources into wider categories.
+
+```{r source-group-bar, fig.width=8.5, fig.height=4.8}
+# This grouped chart reduces thousands of sources to a small number of
+# interpretable categories.
+ggplot(source_group_counts, aes(x = reorder(source_group, observations), y = observations, fill = source_group)) +
+  geom_col(width = 0.72, show.legend = FALSE) +
+  geom_text(
+    aes(label = percent(share, accuracy = 0.1)),
+    hjust = -0.08,
+    size = 3.3
+  ) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.18))) +
+  source_fill_scale() +
+  labs(
+    title = "Observation share by broad source group",
+    subtitle = "Citizen-science platforms dominate the grouped source structure.",
+    x = NULL,
+    y = "Observations"
+  )
+```
+
+```{r source-table}
+# A table is included because exact values are easier to read in a table than
+# directly from the plot.
+source_table <- top_sources |>
+  transmute(
+    Source = source_raw,
+    Observations = comma(observations),
+    Share = percent(share, accuracy = 0.1),
+    `Cumulative share` = percent(cumulative_share, accuracy = 0.1)
+  )
+
+knitr::kable(source_table, align = "lrrr")
+```
+
+**Interpretation.** The distribution is not balanced across sources. A few large platforms dominate the evidence base, so global summaries are strongly affected by the behaviour, geography, and taxonomy covered by those platforms.
+
+# Citizen-Science Dominance
+
+**Why this visualisation is needed.** The research question specifically asks whether GlobalGeoTree is dominated by citizen-science platforms. This simple two-bar chart directly compares citizen-science records with all other or unclear sources.
+
+```{r citizen-science-data}
+# Here, citizen science is defined as iNaturalist plus Pl@ntNet.
+# Everything else is grouped together for a simple comparison.
+citizen_summary <- GlobalGeoTree |>
+  mutate(
+    source_type = if_else(
+      as.character(source_group) %in% citizen_groups,
+      "Citizen-science source",
+      "Other or unclear source"
+    )
+  ) |>
+  count(source_type, name = "observations") |>
+  mutate(
+    share = observations / sum(observations),
+    source_type = factor(source_type, levels = c("Other or unclear source", "Citizen-science source"))
+  )
+```
+
+```{r citizen-science-bar, fig.width=7.5, fig.height=4.2}
+ggplot(citizen_summary, aes(x = source_type, y = observations, fill = source_type)) +
+  geom_col(width = 0.65, show.legend = FALSE) +
+  geom_text(aes(label = percent(share, accuracy = 0.1)), vjust = -0.45, size = 4) +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.14))) +
+  source_fill_scale() +
+  labs(
+    title = "Citizen-science platforms dominate the observations",
+    subtitle = "Citizen-science is defined here as iNaturalist plus Pl@ntNet.",
+    x = NULL,
+    y = "Observations"
+  )
+```
+
+**Interpretation.** Citizen-science dominance does not make the data unusable, but it changes how the data should be interpreted. Places and species that are popular with users or easy to photograph may be overrepresented.
+
+# Countries and Regional Coverage
+
+**Why these visualisations are needed.** A global source pattern can hide strong differences between countries. These plots check whether countries are represented by similar source mixtures or whether each country depends on different platforms.
+
+```{r country-source-data}
+# Select the countries with the most observations.
+# This keeps the country plots readable and focuses on the largest samples.
+top_country_values <- GlobalGeoTree |>
+  count(country_value, sort = TRUE, name = "observations") |>
+  slice_head(n = top_n_countries) |>
+  pull(country_value)
+
+top_source_groups <- source_group_counts |>
+  arrange(desc(observations)) |>
+  slice_head(n = top_n_sources) |>
+  pull(source_group) |>
+  as.character()
+
+# Count observations by country and source group.
+# Shares are calculated within each country, so each stacked bar sums to 100%.
+country_source <- GlobalGeoTree |>
+  filter(country_value %in% top_country_values) |>
+  mutate(source_group_plot = if_else(as.character(source_group) %in% top_source_groups, as.character(source_group), "Other source")) |>
+  count(country_value, source_group_plot, name = "observations") |>
+  group_by(country_value) |>
+  mutate(
+    country_total = sum(observations),
+    share = observations / country_total
+  ) |>
+  ungroup()
+
+country_order <- country_source |>
+  distinct(country_value, country_total) |>
+  arrange(country_total) |>
+  pull(country_value)
+
+country_source <- country_source |>
+  mutate(
+    country_value = factor(country_value, levels = country_order),
+    source_group_plot = factor(source_group_plot, levels = source_group_levels)
+  )
+
+country_dominant <- GlobalGeoTree |>
+  count(country_value, source_group, name = "observations") |>
+  group_by(country_value) |>
+  mutate(country_total = sum(observations), share = observations / country_total) |>
+  slice_max(observations, n = 1, with_ties = FALSE) |>
+  ungroup()
+```
+
+```{r country-source-stacked-share, fig.width=9.5, fig.height=6}
+# This plot answers: "Do countries have similar or different source mixes?"
+ggplot(country_source, aes(x = country_value, y = share, fill = source_group_plot)) +
+  geom_col(width = 0.75) +
+  coord_flip() +
+  scale_y_continuous(labels = percent) +
+  source_fill_scale() +
+  labs(
+    title = "Source composition differs by country",
+    subtitle = paste0("Top ", top_n_countries, " countries by observations; bars sum to 100% within each country."),
+    x = NULL,
+    y = "Share of country observations",
+    fill = "Source group"
+  )
+```
+
+**Why this visualisation is needed.** The stacked bars show the full composition, but the heatmap makes extreme dependence on one source easier to spot.
+
+```{r country-source-heatmap, fig.width=9.5, fig.height=6}
+# Heatmaps are useful here because they quickly highlight high shares.
+ggplot(country_source, aes(x = source_group_plot, y = country_value, fill = share)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = if_else(share >= 0.08, percent(share, accuracy = 1), "")), size = 3) +
+  scale_fill_viridis_c(labels = percent, option = "C", limits = c(0, 1)) +
+  labs(
+    title = "Country-by-source heatmap",
+    subtitle = "Brighter cells show countries that rely heavily on one source group.",
+    x = NULL,
+    y = NULL,
+    fill = "Country share"
+  ) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+**Why this visualisation is needed.** The previous plot uses percentages, but percentages can hide the actual amount of data. This count plot shows whether countries have similar source mixes and similar record volumes.
+
+```{r country-source-stacked-count, fig.width=9.5, fig.height=6}
+# This version uses raw counts rather than percentages.
+ggplot(country_source, aes(x = country_value, y = observations, fill = source_group_plot)) +
+  geom_col(width = 0.75) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.08))) +
+  source_fill_scale() +
+  labs(
+    title = "Observation volume by country and source group",
+    subtitle = "Country comparisons combine source composition and very unequal record volumes.",
+    x = NULL,
+    y = "Observations",
+    fill = "Source group"
+  )
+```
+
+**Interpretation.** Countries differ both in the number of observations and in the source mix. This means that geographic comparisons can be biased by platform adoption. A country dominated by iNaturalist is not directly comparable to a country dominated by local inventories or unknown sources.
+
+## Source Diversity by Country
+
+**Why this visualisation is needed.** Source diversity gives a single summary number for each country. A low value means one source dominates; a higher value means observations are spread across several source groups.
+
+```{r country-diversity-data}
+# Calculate source diversity by country.
+# effective_sources = 1 means the country is basically dominated by one source.
+# Larger values mean a more mixed source structure.
+country_diversity <- GlobalGeoTree |>
+  count(country_value, source_group, name = "observations") |>
+  group_by(country_value) |>
+  summarise(
+    total_observations = sum(observations),
+    n_source_groups = n_distinct(source_group),
+    shannon_source_diversity = shannon_diversity(observations),
+    effective_sources = exp(shannon_source_diversity),
+    dominant_source = as.character(source_group[which.max(observations)]),
+    dominant_source_share = max(observations) / sum(observations),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_observations))
+
+country_diversity_top <- country_diversity |>
+  slice_head(n = top_n_countries) |>
+  mutate(country_value = factor(country_value, levels = rev(country_value)))
+```
+
+```{r source-diversity-country, fig.width=9.5, fig.height=5.6}
+ggplot(country_diversity_top, aes(x = country_value, y = effective_sources, fill = dominant_source)) +
+  geom_col(width = 0.72) +
+  coord_flip() +
+  source_fill_scale() +
+  labs(
+    title = "How source-diverse are the largest country samples?",
+    subtitle = "Effective number of source groups is low when one source dominates a country.",
+    x = NULL,
+    y = "Effective number of source groups",
+    fill = "Dominant source"
+  )
+```
+
+**Why this visualisation is needed.** Since iNaturalist is the largest platform overall, this chart checks whether that dominance is global or concentrated in particular countries.
+
+```{r inat-share-country, fig.width=9.5, fig.height=5.5}
+# Calculate the proportion of each country's observations that came from iNaturalist.
+inat_country <- GlobalGeoTree |>
+  mutate(is_inaturalist = as.character(source_group) == "iNaturalist") |>
+  group_by(country_value) |>
+  summarise(
+    observations = n(),
+    inaturalist_share = mean(is_inaturalist),
+    .groups = "drop"
+  ) |>
+  arrange(desc(observations)) |>
+  slice_head(n = top_n_countries) |>
+  mutate(country_value = factor(country_value, levels = rev(country_value)))
+
+ggplot(inat_country, aes(x = country_value, y = inaturalist_share)) +
+  geom_col(fill = "#8ECAE6", width = 0.72) +
+  geom_text(aes(label = percent(inaturalist_share, accuracy = 1)), hjust = -0.08, size = 3.2) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = percent, limits = c(0, 1), expand = expansion(mult = c(0, 0.12))) +
+  labs(
+    title = "iNaturalist share by country",
+    subtitle = paste0("Top ", top_n_countries, " countries by observation count."),
+    x = NULL,
+    y = "Share from iNaturalist"
+  )
+```
+
+**Interpretation.** Source diversity provides a compact way to see which countries depend on one platform and which countries combine several source groups. Low diversity means higher risk that country-level patterns are platform-specific.
+
+## Optional Map: Dominant Source by Country
+
+**Why this visualisation is needed.** The map gives a quick spatial overview of source dominance. It should be read as a source-coverage map, not as a biological distribution map.
+
+```{r dominant-country-map, fig.width=9.5, fig.height=5.4}
+# This section is optional because it depends on the maps package.
+# The manual lookup below helps join common two-letter country codes to map names.
+if (requireNamespace("maps", quietly = TRUE)) {
+  world_map <- ggplot2::map_data("world") |>
+    mutate(country_join = str_to_upper(region))
+
+  country_name_lookup <- c(
+    "US" = "USA",
+    "GB" = "UK",
+    "UK" = "UK",
+    "DE" = "GERMANY",
+    "FR" = "FRANCE",
+    "ES" = "SPAIN",
+    "IT" = "ITALY",
+    "AU" = "AUSTRALIA",
+    "CA" = "CANADA",
+    "BR" = "BRAZIL",
+    "CO" = "COLOMBIA",
+    "RU" = "RUSSIA",
+    "SE" = "SWEDEN",
+    "NO" = "NORWAY",
+    "BE" = "BELGIUM",
+    "NZ" = "NEW ZEALAND",
+    "AT" = "AUSTRIA",
+    "ZA" = "SOUTH AFRICA",
+    "TW" = "TAIWAN"
+  )
+
+  map_country_source <- country_dominant |>
+    mutate(country_join = if_else(country_value %in% names(country_name_lookup), country_name_lookup[country_value], country_value)) |>
+    select(country_join, source_group, share, country_total)
+
+  world_source_map <- world_map |>
+    left_join(map_country_source, by = "country_join")
+
+  ggplot(world_source_map, aes(x = long, y = lat, group = group)) +
+    geom_polygon(aes(fill = source_group), color = "white", linewidth = 0.08) +
+    coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
+    source_fill_scale(na.value = "gray92") +
+    labs(
+      title = "Dominant source group by country",
+      subtitle = "Countries are colored by the source group contributing the most observations.",
+      x = NULL,
+      y = NULL,
+      fill = "Dominant source",
+      caption = "This optional map uses the maps package and a small built-in country-name lookup."
+    ) +
+    theme(axis.text = element_blank(), panel.grid = element_blank())
+} else {
+  ggplot() +
+    annotate(
+      "text",
+      x = 0,
+      y = 0,
+      label = "Install the optional maps package to render the dominant-source country map.",
+      size = 4
+    ) +
+    theme_void()
+}
+```
+
+# Sources Over Time
+
+**Why these visualisations are needed.** Time trends can be misleading if a platform became popular recently. These plots check whether changes over time are partly changes in source coverage rather than changes in tree occurrence.
+
+```{r source-year-data}
+if (!is.na(year_col)) {
+  # Keep plausible observation years only.
+  source_year <- GlobalGeoTree |>
+    filter(!is.na(year_value), year_value >= 1900, year_value <= as.integer(format(Sys.Date(), "%Y"))) |>
+    mutate(source_group_plot = if_else(as.character(source_group) %in% top_source_groups, as.character(source_group), "Other source")) |>
+    count(year_value, source_group_plot, name = "observations") |>
+    group_by(year_value) |>
+    mutate(
+      year_total = sum(observations),
+      share = observations / year_total
+    ) |>
+    ungroup() |>
+    mutate(source_group_plot = factor(source_group_plot, levels = source_group_levels))
+
+  if (nrow(source_year) > 0) {
+    year_breaks <- seq(min(source_year$year_value, na.rm = TRUE), max(source_year$year_value, na.rm = TRUE), by = 1)
+  }
+}
+```
+
+```{r source-year-stacked, fig.width=9.5, fig.height=5}
+# Raw counts show whether the number of records changes over time.
+if (!is.na(year_col) && exists("source_year") && nrow(source_year) > 0) {
+  ggplot(source_year, aes(x = year_value, y = observations, fill = source_group_plot)) +
+    geom_col(width = 0.9) +
+    scale_x_continuous(breaks = year_breaks) +
+    scale_y_continuous(labels = comma) +
+    source_fill_scale() +
+    labs(
+      title = "Observation sources by year",
+      subtitle = "The rise of a platform can look like a temporal trend in tree observations.",
+      x = "Year",
+      y = "Observations",
+      fill = "Source group"
+    ) +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1))
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable year column was detected.", size = 4) +
+    theme_void()
+}
+```
+
+**Why this visualisation is needed.** The count plot shows volume, while this percentage plot shows whether the source composition changed within each year.
+
+```{r source-year-share, fig.width=9.5, fig.height=5}
+# Percentage bars show source mix while ignoring total yearly volume.
+if (!is.na(year_col) && exists("source_year") && nrow(source_year) > 0) {
+  ggplot(source_year, aes(x = year_value, y = share, fill = source_group_plot)) +
+    geom_col(width = 0.9) +
+    scale_x_continuous(breaks = year_breaks) +
+    scale_y_continuous(labels = percent) +
+    source_fill_scale() +
+    labs(
+      title = "Source composition by year",
+      subtitle = "Bars sum to 100% within each year, revealing shifts in source dominance.",
+      x = "Year",
+      y = "Share of observations",
+      fill = "Source group",
+      caption = "The most recent year may be incomplete depending on the data export date."
+    ) +
+    theme(axis.text.x = element_text(angle = 35, hjust = 1))
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable year column was detected.", size = 4) +
+    theme_void()
+}
+```
+
+**Interpretation.** Temporal patterns are not source-neutral. If iNaturalist or Pl@ntNet grows in recent years, the dataset may show an apparent rise in observations even if actual tree occurrence is unchanged.
+
+# Sources and Taxonomic Groups
+
+**Why these visualisations are needed.** Source bias can also be taxonomic. For example, some platforms may record ornamental or easy-to-photograph families more often than other groups.
+
+This section checks whether source groups disproportionately record particular families, genera, or species. Family is used first when available because it is more readable than hundreds of species names.
+
+```{r taxonomic-source-data}
+# Choose the most readable taxonomic level available.
+# Family is preferred because it gives fewer, clearer labels than species names.
+taxon_level <- case_when(
+  !is.na(family_col) ~ "family",
+  !is.na(genus_col) ~ "genus",
+  TRUE ~ "species"
+)
+
+# Create one taxon_group column based on the selected taxonomic level.
+GlobalGeoTree <- GlobalGeoTree |>
+  mutate(
+    taxon_group = case_when(
+      taxon_level == "family" ~ family_value,
+      taxon_level == "genus" ~ genus_value,
+      TRUE ~ species_value
+    ),
+    taxon_group = if_else(is.na(taxon_group) | taxon_group == "", "Unknown taxon", taxon_group)
+  )
+
+top_taxa <- GlobalGeoTree |>
+  count(taxon_group, sort = TRUE, name = "observations") |>
+  slice_head(n = top_n_taxa) |>
+  pull(taxon_group)
+
+taxon_source <- GlobalGeoTree |>
+  filter(taxon_group %in% top_taxa) |>
+  mutate(source_group_plot = if_else(as.character(source_group) %in% top_source_groups, as.character(source_group), "Other source")) |>
+  count(taxon_group, source_group_plot, name = "observations") |>
+  group_by(taxon_group) |>
+  mutate(
+    taxon_total = sum(observations),
+    share = observations / taxon_total
+  ) |>
+  ungroup()
+
+taxon_order <- taxon_source |>
+  distinct(taxon_group, taxon_total) |>
+  arrange(taxon_total) |>
+  pull(taxon_group)
+
+taxon_source <- taxon_source |>
+  mutate(
+    taxon_group = factor(taxon_group, levels = taxon_order),
+    source_group_plot = factor(source_group_plot, levels = source_group_levels)
+  )
+```
+
+```{r taxon-source-share, fig.width=9.5, fig.height=6}
+# This plot shows whether each taxonomic group is dominated by one source.
+ggplot(taxon_source, aes(x = taxon_group, y = share, fill = source_group_plot)) +
+  geom_col(width = 0.75) +
+  coord_flip() +
+  scale_y_continuous(labels = percent) +
+  source_fill_scale() +
+  labs(
+    title = paste("Source composition by", taxon_level),
+    subtitle = "Bars sum to 100% within each taxonomic group.",
+    x = NULL,
+    y = "Share of observations",
+    fill = "Source group"
+  )
+```
+
+**Why this visualisation is needed.** The heatmap is a second view of the same taxonomic pattern. It makes unusually high source shares easier to see than stacked bars alone.
+
+```{r taxon-source-heatmap, fig.width=9.5, fig.height=5.8}
+# Label only larger shares so the heatmap does not become crowded.
+ggplot(taxon_source, aes(x = source_group_plot, y = taxon_group, fill = share)) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(aes(label = if_else(share >= 0.10, percent(share, accuracy = 1), "")), size = 3) +
+  scale_fill_viridis_c(labels = percent, option = "C", limits = c(0, 1)) +
+  labs(
+    title = paste("Taxonomic groups are not equally represented across sources"),
+    subtitle = paste("Heatmap by", taxon_level, "and source group."),
+    x = NULL,
+    y = NULL,
+    fill = "Taxon share"
+  ) +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1))
+```
+
+**Interpretation.** If a family or genus is mostly recorded by one platform, its geographic pattern may partly reflect that platform's user base and coverage.
+
+# Geographic Footprints of Major Sources
+
+**Why these visualisations are needed.** The maps show where the main source groups actually record data. This is important because spatial clusters may reflect user activity and platform coverage, not only real tree distributions.
+
+```{r source-map-data}
+# Check whether the dataset has usable coordinates before trying to draw maps.
+has_coordinates <- !is.na(lat_col) && !is.na(lon_col)
+
+if (has_coordinates) {
+  map_sources <- source_group_counts |>
+    arrange(desc(observations)) |>
+    filter(!source_group %in% c("Unknown source", "Other source")) |>
+    slice_head(n = top_n_sources_for_maps) |>
+    pull(source_group) |>
+    as.character()
+
+  map_data <- GlobalGeoTree |>
+    filter(
+      as.character(source_group) %in% map_sources,
+      !is.na(latitude_value),
+      !is.na(longitude_value),
+      between(latitude_value, -90, 90),
+      between(longitude_value, -180, 180)
+    )
+
+  # Sample map points if needed. This improves readability and rendering speed.
+  if (nrow(map_data) > map_point_sample_n) {
+    map_data <- map_data |>
+      slice_sample(n = map_point_sample_n)
+  }
+
+  world_outline <- NULL
+  if (requireNamespace("maps", quietly = TRUE)) {
+    world_outline <- ggplot2::map_data("world")
+  }
+}
+```
+
+```{r source-faceted-map, fig.width=9.5, fig.height=6.8}
+# Raw point maps show the visible footprint of each source group.
+# They can overplot in dense regions, so the density map below is also included.
+if (has_coordinates && exists("map_data") && nrow(map_data) > 0) {
+  p <- ggplot()
+
+  if (exists("world_outline") && !is.null(world_outline)) {
+    p <- p +
+      geom_polygon(
+        data = world_outline,
+        aes(x = long, y = lat, group = group),
+        fill = "gray96",
+        color = "gray82",
+        linewidth = 0.12,
+        inherit.aes = FALSE
+      )
+  }
+
+  p +
+    geom_point(
+      data = map_data,
+      aes(x = longitude_value, y = latitude_value),
+      alpha = 0.12,
+      size = 0.22,
+      color = "#1F5B74"
+    ) +
+    facet_wrap(~ source_group, ncol = 2) +
+    coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
+    labs(
+      title = "Geographic coverage of major source groups",
+      subtitle = "Different platforms leave visibly different spatial footprints.",
+      x = "Longitude",
+      y = "Latitude",
+      caption = "Points show recording locations, not true species ranges. Points may be sampled for readability."
+    )
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable latitude/longitude columns were detected.", size = 4) +
+    theme_void()
+}
+```
+
+**Why this visualisation is needed.** Raw points can hide dense clusters because many records overlap. Binning the points makes high-record areas easier to compare across source groups.
+
+```{r source-density-map, fig.width=9.5, fig.height=6.8}
+# Binned maps reduce overplotting by counting records in grid cells.
+if (has_coordinates && exists("map_data") && nrow(map_data) > 0) {
+  ggplot(map_data, aes(x = longitude_value, y = latitude_value)) +
+    stat_bin_2d(bins = 85) +
+    facet_wrap(~ source_group, ncol = 2) +
+    coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
+    scale_fill_viridis_c(trans = "sqrt", labels = comma, option = "C") +
+    labs(
+      title = "Observation density by source group",
+      subtitle = "Binned counts reveal dense recording regions more clearly than raw points.",
+      x = "Longitude",
+      y = "Latitude",
+      fill = "Records"
+    ) +
+    theme(legend.position = "right")
+} else {
+  ggplot() +
+    annotate("text", x = 0, y = 0, label = "No usable latitude/longitude columns were detected.", size = 4) +
+    theme_void()
+}
+```
+
+**Interpretation.** The source maps show that platform coverage is geographically uneven. Some regions are visible mainly because they are covered by a particular platform or source pipeline.
+
+# Unknown Source Diagnostics
+
+**Why this visualisation is needed.** Unknown sources are not just missing labels; they reduce confidence in source-specific interpretation. This plot shows whether unknown-source records are concentrated in particular countries.
+
+```{r unknown-source-data}
+# Count unknown-source records by country.
+# Countries with fewer than 1,000 total observations are removed so the plot
+# focuses on countries where the pattern is based on a reasonable sample size.
+unknown_country <- GlobalGeoTree |>
+  mutate(is_unknown_source = as.character(source_group) == "Unknown source") |>
+  group_by(country_value) |>
+  summarise(
+    observations = n(),
+    unknown_observations = sum(is_unknown_source),
+    unknown_share = unknown_observations / observations,
+    .groups = "drop"
+  ) |>
+  filter(observations >= 1000) |>
+  arrange(desc(unknown_observations)) |>
+  slice_head(n = top_n_countries) |>
+  mutate(country_value = factor(country_value, levels = rev(country_value)))
+```
+
+```{r unknown-source-plot, fig.width=9.5, fig.height=5.4}
+ggplot(unknown_country, aes(x = country_value, y = unknown_observations, fill = unknown_share)) +
+  geom_col(width = 0.72) +
+  geom_text(aes(label = percent(unknown_share, accuracy = 1)), hjust = -0.08, size = 3.2) +
+  coord_flip(clip = "off") +
+  scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.14))) +
+  scale_fill_viridis_c(labels = percent, option = "C") +
+  labs(
+    title = "Where are unknown-source observations concentrated?",
+    subtitle = "Countries with many unknown-source records need cautious interpretation.",
+    x = NULL,
+    y = "Unknown-source observations",
+    fill = "Unknown share"
+  )
+```
+
+**Interpretation.** Unknown source records are a metadata-quality issue. If they are concentrated in particular countries, those countries have weaker evidence for source-specific interpretation.
+
+# Rare, Common, and Frequent Categories
+
+**Why this visualisation is needed.** If Rare, Common, and Frequent categories come from different source mixtures, then comparisons between these categories may partly reflect data-source bias.
+
+This section is shown only when category labels are available either inside **GlobalGeoTree** or through the optional eval lookup file.
+
+```{r category-source-data}
+# Only draw this section if category labels were found or successfully joined.
+has_category <- category_known_observations > 0
+
+if (has_category) {
+  category_source <- GlobalGeoTree |>
+    filter(!is.na(category_value), category_value != "") |>
+    mutate(source_group_plot = if_else(as.character(source_group) %in% top_source_groups, as.character(source_group), "Other source")) |>
+    count(category_value, source_group_plot, name = "observations") |>
+    group_by(category_value) |>
+    mutate(share = observations / sum(observations)) |>
+    ungroup() |>
+    mutate(source_group_plot = factor(source_group_plot, levels = source_group_levels))
+
+  category_coverage <- tibble(
+    Measure = c("Category source", "Observations with known category", "Species with known category"),
+    Value = c(category_source_label, comma(category_known_observations), comma(category_known_species))
+  )
+}
+```
+
+```{r category-coverage-table}
+if (has_category) {
+  knitr::kable(category_coverage, align = "ll")
+}
+```
+
+```{r category-source-plot, fig.width=8.5, fig.height=4.8}
+# Compare source composition across Rare/Common/Frequent categories.
+if (has_category && exists("category_source") && nrow(category_source) > 0) {
+  ggplot(category_source, aes(x = category_value, y = share, fill = source_group_plot)) +
+    geom_col(width = 0.75) +
+    scale_y_continuous(labels = percent) +
+    source_fill_scale() +
+    labs(
+      title = "Source composition by species frequency category",
+      subtitle = "This checks whether Rare/Common/Frequent records come from different source mixtures.",
+      x = "Category",
+      y = "Share of observations",
+      fill = "Source group"
+    )
+}
+```
+
+**Interpretation.** If the bars are very similar, the category comparison is less affected by source mix. If one category has much more iNaturalist, Pl@ntNet, or unknown-source data, then category-level findings should be interpreted with more caution.
+
+```{r no-category-note, results='asis'}
+if (!has_category) {
+  cat(
+    "No Rare/Common/Frequent category information was available. ",
+    "To enable this section, put an eval file such as `GlobalGeoTree-10kEval-900.csv` ",
+    "in the same folder or join a category lookup before rendering."
+  )
+}
+```
+
+# Overall Interpretation
+
+This analysis shows that GlobalGeoTree is not source-neutral. The dataset contains millions of observations from thousands of named sources, but the observation structure is dominated by a small number of platforms, especially iNaturalist and Pl@ntNet. Source composition also varies by country, year, and taxonomic group. Therefore, observed geographic and taxonomic patterns should be interpreted as a combination of tree occurrence, recording effort, platform popularity, and source-specific data integration.
+
+For downstream analyses, I would report source composition next to any global, country-level, temporal, or taxonomic result. Where possible, I would also repeat key analyses with and without the largest citizen-science source to test robustness.
+
+**Main limitation.** These figures describe patterns in the available records. They do not prove that one source is biased in a negative way; they show where source coverage is uneven and where interpretation needs extra care.

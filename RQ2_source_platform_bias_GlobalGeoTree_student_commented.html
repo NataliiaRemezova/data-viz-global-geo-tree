@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.8.25">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>RQ2 - Source and Platform Bias in GlobalGeoTree</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/clipboard/clipboard.min.js"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/axe/axe-check.js" type="module"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/popper.min.js"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/anchor.min.js"></script>
+<link href="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/quarto-html/quarto-syntax-highlighting-7b89279ff1a6dce999919e0e67d4d9ec.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/libs/bootstrap/bootstrap-7df91e7c987534b356ad96ed05d4452c.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#research-question" id="toc-research-question" class="nav-link active" data-scroll-target="#research-question">Research Question</a></li>
+  <li><a href="#data-loading" id="toc-data-loading" class="nav-link" data-scroll-target="#data-loading">Data Loading</a></li>
+  <li><a href="#headline-result" id="toc-headline-result" class="nav-link" data-scroll-target="#headline-result">Headline Result</a></li>
+  <li><a href="#source-concentration" id="toc-source-concentration" class="nav-link" data-scroll-target="#source-concentration">Source Concentration</a></li>
+  <li><a href="#citizen-science-dominance" id="toc-citizen-science-dominance" class="nav-link" data-scroll-target="#citizen-science-dominance">Citizen-Science Dominance</a></li>
+  <li><a href="#countries-and-regional-coverage" id="toc-countries-and-regional-coverage" class="nav-link" data-scroll-target="#countries-and-regional-coverage">Countries and Regional Coverage</a>
+  <ul class="collapse">
+  <li><a href="#source-diversity-by-country" id="toc-source-diversity-by-country" class="nav-link" data-scroll-target="#source-diversity-by-country">Source Diversity by Country</a></li>
+  <li><a href="#optional-map-dominant-source-by-country" id="toc-optional-map-dominant-source-by-country" class="nav-link" data-scroll-target="#optional-map-dominant-source-by-country">Optional Map: Dominant Source by Country</a></li>
+  </ul></li>
+  <li><a href="#sources-over-time" id="toc-sources-over-time" class="nav-link" data-scroll-target="#sources-over-time">Sources Over Time</a></li>
+  <li><a href="#sources-and-taxonomic-groups" id="toc-sources-and-taxonomic-groups" class="nav-link" data-scroll-target="#sources-and-taxonomic-groups">Sources and Taxonomic Groups</a></li>
+  <li><a href="#geographic-footprints-of-major-sources" id="toc-geographic-footprints-of-major-sources" class="nav-link" data-scroll-target="#geographic-footprints-of-major-sources">Geographic Footprints of Major Sources</a></li>
+  <li><a href="#unknown-source-diagnostics" id="toc-unknown-source-diagnostics" class="nav-link" data-scroll-target="#unknown-source-diagnostics">Unknown Source Diagnostics</a></li>
+  <li><a href="#rare-common-and-frequent-categories" id="toc-rare-common-and-frequent-categories" class="nav-link" data-scroll-target="#rare-common-and-frequent-categories">Rare, Common, and Frequent Categories</a></li>
+  <li><a href="#overall-interpretation" id="toc-overall-interpretation" class="nav-link" data-scroll-target="#overall-interpretation">Overall Interpretation</a></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="RQ2_source_platform_bias_GlobalGeoTree_student_commented.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">RQ2 - Source and Platform Bias in GlobalGeoTree</h1>
+<p class="subtitle lead">How data sources shape geographic and taxonomic patterns</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="research-question" class="level1">
+<h1>Research Question</h1>
+<p><strong>RQ2 - Source and Platform Bias</strong><br>
+To what extent do data sources shape the observed geographic and taxonomic patterns in <strong>GlobalGeoTree</strong>?</p>
+<p>This report asks:</p>
+<ol type="1">
+<li>Which sources contribute the largest share of observations?</li>
+<li>Is the dataset dominated by citizen-science platforms such as iNaturalist?</li>
+<li>Do different sources cover different countries or regions?</li>
+<li>Are some sources associated with specific years, countries, or species groups?</li>
+</ol>
+<p>The analysis is descriptive. Strong source-specific patterns should be interpreted as evidence of <strong>recording and platform bias</strong>, not only as biological patterns in tree distributions.</p>
+<p><strong>How to read the visualisations.</strong> Each figure is included for a specific reason: first to show whether a few sources dominate the dataset, then to check whether that dominance changes by country, year, and taxonomic group. The short interpretation after each figure explains what the pattern means and why it matters for answering RQ2.</p>
+</section>
+<section id="data-loading" class="level1">
+<h1>Data Loading</h1>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 38%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Measure</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Observation file</td>
+<td style="text-align: left;">GlobalGeoTree.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rows analysed</td>
+<td style="text-align: left;">6,263,345</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Distinct sources</td>
+<td style="text-align: left;">2,493</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Distinct source groups</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Distinct countries</td>
+<td style="text-align: left;">221</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Distinct species</td>
+<td style="text-align: left;">21,001</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Year column available</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Coordinate columns available</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Category source</td>
+<td style="text-align: left;">GlobalGeoTree-10kEval-900.csv joined by species_key</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Observations with known category</td>
+<td style="text-align: left;">2,205,871</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Species with known category</td>
+<td style="text-align: left;">941</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>This report uses 6,263,345 observations.</p>
+</section>
+<section id="headline-result" class="level1">
+<h1>Headline Result</h1>
+<p>The source structure is highly concentrated: <strong>iNaturalist alone contributes 64.5%</strong> of observations, while <strong>iNaturalist and Pl@ntNet together contribute 75.5%</strong>. Therefore, many observed geographic, temporal, and taxonomic patterns should be read partly as platform-coverage patterns.</p>
+</section>
+<section id="source-concentration" class="level1">
+<h1>Source Concentration</h1>
+<p><strong>Why this visualisation is needed.</strong> Before comparing countries, years, or species, we first need to know whether the dataset is balanced across sources. If one source is extremely large, it can shape the whole dataset.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-share-bar-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> The Pareto chart shows concentration more clearly than a normal table. The bars show individual source shares, while the line shows how quickly the cumulative share rises.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-pareto-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> Individual source names are detailed, but broad groups are easier to discuss. This plot shows whether citizen-science platforms dominate after grouping sources into wider categories.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-group-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 78%">
+<col style="width: 7%">
+<col style="width: 3%">
+<col style="width: 9%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Source</th>
+<th style="text-align: right;">Observations</th>
+<th style="text-align: right;">Share</th>
+<th style="text-align: right;">Cumulative share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">iNaturalist Research-grade Observations</td>
+<td style="text-align: right;">4,036,465</td>
+<td style="text-align: right;">64.4%</td>
+<td style="text-align: right;">64.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pl@ntNet automatically identified occurrences</td>
+<td style="text-align: right;">606,258</td>
+<td style="text-align: right;">9.7%</td>
+<td style="text-align: right;">74.1%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Artportalen</td>
+<td style="text-align: right;">166,929</td>
+<td style="text-align: right;">2.7%</td>
+<td style="text-align: right;">76.8%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Norwegian Species Observation Service</td>
+<td style="text-align: right;">134,097</td>
+<td style="text-align: right;">2.1%</td>
+<td style="text-align: right;">78.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">NSW BioNet Atlas</td>
+<td style="text-align: right;">128,009</td>
+<td style="text-align: right;">2.0%</td>
+<td style="text-align: right;">81.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Aprovechamiento Forestal en el área de influencia del Proyecto Hidroeléctrico Ituango</td>
+<td style="text-align: right;">121,900</td>
+<td style="text-align: right;">1.9%</td>
+<td style="text-align: right;">82.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Observation.org, Nature data from around the World</td>
+<td style="text-align: right;">106,352</td>
+<td style="text-align: right;">1.7%</td>
+<td style="text-align: right;">84.6%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pl@ntNet observations</td>
+<td style="text-align: right;">86,806</td>
+<td style="text-align: right;">1.4%</td>
+<td style="text-align: right;">86.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Waarnemingen.be - Non-native plant occurrences in Flanders and the Brussels Capital Region, Belgium</td>
+<td style="text-align: right;">86,599</td>
+<td style="text-align: right;">1.4%</td>
+<td style="text-align: right;">87.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Biodiversidad asociada al Estudio de Impacto Ambiental del proyecto: Interconexión Cuestecitas - Copey - Fundación 500/220 mil voltios</td>
+<td style="text-align: right;">65,000</td>
+<td style="text-align: right;">1.0%</td>
+<td style="text-align: right;">88.4%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The distribution is not balanced across sources. A few large platforms dominate the evidence base, so global summaries are strongly affected by the behaviour, geography, and taxonomy covered by those platforms.</p>
+</section>
+<section id="citizen-science-dominance" class="level1">
+<h1>Citizen-Science Dominance</h1>
+<p><strong>Why this visualisation is needed.</strong> The research question specifically asks whether GlobalGeoTree is dominated by citizen-science platforms. This simple two-bar chart directly compares citizen-science records with all other or unclear sources.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/citizen-science-bar-1.png" class="img-fluid figure-img" width="720"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Citizen-science dominance does not make the data unusable, but it changes how the data should be interpreted. Places and species that are popular with users or easy to photograph may be overrepresented.</p>
+</section>
+<section id="countries-and-regional-coverage" class="level1">
+<h1>Countries and Regional Coverage</h1>
+<p><strong>Why these visualisations are needed.</strong> A global source pattern can hide strong differences between countries. These plots check whether countries are represented by similar source mixtures or whether each country depends on different platforms.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/country-source-stacked-share-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> The stacked bars show the full composition, but the heatmap makes extreme dependence on one source easier to spot.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/country-source-heatmap-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> The previous plot uses percentages, but percentages can hide the actual amount of data. This count plot shows whether countries have similar source mixes and similar record volumes.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/country-source-stacked-count-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Countries differ both in the number of observations and in the source mix. This means that geographic comparisons can be biased by platform adoption. A country dominated by iNaturalist is not directly comparable to a country dominated by local inventories or unknown sources.</p>
+<section id="source-diversity-by-country" class="level2">
+<h2 class="anchored" data-anchor-id="source-diversity-by-country">Source Diversity by Country</h2>
+<p><strong>Why this visualisation is needed.</strong> Source diversity gives a single summary number for each country. A low value means one source dominates; a higher value means observations are spread across several source groups.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-diversity-country-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> Since iNaturalist is the largest platform overall, this chart checks whether that dominance is global or concentrated in particular countries.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/inat-share-country-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Source diversity provides a compact way to see which countries depend on one platform and which countries combine several source groups. Low diversity means higher risk that country-level patterns are platform-specific.</p>
+</section>
+<section id="optional-map-dominant-source-by-country" class="level2">
+<h2 class="anchored" data-anchor-id="optional-map-dominant-source-by-country">Optional Map: Dominant Source by Country</h2>
+<p><strong>Why this visualisation is needed.</strong> The map gives a quick spatial overview of source dominance. It should be read as a source-coverage map, not as a biological distribution map.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/dominant-country-map-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="sources-over-time" class="level1">
+<h1>Sources Over Time</h1>
+<p><strong>Why these visualisations are needed.</strong> Time trends can be misleading if a platform became popular recently. These plots check whether changes over time are partly changes in source coverage rather than changes in tree occurrence.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-year-stacked-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> The count plot shows volume, while this percentage plot shows whether the source composition changed within each year.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-year-share-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Temporal patterns are not source-neutral. If iNaturalist or Pl@ntNet grows in recent years, the dataset may show an apparent rise in observations even if actual tree occurrence is unchanged.</p>
+</section>
+<section id="sources-and-taxonomic-groups" class="level1">
+<h1>Sources and Taxonomic Groups</h1>
+<p><strong>Why these visualisations are needed.</strong> Source bias can also be taxonomic. For example, some platforms may record ornamental or easy-to-photograph families more often than other groups.</p>
+<p>This section checks whether source groups disproportionately record particular families, genera, or species. Family is used first when available because it is more readable than hundreds of species names.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/taxon-source-share-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> The heatmap is a second view of the same taxonomic pattern. It makes unusually high source shares easier to see than stacked bars alone.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/taxon-source-heatmap-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> If a family or genus is mostly recorded by one platform, its geographic pattern may partly reflect that platform’s user base and coverage.</p>
+</section>
+<section id="geographic-footprints-of-major-sources" class="level1">
+<h1>Geographic Footprints of Major Sources</h1>
+<p><strong>Why these visualisations are needed.</strong> The maps show where the main source groups actually record data. This is important because spatial clusters may reflect user activity and platform coverage, not only real tree distributions.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-faceted-map-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Why this visualisation is needed.</strong> Raw points can hide dense clusters because many records overlap. Binning the points makes high-record areas easier to compare across source groups.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/source-density-map-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The source maps show that platform coverage is geographically uneven. Some regions are visible mainly because they are covered by a particular platform or source pipeline.</p>
+</section>
+<section id="unknown-source-diagnostics" class="level1">
+<h1>Unknown Source Diagnostics</h1>
+<p><strong>Why this visualisation is needed.</strong> Unknown sources are not just missing labels; they reduce confidence in source-specific interpretation. This plot shows whether unknown-source records are concentrated in particular countries.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/unknown-source-plot-1.png" class="img-fluid figure-img" width="912"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Unknown source records are a metadata-quality issue. If they are concentrated in particular countries, those countries have weaker evidence for source-specific interpretation.</p>
+</section>
+<section id="rare-common-and-frequent-categories" class="level1">
+<h1>Rare, Common, and Frequent Categories</h1>
+<p><strong>Why this visualisation is needed.</strong> If Rare, Common, and Frequent categories come from different source mixtures, then comparisons between these categories may partly reflect data-source bias.</p>
+<p>This section is shown only when category labels are available either inside <strong>GlobalGeoTree</strong> or through the optional eval lookup file.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 38%">
+<col style="width: 61%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Measure</th>
+<th style="text-align: left;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Category source</td>
+<td style="text-align: left;">GlobalGeoTree-10kEval-900.csv joined by species_key</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Observations with known category</td>
+<td style="text-align: left;">2,205,871</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Species with known category</td>
+<td style="text-align: left;">941</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="RQ2_source_platform_bias_GlobalGeoTree_student_commented_files/figure-html/category-source-plot-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> If the bars are very similar, the category comparison is less affected by source mix. If one category has much more iNaturalist, Pl@ntNet, or unknown-source data, then category-level findings should be interpreted with more caution.</p>
+</section>
+<section id="overall-interpretation" class="level1">
+<h1>Overall Interpretation</h1>
+<p>This analysis shows that GlobalGeoTree is not source-neutral. The dataset contains millions of observations from thousands of named sources, but the observation structure is dominated by a small number of platforms, especially iNaturalist and Pl@ntNet. Source composition also varies by country, year, and taxonomic group. Therefore, observed geographic and taxonomic patterns should be interpreted as a combination of tree occurrence, recording effort, platform popularity, and source-specific data integration.</p>
+<p>For downstream analyses, I would report source composition next to any global, country-level, temporal, or taxonomic result. Where possible, I would also repeat key analyses with and without the largest citizen-science source to test robustness.</p>
+<p><strong>Main limitation.</strong> These figures describe patterns in the available records. They do not prove that one source is biased in a negative way; they show where source coverage is uneven and where interpretation needs extra care.</p>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
