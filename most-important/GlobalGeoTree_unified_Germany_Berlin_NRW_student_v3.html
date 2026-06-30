@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.5.57">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="GlobalGeoTree team">
+
+<title>GlobalGeoTree Germany, Berlin and NRW visualisation report</title>
+<style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/clipboard/clipboard.min.js"></script>
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/quarto.js"></script>
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/popper.min.js"></script>
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/anchor.min.js"></script>
+<link href="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body>
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#purpose" id="toc-purpose" class="nav-link active" data-scroll-target="#purpose"><span class="header-section-number">0.1</span> Purpose</a></li>
+  <li><a href="#what-i-changed-after-checking-the-older-qmds-and-pdfs" id="toc-what-i-changed-after-checking-the-older-qmds-and-pdfs" class="nav-link" data-scroll-target="#what-i-changed-after-checking-the-older-qmds-and-pdfs"><span class="header-section-number">0.2</span> What I changed after checking the older QMDs and PDFs</a></li>
+  <li><a href="#density-map-options-used-in-this-report" id="toc-density-map-options-used-in-this-report" class="nav-link" data-scroll-target="#density-map-options-used-in-this-report"><span class="header-section-number">0.3</span> Density map options used in this report</a></li>
+  <li><a href="#setup" id="toc-setup" class="nav-link" data-scroll-target="#setup"><span class="header-section-number">0.4</span> Setup</a></li>
+  <li><a href="#load-and-clean-the-observation-data" id="toc-load-and-clean-the-observation-data" class="nav-link" data-scroll-target="#load-and-clean-the-observation-data"><span class="header-section-number">0.5</span> Load and clean the observation data</a></li>
+  <li><a href="#germany-overview-table" id="toc-germany-overview-table" class="nav-link" data-scroll-target="#germany-overview-table"><span class="header-section-number">0.6</span> Germany overview table</a></li>
+  <li><a href="#load-bundesländer-boundaries" id="toc-load-bundesländer-boundaries" class="nav-link" data-scroll-target="#load-bundesländer-boundaries"><span class="header-section-number">0.7</span> Load Bundesländer boundaries</a></li>
+  <li><a href="#distribution-of-observations-in-germany" id="toc-distribution-of-observations-in-germany" class="nav-link" data-scroll-target="#distribution-of-observations-in-germany"><span class="header-section-number">0.8</span> Distribution of observations in Germany</a>
+  <ul class="collapse">
+  <li><a href="#germany-density-map-comparison" id="toc-germany-density-map-comparison" class="nav-link" data-scroll-target="#germany-density-map-comparison"><span class="header-section-number">0.8.1</span> Germany density map comparison</a></li>
+  </ul></li>
+  <li><a href="#observations-by-year" id="toc-observations-by-year" class="nav-link" data-scroll-target="#observations-by-year"><span class="header-section-number">0.9</span> Observations by year</a></li>
+  <li><a href="#observations-by-source-on-the-country-map" id="toc-observations-by-source-on-the-country-map" class="nav-link" data-scroll-target="#observations-by-source-on-the-country-map"><span class="header-section-number">0.10</span> Observations by source on the country map</a></li>
+  <li><a href="#observations-by-source-as-a-bar-chart" id="toc-observations-by-source-as-a-bar-chart" class="nav-link" data-scroll-target="#observations-by-source-as-a-bar-chart"><span class="header-section-number">0.11</span> Observations by source as a bar chart</a></li>
+  <li><a href="#short-note-on-the-two-plntnet-source-names" id="toc-short-note-on-the-two-plntnet-source-names" class="nav-link" data-scroll-target="#short-note-on-the-two-plntnet-source-names"><span class="header-section-number">0.12</span> Short note on the two Pl@ntNet source names</a></li>
+  <li><a href="#observations-mapped-to-bundesländer" id="toc-observations-mapped-to-bundesländer" class="nav-link" data-scroll-target="#observations-mapped-to-bundesländer"><span class="header-section-number">0.13</span> Observations mapped to Bundesländer</a></li>
+  <li><a href="#bundesländer-bar-chart" id="toc-bundesländer-bar-chart" class="nav-link" data-scroll-target="#bundesländer-bar-chart"><span class="header-section-number">0.14</span> Bundesländer bar chart</a></li>
+  <li><a href="#bundesländer-map" id="toc-bundesländer-map" class="nav-link" data-scroll-target="#bundesländer-map"><span class="header-section-number">0.15</span> Bundesländer map</a></li>
+  <li><a href="#berlin" id="toc-berlin" class="nav-link" data-scroll-target="#berlin"><span class="header-section-number">1</span> Berlin</a>
+  <ul class="collapse">
+  <li><a href="#load-berlin-district-boundaries" id="toc-load-berlin-district-boundaries" class="nav-link" data-scroll-target="#load-berlin-district-boundaries"><span class="header-section-number">1.1</span> Load Berlin district boundaries</a></li>
+  <li><a href="#berlin-observations-table" id="toc-berlin-observations-table" class="nav-link" data-scroll-target="#berlin-observations-table"><span class="header-section-number">1.2</span> Berlin observations table</a></li>
+  <li><a href="#berlin-observation-sources" id="toc-berlin-observation-sources" class="nav-link" data-scroll-target="#berlin-observation-sources"><span class="header-section-number">1.3</span> Berlin observation sources</a></li>
+  <li><a href="#spatial-distribution-of-berlin-observations" id="toc-spatial-distribution-of-berlin-observations" class="nav-link" data-scroll-target="#spatial-distribution-of-berlin-observations"><span class="header-section-number">1.4</span> Spatial distribution of Berlin observations</a></li>
+  <li><a href="#berlin-local-areas-observations-and-species" id="toc-berlin-local-areas-observations-and-species" class="nav-link" data-scroll-target="#berlin-local-areas-observations-and-species"><span class="header-section-number">1.5</span> Berlin local areas: observations and species</a></li>
+  <li><a href="#top-recorded-species-in-berlin" id="toc-top-recorded-species-in-berlin" class="nav-link" data-scroll-target="#top-recorded-species-in-berlin"><span class="header-section-number">1.6</span> Top recorded species in Berlin</a></li>
+  </ul></li>
+  <li><a href="#nordrhein-westfalen-nrw" id="toc-nordrhein-westfalen-nrw" class="nav-link" data-scroll-target="#nordrhein-westfalen-nrw"><span class="header-section-number">2</span> Nordrhein-Westfalen (NRW)</a>
+  <ul class="collapse">
+  <li><a href="#load-nrw-boundaries" id="toc-load-nrw-boundaries" class="nav-link" data-scroll-target="#load-nrw-boundaries"><span class="header-section-number">2.1</span> Load NRW boundaries</a></li>
+  <li><a href="#filter-observations-to-nrw" id="toc-filter-observations-to-nrw" class="nav-link" data-scroll-target="#filter-observations-to-nrw"><span class="header-section-number">2.2</span> Filter observations to NRW</a></li>
+  <li><a href="#nrw-observation-sources" id="toc-nrw-observation-sources" class="nav-link" data-scroll-target="#nrw-observation-sources"><span class="header-section-number">2.3</span> NRW observation sources</a></li>
+  <li><a href="#nrw-observation-density-maps" id="toc-nrw-observation-density-maps" class="nav-link" data-scroll-target="#nrw-observation-density-maps"><span class="header-section-number">2.4</span> NRW observation density maps</a>
+  <ul class="collapse">
+  <li><a href="#nrw-density-map-comparison" id="toc-nrw-density-map-comparison" class="nav-link" data-scroll-target="#nrw-density-map-comparison"><span class="header-section-number">2.4.1</span> NRW density map comparison</a></li>
+  </ul></li>
+  <li><a href="#nrw-districts-observations-and-species" id="toc-nrw-districts-observations-and-species" class="nav-link" data-scroll-target="#nrw-districts-observations-and-species"><span class="header-section-number">2.5</span> NRW districts: observations and species</a></li>
+  <li><a href="#sources-on-the-nrw-map" id="toc-sources-on-the-nrw-map" class="nav-link" data-scroll-target="#sources-on-the-nrw-map"><span class="header-section-number">2.6</span> Sources on the NRW map</a></li>
+  <li><a href="#top-recorded-species-in-nrw" id="toc-top-recorded-species-in-nrw" class="nav-link" data-scroll-target="#top-recorded-species-in-nrw"><span class="header-section-number">2.7</span> Top recorded species in NRW</a></li>
+  <li><a href="#final-interpretation-notes" id="toc-final-interpretation-notes" class="nav-link" data-scroll-target="#final-interpretation-notes"><span class="header-section-number">2.8</span> Final interpretation notes</a></li>
+  </ul></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">GlobalGeoTree Germany, Berlin and NRW visualisation report</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>GlobalGeoTree team </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="purpose" class="level2" data-number="0.1">
+<h2 data-number="0.1" class="anchored" data-anchor-id="purpose"><span class="header-section-number">0.1</span> Purpose</h2>
+<p>This is one cleaned and unified QMD for the Germany, Berlin, and Nordrhein-Westfalen (NRW) parts of the GlobalGeoTree analysis. The rendered HTML hides the code (<code>echo: false</code>) so the report reads like a normal analysis report. The code in the QMD source is still commented and readable.</p>
+<p>The dataset used here is always called <code>GlobalGeoTree.csv</code>.</p>
+</section>
+<section id="what-i-changed-after-checking-the-older-qmds-and-pdfs" class="level2" data-number="0.2">
+<h2 data-number="0.2" class="anchored" data-anchor-id="what-i-changed-after-checking-the-older-qmds-and-pdfs"><span class="header-section-number">0.2</span> What I changed after checking the older QMDs and PDFs</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Old visualisation / section</th>
+<th>Decision</th>
+<th>Reason</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Germany overview table</td>
+<td>Keep</td>
+<td>It gives the two most important checks before any maps: the number of German observations and the number of recorded species.</td>
+</tr>
+<tr class="even">
+<td>Germany distribution map</td>
+<td>Improve</td>
+<td>The old grid map was too pale and hard to interpret. The default map is now a smoother hotspot map, and two alternative map types are included in the setup.</td>
+</tr>
+<tr class="odd">
+<td>Observations by year</td>
+<td>Keep</td>
+<td>It shows whether the German subset is dominated by a few recent years. This is important context for all later maps.</td>
+</tr>
+<tr class="even">
+<td>Observations by source: Germany map and bar chart</td>
+<td>Keep</td>
+<td>The map shows where the main sources are active. The bar chart shows which source groups dominate the dataset.</td>
+</tr>
+<tr class="odd">
+<td>Observations mapped to Bundesländer, plus Bundesländer table, bar chart and map</td>
+<td>Keep</td>
+<td>The table checks the spatial join, the bar chart ranks states, and the map shows the regional pattern.</td>
+</tr>
+<tr class="even">
+<td>Berlin district boundary loading and Berlin observations table</td>
+<td>Keep</td>
+<td>These are essential checks before any Berlin district or density map.</td>
+</tr>
+<tr class="odd">
+<td>Berlin observation/species bar chart</td>
+<td>Remove</td>
+<td>Observations and species are different measures on very different scales, so the table is clearer than a two-bar plot.</td>
+</tr>
+<tr class="even">
+<td>Berlin source table and source bar chart</td>
+<td>Keep</td>
+<td>Berlin is strongly shaped by a few sources, so source composition should be shown.</td>
+</tr>
+<tr class="odd">
+<td>Spatial distribution of Berlin observations</td>
+<td>Keep</td>
+<td>This was the strongest Berlin visual because it clearly shows observation hotspots inside the city.</td>
+</tr>
+<tr class="even">
+<td>Berlin local-area table, bar chart, species chart and map</td>
+<td>Keep, but rename carefully</td>
+<td>The downloaded Berlin file has about 97 polygons, so these are better described as Berlin local areas / district polygons rather than the 12 official Bezirke.</td>
+</tr>
+<tr class="odd">
+<td>Berlin source-by-district heatmap</td>
+<td>Remove from the main report</td>
+<td>With many local areas and long source names, it becomes visually crowded and hard to read.</td>
+</tr>
+<tr class="even">
+<td>Berlin top recorded species table and bar chart</td>
+<td>Keep</td>
+<td>It adds useful biological interpretation, as long as the caption says it is based on recorded observations, not true abundance.</td>
+</tr>
+<tr class="odd">
+<td>NRW boundary check and summary table</td>
+<td>Add</td>
+<td>The NRW PDF already had a useful boundary workflow and summary, so it belongs in this unified report.</td>
+</tr>
+<tr class="even">
+<td>NRW source table and source bar chart</td>
+<td>Add</td>
+<td>NRW is strongly dominated by a few sources, so the source chart is needed.</td>
+</tr>
+<tr class="odd">
+<td>NRW observation map</td>
+<td>Add, but improve</td>
+<td>A raw point map can overplot, so the default NRW map uses a density/hotspot layer with the NRW boundary.</td>
+</tr>
+<tr class="even">
+<td>NRW district table, district bar chart, species bar chart and district map</td>
+<td>Add</td>
+<td>These are useful for comparing NUTS3 districts / Kreise and kreisfreie Städte.</td>
+</tr>
+<tr class="odd">
+<td>NRW source map</td>
+<td>Add as a faceted source map</td>
+<td>It helps check whether the largest sources have different spatial footprints.</td>
+</tr>
+<tr class="even">
+<td>NRW common-name / GBIF enrichment</td>
+<td>Remove</td>
+<td>It depends on internet access and extra packages. Scientific names are more reproducible.</td>
+</tr>
+<tr class="odd">
+<td>NRW category composition</td>
+<td>Remove</td>
+<td>The user confirmed that category should be ignored because it is not available in the full data file.</td>
+</tr>
+<tr class="even">
+<td>Germany category and climate-zone sections</td>
+<td>Remove</td>
+<td>Category is not available in the full file, and the climate-zone section needs an extra polygon file.</td>
+</tr>
+<tr class="odd">
+<td>Very wide first-10-row preview tables</td>
+<td>Remove</td>
+<td>They were not readable in the rendered report and did not directly answer the visualisation questions.</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="density-map-options-used-in-this-report" class="level2" data-number="0.3">
+<h2 data-number="0.3" class="anchored" data-anchor-id="density-map-options-used-in-this-report"><span class="header-section-number">0.3</span> Density map options used in this report</h2>
+<p>The report now keeps several density-style maps so you can compare them directly in the rendered HTML. This is better than forcing one single map style too early.</p>
+<p>The main comparison styles are:</p>
+<ol type="1">
+<li><strong>Points + contours</strong>: good when you want to see both the individual recorded points and the broader hotspot shapes.</li>
+<li><strong>Smooth filled density</strong>: good for a clean presentation view of hotspots.</li>
+<li><strong>Gridded heatmap</strong>: good when you want counts in visible cells rather than a smoothed surface.</li>
+<li><strong>Sampled point map</strong>: good as an honest reference map showing raw record locations.</li>
+</ol>
+<p>My recommendation is to keep <strong>points + contours</strong> and <strong>smooth filled density</strong> in the final report, and use the <strong>gridded heatmap</strong> as a comparison/checking visual.</p>
+</section>
+<section id="setup" class="level2" data-number="0.4">
+<h2 data-number="0.4" class="anchored" data-anchor-id="setup"><span class="header-section-number">0.4</span> Setup</h2>
+</section>
+<section id="load-and-clean-the-observation-data" class="level2" data-number="0.5">
+<h2 data-number="0.5" class="anchored" data-anchor-id="load-and-clean-the-observation-data"><span class="header-section-number">0.5</span> Load and clean the observation data</h2>
+<p>The data file is large, so the script reads only the columns needed for this report. This keeps the report faster and makes the workflow easier to understand.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Input data check</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Input file</td>
+<td style="text-align: left;">GlobalGeoTree.csv</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rows after coordinate/species cleaning</td>
+<td style="text-align: left;">6,263,345</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Countries after cleaning</td>
+<td style="text-align: left;">221</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany rows used in this report</td>
+<td style="text-align: left;">205,747</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="germany-overview-table" class="level2" data-number="0.6">
+<h2 data-number="0.6" class="anchored" data-anchor-id="germany-overview-table"><span class="header-section-number">0.6</span> Germany overview table</h2>
+<p><strong>Why this table is needed:</strong> before drawing any maps, I want a quick check of how much German data is available. This also keeps the requested metric table in the report.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Germany overview</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Germany observations</td>
+<td style="text-align: left;">205,747</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany recorded species</td>
+<td style="text-align: left;">464</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The observations value counts records, while the recorded species value counts unique scientific species names. These two numbers answer different questions, so they should stay separate.</p>
+</section>
+<section id="load-bundesländer-boundaries" class="level2" data-number="0.7">
+<h2 data-number="0.7" class="anchored" data-anchor-id="load-bundesländer-boundaries"><span class="header-section-number">0.7</span> Load Bundesländer boundaries</h2>
+<p>The Germany state maps need Bundesländer polygons. The code first looks for a local GeoJSON file and then tries the public GISCO NUTS1 file.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Bundesländer boundary check</caption>
+<colgroup>
+<col style="width: 27%">
+<col style="width: 72%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Boundary status</td>
+<td style="text-align: left;">Loaded Bundesländer / NUTS1 boundaries from data/external/germany_nuts1_2021.geojson</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Number of Bundesländer polygons</td>
+<td style="text-align: left;">16</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="distribution-of-observations-in-germany" class="level2" data-number="0.8">
+<h2 data-number="0.8" class="anchored" data-anchor-id="distribution-of-observations-in-germany"><span class="header-section-number">0.8</span> Distribution of observations in Germany</h2>
+<p><strong>Why this visual is needed:</strong> the dataset contains coordinates, so a map is the fastest way to see where records are concentrated. Because one map type does not tell the whole story, the report now keeps several Germany density visualisations for comparison.</p>
+<p><strong>Suggested reading order:</strong> start with the <strong>points + contours</strong> map, check the <strong>smooth filled density</strong> map for a cleaner hotspot view, and use the <strong>grid map</strong> as a non-smoothed count-based comparison.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/germany-distribution-main-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Darker/higher-density areas show places with more recorded observations. This should be interpreted as observation intensity, because a place can have many records due to active platforms, active observers, or easier access.</p>
+<section id="germany-density-map-comparison" class="level3" data-number="0.8.1">
+<h3 data-number="0.8.1" class="anchored" data-anchor-id="germany-density-map-comparison"><span class="header-section-number">0.8.1</span> Germany density map comparison</h3>
+<p>These extra maps are kept on purpose so you can compare styles in the rendered HTML.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/germany-distribution-contours-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/germany-distribution-filled-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/germany-distribution-grid-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/germany-distribution-points-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Quick recommendation.</strong> If you want one final Germany map, I would keep <strong>points + contours</strong> as the main option and <strong>smooth filled density</strong> as the backup presentation option.</p>
+</section>
+</section>
+<section id="observations-by-year" class="level2" data-number="0.9">
+<h2 data-number="0.9" class="anchored" data-anchor-id="observations-by-year"><span class="header-section-number">0.9</span> Observations by year</h2>
+<p><strong>Why this visual is needed:</strong> the year chart checks whether the dataset is balanced through time or dominated by a few recent years. This matters because spatial maps can be influenced by when observations were collected.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/observations-by-year-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> Peaks in this chart should be read as peaks in recording activity. They do not automatically mean that more trees existed in those years.</p>
+</section>
+<section id="observations-by-source-on-the-country-map" class="level2" data-number="0.10">
+<h2 data-number="0.10" class="anchored" data-anchor-id="observations-by-source-on-the-country-map"><span class="header-section-number">0.10</span> Observations by source on the country map</h2>
+<p><strong>Why this visual is needed:</strong> different data sources can have different spatial footprints. The map helps check whether one source dominates certain areas of Germany.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/source-map-1.png" class="img-fluid figure-img" width="960"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This map is useful for spotting source bias. If one source is dense in one region and another source is dense elsewhere, regional patterns may partly reflect data collection rather than biology.</p>
+</section>
+<section id="observations-by-source-as-a-bar-chart" class="level2" data-number="0.11">
+<h2 data-number="0.11" class="anchored" data-anchor-id="observations-by-source-as-a-bar-chart"><span class="header-section-number">0.11</span> Observations by source as a bar chart</h2>
+<p><strong>Why this visual is needed:</strong> the map shows geography, but the bar chart makes it easier to compare source sizes. Both are needed because they answer different questions.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/source-bar-chart-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The largest bar shows which source contributes the most records. This is important because a dominant source can strongly shape the spatial pattern seen on the maps.</p>
+</section>
+<section id="short-note-on-the-two-plntnet-source-names" class="level2" data-number="0.12">
+<h2 data-number="0.12" class="anchored" data-anchor-id="short-note-on-the-two-plntnet-source-names"><span class="header-section-number">0.12</span> Short note on the two Pl@ntNet source names</h2>
+<p><code>Pl@ntNet observations</code> and <code>Pl@ntNet auto ID</code> are both Pl@ntNet-derived, but they do not mean exactly the same thing. In this report, I keep them separate because they use different validation routes: one is the regular shared-observation dataset, and the other is the automatically identified occurrences dataset.</p>
+</section>
+<section id="observations-mapped-to-bundesländer" class="level2" data-number="0.13">
+<h2 data-number="0.13" class="anchored" data-anchor-id="observations-mapped-to-bundesländer"><span class="header-section-number">0.13</span> Observations mapped to Bundesländer</h2>
+<p><strong>Why this step is needed:</strong> the original data has coordinates, not a ready-made Bundesland field. To compare federal states, the points must first be spatially joined to the Bundesländer polygons.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Bundesland spatial join check</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Germany observations before Bundesland join</td>
+<td style="text-align: left;">205,747</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Germany observations matched to a Bundesland</td>
+<td style="text-align: left;">205,143</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Bundesländer with at least one observation</td>
+<td style="text-align: left;">16</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Observations mapped to Bundesländer</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">bundesland</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: left;">sources</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Nordrhein-Westfalen</td>
+<td style="text-align: left;">36,534</td>
+<td style="text-align: left;">243</td>
+<td style="text-align: left;">16</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Bayern</td>
+<td style="text-align: left;">34,142</td>
+<td style="text-align: left;">301</td>
+<td style="text-align: left;">25</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Baden-Württemberg</td>
+<td style="text-align: left;">28,112</td>
+<td style="text-align: left;">287</td>
+<td style="text-align: left;">21</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Niedersachsen</td>
+<td style="text-align: left;">21,091</td>
+<td style="text-align: left;">228</td>
+<td style="text-align: left;">16</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Rheinland-Pfalz</td>
+<td style="text-align: left;">18,536</td>
+<td style="text-align: left;">235</td>
+<td style="text-align: left;">17</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Hessen</td>
+<td style="text-align: left;">18,366</td>
+<td style="text-align: left;">237</td>
+<td style="text-align: left;">13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Brandenburg</td>
+<td style="text-align: left;">8,308</td>
+<td style="text-align: left;">196</td>
+<td style="text-align: left;">14</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sachsen</td>
+<td style="text-align: left;">7,674</td>
+<td style="text-align: left;">196</td>
+<td style="text-align: left;">14</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schleswig-Holstein</td>
+<td style="text-align: left;">7,599</td>
+<td style="text-align: left;">175</td>
+<td style="text-align: left;">11</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Thüringen</td>
+<td style="text-align: left;">5,634</td>
+<td style="text-align: left;">168</td>
+<td style="text-align: left;">12</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Berlin</td>
+<td style="text-align: left;">5,189</td>
+<td style="text-align: left;">158</td>
+<td style="text-align: left;">13</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mecklenburg-Vorpommern</td>
+<td style="text-align: left;">5,024</td>
+<td style="text-align: left;">185</td>
+<td style="text-align: left;">11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sachsen-Anhalt</td>
+<td style="text-align: left;">4,790</td>
+<td style="text-align: left;">165</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Saarland</td>
+<td style="text-align: left;">2,753</td>
+<td style="text-align: left;">141</td>
+<td style="text-align: left;">11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hamburg</td>
+<td style="text-align: left;">1,081</td>
+<td style="text-align: left;">106</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Bremen</td>
+<td style="text-align: left;">310</td>
+<td style="text-align: left;">68</td>
+<td style="text-align: left;">6</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This table is the cleanest check that the spatial join worked. If many Germany points were not matched, the boundary data or coordinate quality should be checked before trusting the maps.</p>
+</section>
+<section id="bundesländer-bar-chart" class="level2" data-number="0.14">
+<h2 data-number="0.14" class="anchored" data-anchor-id="bundesländer-bar-chart"><span class="header-section-number">0.14</span> Bundesländer bar chart</h2>
+<p><strong>Why this visual is needed:</strong> the bar chart is the best way to rank federal states because each state is compared on the same axis.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/bundesland-bar-chart-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This chart shows which Bundesländer dominate the German subset. It should not be read as a direct comparison of tree abundance because the number of observations also depends on recording effort.</p>
+</section>
+<section id="bundesländer-map" class="level2" data-number="0.15">
+<h2 data-number="0.15" class="anchored" data-anchor-id="bundesländer-map"><span class="header-section-number">0.15</span> Bundesländer map</h2>
+<p><strong>Why this visual is needed:</strong> the map complements the bar chart by showing where high-record states are located geographically.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/bundesland-map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This map is useful for spatial context, but it is less precise for ranking than the bar chart. Larger states can also look visually more important because they occupy more map area.</p>
+</section>
+<section id="berlin" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Berlin</h1>
+<section id="load-berlin-district-boundaries" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="load-berlin-district-boundaries"><span class="header-section-number">1.1</span> Load Berlin district boundaries</h2>
+<p>Berlin is handled separately because it needs a finer boundary layer than Bundesländer. The public fallback file contains many small Berlin local-area polygons, so I describe the results as Berlin district/local-area results.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Berlin boundary check</caption>
+<colgroup>
+<col style="width: 32%">
+<col style="width: 67%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Berlin district/local-area boundary status</td>
+<td style="text-align: left;">Loaded Berlin district/local-area boundaries from data/external/berlin_districts.geojson</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Number of Berlin polygons</td>
+<td style="text-align: left;">97</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="berlin-observations-table" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="berlin-observations-table"><span class="header-section-number">1.2</span> Berlin observations table</h2>
+<p><strong>Why this table is needed:</strong> it shows how Berlin observations were selected and gives the main record counts before the Berlin maps.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Berlin observation summary</caption>
+<colgroup>
+<col style="width: 31%">
+<col style="width: 68%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Berlin filtering method</td>
+<td style="text-align: left;">Spatial join to Berlin district/local-area polygons</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Berlin observations</td>
+<td style="text-align: left;">5,192</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Berlin recorded species</td>
+<td style="text-align: left;">158</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Available source values</td>
+<td style="text-align: left;">13</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Available years</td>
+<td style="text-align: left;">2015-2024</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Interpretation.</strong> I removed the old observation/species bar chart because it put two very different measures on one axis. This table is clearer.</p>
+</section>
+<section id="berlin-observation-sources" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="berlin-observation-sources"><span class="header-section-number">1.3</span> Berlin observation sources</h2>
+<p><strong>Why this visual is needed:</strong> Berlin observations are not equally distributed across sources, so source composition is important context for every Berlin map.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Berlin observations by source</caption>
+<colgroup>
+<col style="width: 52%">
+<col style="width: 18%">
+<col style="width: 8%">
+<col style="width: 20%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">source_short</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+<th style="text-align: left;">label</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">iNaturalist research-grade</td>
+<td style="text-align: left;">3,133</td>
+<td style="text-align: left;">60.3%</td>
+<td style="text-align: left;">3,133 (60.3%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pl@ntNet auto ID</td>
+<td style="text-align: left;">1,241</td>
+<td style="text-align: left;">23.9%</td>
+<td style="text-align: left;">1,241 (23.9%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ArtenFinder</td>
+<td style="text-align: left;">388</td>
+<td style="text-align: left;">7.5%</td>
+<td style="text-align: left;">388 (7.5%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Pl@ntNet observations</td>
+<td style="text-align: left;">151</td>
+<td style="text-align: left;">2.9%</td>
+<td style="text-align: left;">151 (2.9%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">108</td>
+<td style="text-align: left;">2.1%</td>
+<td style="text-align: left;">108 (2.1%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Observation.org</td>
+<td style="text-align: left;">101</td>
+<td style="text-align: left;">1.9%</td>
+<td style="text-align: left;">101 (1.9%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">EOD – eBird Observation Dataset</td>
+<td style="text-align: left;">55</td>
+<td style="text-align: left;">1.1%</td>
+<td style="text-align: left;">55 (1.1%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BoBO - Botanic Garden and Botani…</td>
+<td style="text-align: left;">7</td>
+<td style="text-align: left;">0.1%</td>
+<td style="text-align: left;">7 (0.1%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Xeno-canto - Bird sounds from ar…</td>
+<td style="text-align: left;">4</td>
+<td style="text-align: left;">0.1%</td>
+<td style="text-align: left;">4 (0.1%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">7a3679ef-5582-4aaa-81f0-8c2545ca…</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Database for alien invasive plan…</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1 (0.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Database of field studies on env…</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Spatially explicit database of t…</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1 (0.0%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-source-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This chart tells us which platforms shape the Berlin subset most. If one source dominates, the Berlin hotspots may partly show that source’s recording behaviour.</p>
+</section>
+<section id="spatial-distribution-of-berlin-observations" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="spatial-distribution-of-berlin-observations"><span class="header-section-number">1.4</span> Spatial distribution of Berlin observations</h2>
+<p><strong>Why this visual is needed:</strong> this is the clearest Berlin plot because it shows where observations cluster inside the city. The density layer avoids overplotting, and the local-area borders give spatial context.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-spatial-distribution-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The density map highlights observation hotspots inside Berlin. Like the Germany maps, it is a map of recorded observations, not a direct map of all trees in the city.</p>
+</section>
+<section id="berlin-local-areas-observations-and-species" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="berlin-local-areas-observations-and-species"><span class="header-section-number">1.5</span> Berlin local areas: observations and species</h2>
+<p><strong>Why this section is needed:</strong> the density map shows hotspots, but district/local-area summaries make the pattern easier to compare and check.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top Berlin local areas by observation count</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">district</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: left;">sources</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Grunewald</td>
+<td style="text-align: left;">1,714</td>
+<td style="text-align: left;">87</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Wannsee</td>
+<td style="text-align: left;">490</td>
+<td style="text-align: left;">76</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Dahlem</td>
+<td style="text-align: left;">298</td>
+<td style="text-align: left;">39</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Zehlendorf</td>
+<td style="text-align: left;">274</td>
+<td style="text-align: left;">43</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Hakenfelde</td>
+<td style="text-align: left;">273</td>
+<td style="text-align: left;">46</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Marienfelde</td>
+<td style="text-align: left;">261</td>
+<td style="text-align: left;">49</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Buch</td>
+<td style="text-align: left;">247</td>
+<td style="text-align: left;">60</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Westend</td>
+<td style="text-align: left;">165</td>
+<td style="text-align: left;">32</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Köpenick</td>
+<td style="text-align: left;">163</td>
+<td style="text-align: left;">45</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Rahnsdorf</td>
+<td style="text-align: left;">135</td>
+<td style="text-align: left;">36</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Nikolassee</td>
+<td style="text-align: left;">127</td>
+<td style="text-align: left;">43</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Müggelheim</td>
+<td style="text-align: left;">120</td>
+<td style="text-align: left;">39</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Blankenfelde</td>
+<td style="text-align: left;">116</td>
+<td style="text-align: left;">41</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tegel</td>
+<td style="text-align: left;">114</td>
+<td style="text-align: left;">29</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Französisch Buchholz</td>
+<td style="text-align: left;">109</td>
+<td style="text-align: left;">35</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Schlachtensee</td>
+<td style="text-align: left;">92</td>
+<td style="text-align: left;">22</td>
+<td style="text-align: left;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Kladow</td>
+<td style="text-align: left;">60</td>
+<td style="text-align: left;">23</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Gatow</td>
+<td style="text-align: left;">45</td>
+<td style="text-align: left;">24</td>
+<td style="text-align: left;">5</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schmöckwitz</td>
+<td style="text-align: left;">44</td>
+<td style="text-align: left;">24</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Heiligensee</td>
+<td style="text-align: left;">40</td>
+<td style="text-align: left;">15</td>
+<td style="text-align: left;">5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-district-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-species-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-district-map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The bar charts are better for comparing exact ranks, while the map is better for seeing where the high-record areas are located.</p>
+</section>
+<section id="top-recorded-species-in-berlin" class="level2" data-number="1.6">
+<h2 data-number="1.6" class="anchored" data-anchor-id="top-recorded-species-in-berlin"><span class="header-section-number">1.6</span> Top recorded species in Berlin</h2>
+<p><strong>Why this visual is needed:</strong> this gives a simple biological summary after the spatial summaries. It should still be read as recorded observations, not a census of tree abundance.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top recorded species in Berlin</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Cupania sylvatica</td>
+<td style="text-align: left;">750</td>
+<td style="text-align: left;">14.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fagus sylvatica</td>
+<td style="text-align: left;">373</td>
+<td style="text-align: left;">7.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Quercus oblongata</td>
+<td style="text-align: left;">258</td>
+<td style="text-align: left;">5.0%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Dryocopus martius</td>
+<td style="text-align: left;">234</td>
+<td style="text-align: left;">4.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Prunus padus</td>
+<td style="text-align: left;">230</td>
+<td style="text-align: left;">4.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Euonymus europaeus</td>
+<td style="text-align: left;">218</td>
+<td style="text-align: left;">4.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schefflera macrophylla</td>
+<td style="text-align: left;">180</td>
+<td style="text-align: left;">3.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus serotina</td>
+<td style="text-align: left;">169</td>
+<td style="text-align: left;">3.3%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sorbus aucuparia</td>
+<td style="text-align: left;">164</td>
+<td style="text-align: left;">3.2%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Robinia pseudoacacia</td>
+<td style="text-align: left;">158</td>
+<td style="text-align: left;">3.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Carpinus betulus</td>
+<td style="text-align: left;">108</td>
+<td style="text-align: left;">2.1%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Croton laccifer</td>
+<td style="text-align: left;">107</td>
+<td style="text-align: left;">2.1%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sambucus nigra</td>
+<td style="text-align: left;">97</td>
+<td style="text-align: left;">1.9%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Symphoricarpos albus</td>
+<td style="text-align: left;">97</td>
+<td style="text-align: left;">1.9%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Alnus glutinosa</td>
+<td style="text-align: left;">93</td>
+<td style="text-align: left;">1.8%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/berlin-top-species-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="nordrhein-westfalen-nrw" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Nordrhein-Westfalen (NRW)</h1>
+<section id="load-nrw-boundaries" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="load-nrw-boundaries"><span class="header-section-number">2.1</span> Load NRW boundaries</h2>
+<p><strong>Why this step is needed:</strong> NRW needs one boundary for filtering observations and NUTS3 boundaries for district-level comparisons. NUTS3 regions correspond approximately to Kreise and kreisfreie Städte.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>NRW boundary check</caption>
+<colgroup>
+<col style="width: 24%">
+<col style="width: 75%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">item</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">NRW boundary available</td>
+<td style="text-align: left;">Yes</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NUTS3 boundary status</td>
+<td style="text-align: left;">Loaded NUTS3 boundaries from data/external/germany_nuts3_2021.geojson</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">NRW district polygons</td>
+<td style="text-align: left;">53</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="filter-observations-to-nrw" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="filter-observations-to-nrw"><span class="header-section-number">2.2</span> Filter observations to NRW</h2>
+<p><strong>Why this table is needed:</strong> before mapping NRW, we need to know how many observations and species were found and whether filtering used real boundaries or a fallback box.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>NRW observation summary</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">metric</th>
+<th style="text-align: left;">value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">NRW filtering method</td>
+<td style="text-align: left;">Spatial join to official NUTS1 NRW boundary</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NRW observations</td>
+<td style="text-align: left;">36,534</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">NRW recorded species</td>
+<td style="text-align: left;">243</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NRW recorded genera</td>
+<td style="text-align: left;">126</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">NRW recorded families</td>
+<td style="text-align: left;">61</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Available source values</td>
+<td style="text-align: left;">16</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Available years</td>
+<td style="text-align: left;">2015-2024</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This table is a necessary quality check. If the boundary join is used, the NRW subset is more reliable than a simple bounding-box filter.</p>
+</section>
+<section id="nrw-observation-sources" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="nrw-observation-sources"><span class="header-section-number">2.3</span> NRW observation sources</h2>
+<p><strong>Why this visual is needed:</strong> the NRW PDF showed that a few data sources contribute most records, so source composition should stay in the unified report.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>NRW observations by source</caption>
+<colgroup>
+<col style="width: 51%">
+<col style="width: 18%">
+<col style="width: 8%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">source_short</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+<th style="text-align: left;">label</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Pl@ntNet auto ID</td>
+<td style="text-align: left;">15,693</td>
+<td style="text-align: left;">43.0%</td>
+<td style="text-align: left;">15,693 (43.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Observation.org</td>
+<td style="text-align: left;">14,288</td>
+<td style="text-align: left;">39.1%</td>
+<td style="text-align: left;">14,288 (39.1%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">iNaturalist research-grade</td>
+<td style="text-align: left;">3,436</td>
+<td style="text-align: left;">9.4%</td>
+<td style="text-align: left;">3,436 (9.4%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">naturgucker</td>
+<td style="text-align: left;">1,556</td>
+<td style="text-align: left;">4.3%</td>
+<td style="text-align: left;">1,556 (4.3%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Pl@ntNet observations</td>
+<td style="text-align: left;">1,250</td>
+<td style="text-align: left;">3.4%</td>
+<td style="text-align: left;">1,250 (3.4%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">EOD – eBird Observation Dataset</td>
+<td style="text-align: left;">222</td>
+<td style="text-align: left;">0.6%</td>
+<td style="text-align: left;">222 (0.6%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ArtenFinder</td>
+<td style="text-align: left;">66</td>
+<td style="text-align: left;">0.2%</td>
+<td style="text-align: left;">66 (0.2%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Spatially explicit database of t…</td>
+<td style="text-align: left;">6</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">6 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">6ac3f774-d9fb-4796-b3e9-92bf6c81…</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">3 (0.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Database for alien invasive plan…</td>
+<td style="text-align: left;">3</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">3 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">14d5676a-2c54-4f94-9023-1e8dcd82…</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">2 (0.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">8a863029-f435-446a-821e-275f4f64…</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">2 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Anymals+plants - Citizen Science…</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">2 (0.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Birda - Global Observation Dataset</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">2 (0.0%)</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Xeno-canto - Bird sounds from ar…</td>
+<td style="text-align: left;">2</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">2 (0.0%)</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">The Fungal, Lichen and Plant Col…</td>
+<td style="text-align: left;">1</td>
+<td style="text-align: left;">0.0%</td>
+<td style="text-align: left;">1 (0.0%)</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-source-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This chart explains source bias before the maps. A dominant source can make one region look more important simply because that platform has more records there.</p>
+</section>
+<section id="nrw-observation-density-maps" class="level2" data-number="2.4">
+<h2 data-number="2.4" class="anchored" data-anchor-id="nrw-observation-density-maps"><span class="header-section-number">2.4</span> NRW observation density maps</h2>
+<p><strong>Why this visual is needed:</strong> a map is needed to see the spatial distribution inside NRW, but a raw point map can be too crowded. Because the best style is not obvious, this report keeps several NRW density visualisations for direct comparison.</p>
+<p><strong>My recommendation:</strong> the <strong>points + contours</strong> map is the best balanced option. It keeps the underlying point pattern visible, but it also shows smoother hotspot zones. The <strong>smooth filled density</strong> map is also good for presentation.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-density-main-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> This map is good for seeing NRW hotspots, but it should not be interpreted as true tree abundance. It is a map of where records are concentrated.</p>
+<section id="nrw-density-map-comparison" class="level3" data-number="2.4.1">
+<h3 data-number="2.4.1" class="anchored" data-anchor-id="nrw-density-map-comparison"><span class="header-section-number">2.4.1</span> NRW density map comparison</h3>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-density-contours-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-density-filled-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-density-grid-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-density-points-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Quick recommendation.</strong> If you want to keep two NRW maps, I would keep <strong>density contours plus points</strong> and <strong>smooth filled density</strong>. The contour version is more informative, while the filled version is cleaner.</p>
+</section>
+</section>
+<section id="nrw-districts-observations-and-species" class="level2" data-number="2.5">
+<h2 data-number="2.5" class="anchored" data-anchor-id="nrw-districts-observations-and-species"><span class="header-section-number">2.5</span> NRW districts: observations and species</h2>
+<p><strong>Why this step is needed:</strong> NUTS3 districts provide a useful middle scale between individual points and the whole NRW region.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top NRW NUTS3 districts by observation count</caption>
+<colgroup>
+<col style="width: 17%">
+<col style="width: 39%">
+<col style="width: 19%">
+<col style="width: 11%">
+<col style="width: 11%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">district_id</th>
+<th style="text-align: left;">district_name</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">species</th>
+<th style="text-align: left;">sources</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">DEA37</td>
+<td style="text-align: left;">Steinfurt</td>
+<td style="text-align: left;">2,561</td>
+<td style="text-align: left;">126</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA28</td>
+<td style="text-align: left;">Euskirchen</td>
+<td style="text-align: left;">2,548</td>
+<td style="text-align: left;">103</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA2D</td>
+<td style="text-align: left;">Städteregion Aachen</td>
+<td style="text-align: left;">1,850</td>
+<td style="text-align: left;">110</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA2C</td>
+<td style="text-align: left;">Rhein-Sieg-Kreis</td>
+<td style="text-align: left;">1,688</td>
+<td style="text-align: left;">106</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA57</td>
+<td style="text-align: left;">Hochsauerlandkreis</td>
+<td style="text-align: left;">1,603</td>
+<td style="text-align: left;">92</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA1E</td>
+<td style="text-align: left;">Viersen</td>
+<td style="text-align: left;">1,358</td>
+<td style="text-align: left;">106</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA33</td>
+<td style="text-align: left;">Münster, Kreisfreie Stadt</td>
+<td style="text-align: left;">1,323</td>
+<td style="text-align: left;">99</td>
+<td style="text-align: left;">8</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA26</td>
+<td style="text-align: left;">Düren</td>
+<td style="text-align: left;">1,081</td>
+<td style="text-align: left;">84</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA58</td>
+<td style="text-align: left;">Märkischer Kreis</td>
+<td style="text-align: left;">1,061</td>
+<td style="text-align: left;">80</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA34</td>
+<td style="text-align: left;">Borken</td>
+<td style="text-align: left;">1,028</td>
+<td style="text-align: left;">98</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA1C</td>
+<td style="text-align: left;">Mettmann</td>
+<td style="text-align: left;">1,004</td>
+<td style="text-align: left;">98</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA45</td>
+<td style="text-align: left;">Lippe</td>
+<td style="text-align: left;">1,001</td>
+<td style="text-align: left;">85</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA53</td>
+<td style="text-align: left;">Hagen, Kreisfreie Stadt</td>
+<td style="text-align: left;">998</td>
+<td style="text-align: left;">79</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA36</td>
+<td style="text-align: left;">Recklinghausen</td>
+<td style="text-align: left;">961</td>
+<td style="text-align: left;">89</td>
+<td style="text-align: left;">7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA56</td>
+<td style="text-align: left;">Ennepe-Ruhr-Kreis</td>
+<td style="text-align: left;">890</td>
+<td style="text-align: left;">87</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA1F</td>
+<td style="text-align: left;">Wesel</td>
+<td style="text-align: left;">846</td>
+<td style="text-align: left;">96</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA2B</td>
+<td style="text-align: left;">Rheinisch-Bergischer Kreis</td>
+<td style="text-align: left;">821</td>
+<td style="text-align: left;">83</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA2A</td>
+<td style="text-align: left;">Oberbergischer Kreis</td>
+<td style="text-align: left;">755</td>
+<td style="text-align: left;">74</td>
+<td style="text-align: left;">9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">DEA1B</td>
+<td style="text-align: left;">Kleve</td>
+<td style="text-align: left;">728</td>
+<td style="text-align: left;">93</td>
+<td style="text-align: left;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DEA35</td>
+<td style="text-align: left;">Coesfeld</td>
+<td style="text-align: left;">710</td>
+<td style="text-align: left;">87</td>
+<td style="text-align: left;">6</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-district-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-district-species-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-district-map-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> The district bar charts are best for ranking. The district map is best for seeing whether high-record districts are clustered geographically.</p>
+</section>
+<section id="sources-on-the-nrw-map" class="level2" data-number="2.6">
+<h2 data-number="2.6" class="anchored" data-anchor-id="sources-on-the-nrw-map"><span class="header-section-number">2.6</span> Sources on the NRW map</h2>
+<p><strong>Why this visual is needed:</strong> the source bar chart shows size, but this faceted map checks whether the largest sources cover the same parts of NRW.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-source-map-1.png" class="img-fluid figure-img" width="864"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Interpretation.</strong> If source panels look different, NRW spatial patterns may partly reflect source coverage. This makes the source map useful next to the overall density map.</p>
+</section>
+<section id="top-recorded-species-in-nrw" class="level2" data-number="2.7">
+<h2 data-number="2.7" class="anchored" data-anchor-id="top-recorded-species-in-nrw"><span class="header-section-number">2.7</span> Top recorded species in NRW</h2>
+<p><strong>Why this visual is needed:</strong> this gives a simple taxonomic summary for NRW without using optional GBIF common-name lookups. Scientific names are kept because they are more reproducible.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Top recorded species in NRW</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">level3_species</th>
+<th style="text-align: left;">observations</th>
+<th style="text-align: left;">share</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Fagus sylvatica</td>
+<td style="text-align: left;">3,896</td>
+<td style="text-align: left;">10.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ilex aquifolium</td>
+<td style="text-align: left;">2,728</td>
+<td style="text-align: left;">7.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Vaccinium myrtillus</td>
+<td style="text-align: left;">2,011</td>
+<td style="text-align: left;">5.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cupania sylvatica</td>
+<td style="text-align: left;">1,827</td>
+<td style="text-align: left;">5.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sorbus aucuparia</td>
+<td style="text-align: left;">1,576</td>
+<td style="text-align: left;">4.3%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus padus</td>
+<td style="text-align: left;">1,526</td>
+<td style="text-align: left;">4.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Dryocopus martius</td>
+<td style="text-align: left;">1,229</td>
+<td style="text-align: left;">3.4%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sambucus racemosa</td>
+<td style="text-align: left;">1,228</td>
+<td style="text-align: left;">3.4%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Corylus avellana</td>
+<td style="text-align: left;">1,203</td>
+<td style="text-align: left;">3.3%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Prunus spinosa</td>
+<td style="text-align: left;">1,172</td>
+<td style="text-align: left;">3.2%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Croton laccifer</td>
+<td style="text-align: left;">1,053</td>
+<td style="text-align: left;">2.9%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Cytisus scoparius</td>
+<td style="text-align: left;">917</td>
+<td style="text-align: left;">2.5%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Schefflera macrophylla</td>
+<td style="text-align: left;">910</td>
+<td style="text-align: left;">2.5%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Euonymus europaeus</td>
+<td style="text-align: left;">849</td>
+<td style="text-align: left;">2.3%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Viburnum opulus</td>
+<td style="text-align: left;">761</td>
+<td style="text-align: left;">2.1%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Quercus oblongata</td>
+<td style="text-align: left;">714</td>
+<td style="text-align: left;">2.0%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sambucus nigra</td>
+<td style="text-align: left;">605</td>
+<td style="text-align: left;">1.7%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Carpinus betulus</td>
+<td style="text-align: left;">577</td>
+<td style="text-align: left;">1.6%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Alnus glutinosa</td>
+<td style="text-align: left;">462</td>
+<td style="text-align: left;">1.3%</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Erica excelsa</td>
+<td style="text-align: left;">440</td>
+<td style="text-align: left;">1.2%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="GlobalGeoTree_unified_Germany_Berlin_NRW_student_v3_files/figure-html/nrw-top-species-bar-1.png" class="img-fluid figure-img" width="816"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="final-interpretation-notes" class="level2" data-number="2.8">
+<h2 data-number="2.8" class="anchored" data-anchor-id="final-interpretation-notes"><span class="header-section-number">2.8</span> Final interpretation notes</h2>
+<p>The most useful visualisations are the ones that compare the same records in different ways: Germany maps for national spatial patterns, year counts for time, source charts for data bias, Bundesländer and NRW district charts for regional comparison, and Berlin density/local-area plots for city-level clustering.</p>
+<p>The map and bar-chart pairs are intentionally kept together. Maps are good for spatial patterns, but bar charts are better for exact comparisons.</p>
+<p>All maps should be interpreted as maps of <strong>recording intensity</strong> in <code>GlobalGeoTree.csv</code>. High values can reflect true tree presence, but they can also reflect where observers and data platforms are more active.</p>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+window.document.addEventListener("DOMContentLoaded", function (event) {
+  const toggleBodyColorMode = (bsSheetEl) => {
+    const mode = bsSheetEl.getAttribute("data-mode");
+    const bodyEl = window.document.querySelector("body");
+    if (mode === "dark") {
+      bodyEl.classList.add("quarto-dark");
+      bodyEl.classList.remove("quarto-light");
+    } else {
+      bodyEl.classList.add("quarto-light");
+      bodyEl.classList.remove("quarto-dark");
+    }
+  }
+  const toggleBodyColorPrimary = () => {
+    const bsSheetEl = window.document.querySelector("link#quarto-bootstrap");
+    if (bsSheetEl) {
+      toggleBodyColorMode(bsSheetEl);
+    }
+  }
+  toggleBodyColorPrimary();  
+  const icon = "";
+  const anchorJS = new window.AnchorJS();
+  anchorJS.options = {
+    placement: 'right',
+    icon: icon
+  };
+  anchorJS.add('.anchored');
+  const isCodeAnnotation = (el) => {
+    for (const clz of el.classList) {
+      if (clz.startsWith('code-annotation-')) {                     
+        return true;
+      }
+    }
+    return false;
+  }
+  const onCopySuccess = function(e) {
+    // button target
+    const button = e.trigger;
+    // don't keep focus
+    button.blur();
+    // flash "checked"
+    button.classList.add('code-copy-button-checked');
+    var currentTitle = button.getAttribute("title");
+    button.setAttribute("title", "Copied!");
+    let tooltip;
+    if (window.bootstrap) {
+      button.setAttribute("data-bs-toggle", "tooltip");
+      button.setAttribute("data-bs-placement", "left");
+      button.setAttribute("data-bs-title", "Copied!");
+      tooltip = new bootstrap.Tooltip(button, 
+        { trigger: "manual", 
+          customClass: "code-copy-button-tooltip",
+          offset: [0, -8]});
+      tooltip.show();    
+    }
+    setTimeout(function() {
+      if (tooltip) {
+        tooltip.hide();
+        button.removeAttribute("data-bs-title");
+        button.removeAttribute("data-bs-toggle");
+        button.removeAttribute("data-bs-placement");
+      }
+      button.setAttribute("title", currentTitle);
+      button.classList.remove('code-copy-button-checked');
+    }, 1000);
+    // clear code selection
+    e.clearSelection();
+  }
+  const getTextToCopy = function(trigger) {
+      const codeEl = trigger.previousElementSibling.cloneNode(true);
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+  }
+  const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+    text: getTextToCopy
+  });
+  clipboard.on('success', onCopySuccess);
+  if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+    // For code content inside modals, clipBoardJS needs to be initialized with a container option
+    // TODO: Check when it could be a function (https://github.com/zenorocha/clipboard.js/issues/860)
+    const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+      text: getTextToCopy,
+      container: window.document.getElementById('quarto-embedded-source-code-modal')
+    });
+    clipboardModal.on('success', onCopySuccess);
+  }
+    var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+    var mailtoRegex = new RegExp(/^mailto:/);
+      var filterRegex = new RegExp('/' + window.location.host + '/');
+    var isInternal = (href) => {
+        return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+    }
+    // Inspect non-navigation links and adorn them if external
+ 	var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+    for (var i=0; i<links.length; i++) {
+      const link = links[i];
+      if (!isInternal(link.href)) {
+        // undo the damage that might have been done by quarto-nav.js in the case of
+        // links that we want to consider external
+        if (link.dataset.originalHref !== undefined) {
+          link.href = link.dataset.originalHref;
+        }
+      }
+    }
+  function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+    const config = {
+      allowHTML: true,
+      maxWidth: 500,
+      delay: 100,
+      arrow: false,
+      appendTo: function(el) {
+          return el.parentElement;
+      },
+      interactive: true,
+      interactiveBorder: 10,
+      theme: 'quarto',
+      placement: 'bottom-start',
+    };
+    if (contentFn) {
+      config.content = contentFn;
+    }
+    if (onTriggerFn) {
+      config.onTrigger = onTriggerFn;
+    }
+    if (onUntriggerFn) {
+      config.onUntrigger = onUntriggerFn;
+    }
+    window.tippy(el, config); 
+  }
+  const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+  for (var i=0; i<noterefs.length; i++) {
+    const ref = noterefs[i];
+    tippyHover(ref, function() {
+      // use id or data attribute instead here
+      let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+      try { href = new URL(href).hash; } catch {}
+      const id = href.replace(/^#\/?/, "");
+      const note = window.document.getElementById(id);
+      if (note) {
+        return note.innerHTML;
+      } else {
+        return "";
+      }
+    });
+  }
+  const xrefs = window.document.querySelectorAll('a.quarto-xref');
+  const processXRef = (id, note) => {
+    // Strip column container classes
+    const stripColumnClz = (el) => {
+      el.classList.remove("page-full", "page-columns");
+      if (el.children) {
+        for (const child of el.children) {
+          stripColumnClz(child);
+        }
+      }
+    }
+    stripColumnClz(note)
+    if (id === null || id.startsWith('sec-')) {
+      // Special case sections, only their first couple elements
+      const container = document.createElement("div");
+      if (note.children && note.children.length > 2) {
+        container.appendChild(note.children[0].cloneNode(true));
+        for (let i = 1; i < note.children.length; i++) {
+          const child = note.children[i];
+          if (child.tagName === "P" && child.innerText === "") {
+            continue;
+          } else {
+            container.appendChild(child.cloneNode(true));
+            break;
+          }
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(container);
+        }
+        return container.innerHTML
+      } else {
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        return note.innerHTML;
+      }
+    } else {
+      // Remove any anchor links if they are present
+      const anchorLink = note.querySelector('a.anchorjs-link');
+      if (anchorLink) {
+        anchorLink.remove();
+      }
+      if (window.Quarto?.typesetMath) {
+        window.Quarto.typesetMath(note);
+      }
+      // TODO in 1.5, we should make sure this works without a callout special case
+      if (note.classList.contains("callout")) {
+        return note.outerHTML;
+      } else {
+        return note.innerHTML;
+      }
+    }
+  }
+  for (var i=0; i<xrefs.length; i++) {
+    const xref = xrefs[i];
+    tippyHover(xref, undefined, function(instance) {
+      instance.disable();
+      let url = xref.getAttribute('href');
+      let hash = undefined; 
+      if (url.startsWith('#')) {
+        hash = url;
+      } else {
+        try { hash = new URL(url).hash; } catch {}
+      }
+      if (hash) {
+        const id = hash.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note !== null) {
+          try {
+            const html = processXRef(id, note.cloneNode(true));
+            instance.setContent(html);
+          } finally {
+            instance.enable();
+            instance.show();
+          }
+        } else {
+          // See if we can fetch this
+          fetch(url.split('#')[0])
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.getElementById(id);
+            if (note !== null) {
+              const html = processXRef(id, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      } else {
+        // See if we can fetch a full url (with no hash to target)
+        // This is a special case and we should probably do some content thinning / targeting
+        fetch(url)
+        .then(res => res.text())
+        .then(html => {
+          const parser = new DOMParser();
+          const htmlDoc = parser.parseFromString(html, "text/html");
+          const note = htmlDoc.querySelector('main.content');
+          if (note !== null) {
+            // This should only happen for chapter cross references
+            // (since there is no id in the URL)
+            // remove the first header
+            if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+              note.children[0].remove();
+            }
+            const html = processXRef(null, note);
+            instance.setContent(html);
+          } 
+        }).finally(() => {
+          instance.enable();
+          instance.show();
+        });
+      }
+    }, function(instance) {
+    });
+  }
+      let selectedAnnoteEl;
+      const selectorForAnnotation = ( cell, annotation) => {
+        let cellAttr = 'data-code-cell="' + cell + '"';
+        let lineAttr = 'data-code-annotation="' +  annotation + '"';
+        const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+        return selector;
+      }
+      const selectCodeLines = (annoteEl) => {
+        const doc = window.document;
+        const targetCell = annoteEl.getAttribute("data-target-cell");
+        const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+        const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+        const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+        const lineIds = lines.map((line) => {
+          return targetCell + "-" + line;
+        })
+        let top = null;
+        let height = null;
+        let parent = null;
+        if (lineIds.length > 0) {
+            //compute the position of the single el (top and bottom and make a div)
+            const el = window.document.getElementById(lineIds[0]);
+            top = el.offsetTop;
+            height = el.offsetHeight;
+            parent = el.parentElement.parentElement;
+          if (lineIds.length > 1) {
+            const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+            const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+            height = bottom - top;
+          }
+          if (top !== null && height !== null && parent !== null) {
+            // cook up a div (if necessary) and position it 
+            let div = window.document.getElementById("code-annotation-line-highlight");
+            if (div === null) {
+              div = window.document.createElement("div");
+              div.setAttribute("id", "code-annotation-line-highlight");
+              div.style.position = 'absolute';
+              parent.appendChild(div);
+            }
+            div.style.top = top - 2 + "px";
+            div.style.height = height + 4 + "px";
+            div.style.left = 0;
+            let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+            if (gutterDiv === null) {
+              gutterDiv = window.document.createElement("div");
+              gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+              gutterDiv.style.position = 'absolute';
+              const codeCell = window.document.getElementById(targetCell);
+              const gutter = codeCell.querySelector('.code-annotation-gutter');
+              gutter.appendChild(gutterDiv);
+            }
+            gutterDiv.style.top = top - 2 + "px";
+            gutterDiv.style.height = height + 4 + "px";
+          }
+          selectedAnnoteEl = annoteEl;
+        }
+      };
+      const unselectCodeLines = () => {
+        const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+        elementsIds.forEach((elId) => {
+          const div = window.document.getElementById(elId);
+          if (div) {
+            div.remove();
+          }
+        });
+        selectedAnnoteEl = undefined;
+      };
+        // Handle positioning of the toggle
+    window.addEventListener(
+      "resize",
+      throttle(() => {
+        elRect = undefined;
+        if (selectedAnnoteEl) {
+          selectCodeLines(selectedAnnoteEl);
+        }
+      }, 10)
+    );
+    function throttle(fn, ms) {
+    let throttle = false;
+    let timer;
+      return (...args) => {
+        if(!throttle) { // first call gets through
+            fn.apply(this, args);
+            throttle = true;
+        } else { // all the others get throttled
+            if(timer) clearTimeout(timer); // cancel #2
+            timer = setTimeout(() => {
+              fn.apply(this, args);
+              timer = throttle = false;
+            }, ms);
+        }
+      };
+    }
+      // Attach click handler to the DT
+      const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+      for (const annoteDlNode of annoteDls) {
+        annoteDlNode.addEventListener('click', (event) => {
+          const clickedEl = event.target;
+          if (clickedEl !== selectedAnnoteEl) {
+            unselectCodeLines();
+            const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+            if (activeEl) {
+              activeEl.classList.remove('code-annotation-active');
+            }
+            selectCodeLines(clickedEl);
+            clickedEl.classList.add('code-annotation-active');
+          } else {
+            // Unselect the line
+            unselectCodeLines();
+            clickedEl.classList.remove('code-annotation-active');
+          }
+        });
+      }
+  const findCites = (el) => {
+    const parentEl = el.parentElement;
+    if (parentEl) {
+      const cites = parentEl.dataset.cites;
+      if (cites) {
+        return {
+          el,
+          cites: cites.split(' ')
+        };
+      } else {
+        return findCites(el.parentElement)
+      }
+    } else {
+      return undefined;
+    }
+  };
+  var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+  for (var i=0; i<bibliorefs.length; i++) {
+    const ref = bibliorefs[i];
+    const citeInfo = findCites(ref);
+    if (citeInfo) {
+      tippyHover(citeInfo.el, function() {
+        var popup = window.document.createElement('div');
+        citeInfo.cites.forEach(function(cite) {
+          var citeDiv = window.document.createElement('div');
+          citeDiv.classList.add('hanging-indent');
+          citeDiv.classList.add('csl-entry');
+          var biblioDiv = window.document.getElementById('ref-' + cite);
+          if (biblioDiv) {
+            citeDiv.innerHTML = biblioDiv.innerHTML;
+          }
+          popup.appendChild(citeDiv);
+        });
+        return popup.innerHTML;
+      });
+    }
+  }
+});
+</script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
