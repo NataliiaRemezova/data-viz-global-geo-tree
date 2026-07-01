@@ -34,14 +34,21 @@ theme_set(
 source_colors <- c(
   "iNaturalist"                = "#8ECAE6",
   "Pl@ntNet"                   = "#FF9DA7",
+  "Other observation portals"  = "#4E79A7",
   "GBIF"                       = "#264653",
   "Wikidata/Wikipedia"         = "#B07AA1",
   "Institutional collections"  = "#9C6644",
   "Inventory/survey"           = "#B2DF8A",
+  "Atlas/flora databases"      = "#59A14F",
+  "Environmental/project data" = "#F28E2B",
+  "Invasive/non-native records" = "#E15759",
+  "Research/conservation data"  = "#76B7B2",
   "Other source"               = "#2CA02C",
   "Unknown source"             = "#E41A1C"
 )
 source_group_levels <- names(source_colors)
+source_group_levels_plot <- setdiff(source_group_levels, "Unknown source")
+source_colors_plot <- source_colors[source_group_levels_plot]
 ```
 
 # Research Questions
@@ -97,28 +104,29 @@ raw <- fread("GlobalGeoTree.csv", showProgress = FALSE)
 
 # -----------------------------------------------------------------------
 # how source names are grouped into broad categories:
-#   - iNaturalist, Pl@ntNet, GBIF, Wikidata/Wikipedia, Institutional
-#     collections, and Inventory/survey are matched by keywords in the
-#     source name (e.g. "herbarium" -> Institutional collections)
+#   - most groups are matched by repeated keywords in the source name
+#     (e.g. "herbarium" -> Institutional collections; "atlas" ->
+#     Atlas/flora databases)
 #   - "Unknown source" = the source field was empty or explicitly said
 #     unknown/missing/n.a.
-#   - "Other source" = everything left over: thousands of individually
-#     named sources (national biodiversity portals, government forestry
-#     databases, regional citizen-science projects, museum exports, etc.)
-#     that don't match any of the patterns above. It is a catch-all
-#     bucket, not a single source - see the "What is in Other source?"
-#     section below for what's actually inside it.
+#   - "Other source" = everything left over after the recognisable patterns
+#     have been assigned. It is a catch-all bucket, not a single source.
 # -----------------------------------------------------------------------
 classify_source <- function(x) {
-  x_lower <- str_to_lower(x)
+  x_lower <- str_to_lower(str_trim(x))
   case_when(
+    str_detect(x_lower, "^(unknown( source)?|missing|n/?a|na|none|null)$") ~ "Unknown source",
     str_detect(x_lower, "inaturalist|inat")                     ~ "iNaturalist",
     str_detect(x_lower, "plantnet|pl@ntnet")                    ~ "Pl@ntNet",
     str_detect(x_lower, "gbif")                                  ~ "GBIF",
     str_detect(x_lower, "wikidata|wikipedia")                    ~ "Wikidata/Wikipedia",
+    str_detect(x_lower, "artportalen|species observation service|observation\\.org|waarnemingen|observations\\.be|naturgucker|irecord|naturemapr|arter\\.dk|artenfinder|species sightings|ozatlas") ~ "Other observation portals",
+    str_detect(x_lower, "non-native|non native|invasive|alien|weed|biosecurity|exotique") ~ "Invasive/non-native records",
+    str_detect(x_lower, "impacto ambiental|estudio de impacto|proyecto|hidroel[eé]ctrico|interconexi[oó]n|l[ií]nea de transmisi[oó]n|gasoducto|embalse|plan de manejo|restauraci[oó]n|minera|aprovechamiento forestal") ~ "Environmental/project data",
+    str_detect(x_lower, "atlas|flora|floristic|vascular plant|databank|biodiversit[aä]tsdatenbank|bsbi|bionet|kastikka|florus") ~ "Atlas/flora databases",
     str_detect(x_lower, "herbar|museum|botanic|arboretum")       ~ "Institutional collections",
-    str_detect(x_lower, "inventory|census|survey|monitoring")    ~ "Inventory/survey",
-    str_detect(x_lower, "^(unknown|missing|n/a|na|none|null)$")  ~ "Unknown source",
+    str_detect(x_lower, "inventory|inventaire|census|survey|monitoring") ~ "Inventory/survey",
+    str_detect(x_lower, "classified forest|conservation|protected|parc national|naturalists.? society|ornithological society|biofokus|onab|for[eê]t de lama|woody species|wild food plants") ~ "Research/conservation data",
     TRUE                                                         ~ "Other source"
   )
 }
@@ -175,6 +183,7 @@ This report uses `r comma(nrow(df))` observations.
 # Horizontal bars are used here because source names are long.
 # The percentage labels show each source's share of all observations.
 top_sources <- df %>%
+  filter(source_group != "Unknown source") %>%
   count(source_raw, sort = TRUE, name = "observations") %>%
   mutate(share = observations / sum(observations)) %>%
   slice_head(n = top_n_sources) %>%
@@ -200,7 +209,7 @@ ggplot(top_sources, aes(x = source_short, y = observations)) +
 
 # What Is in "Other Source"?
 
-*Why we look at this:* "Other source" is the second-largest group in this dataset, but unlike iNaturalist or Pl@ntNet it is not one platform - it is everything that didn't match a recognised keyword pattern. Before using it in any chart, it's worth showing what's actually inside it.
+*Why we look at this:* even after improving the source-name classification, "Other source" is still not one platform - it is everything that did not match a recognised keyword pattern. Before using it in any chart, it is worth showing what remains inside it.
 
 ```{r other-source-data}
 other_source_top <- df %>%
@@ -226,7 +235,17 @@ ggplot(other_source_top, aes(x = reorder(str_trunc(source_raw, 45), observations
   )
 ```
 
-**Interpretation.** "Other source" is not a single platform - it is a long tail of `r comma(n_other_sources)` individually named sources (national biodiversity portals, regional/government forestry or environmental-impact datasets, local citizen-science platforms such as Artportalen or Observation.org, and similar projects). Treat any chart that shows "Other source" as a group as a *mixture*, not as one consistent collection method - the countries and years where "Other source" is large are typically being driven by a handful of large national datasets rather than a single shared bias.
+**Interpretation.** "Other source" is not a single platform - it is the remaining long tail of `r comma(n_other_sources)` individually named sources that do not match the current rule-based categories. Treat any chart that shows "Other source" as a *mixture*, not as one consistent collection method. The audit table below is included so the grouping can be refined again if new repeated source-name patterns are visible.
+
+```{r other-source-name-audit}
+other_source_name_audit <- df %>%
+  filter(source_group == "Other source") %>%
+  count(source_raw, sort = TRUE, name = "observations") %>%
+  mutate(share_of_other = observations / sum(observations)) %>%
+  slice_head(n = 50)
+
+knitr::kable(other_source_name_audit, align = "lrr")
+```
 
 # Source Concentration
 
@@ -234,6 +253,7 @@ ggplot(other_source_top, aes(x = reorder(str_trunc(source_raw, 45), observations
 
 ```{r source-concentration-data}
 source_counts <- df %>%
+  filter(source_group != "Unknown source") %>%
   count(source_raw, sort = TRUE, name = "observations") %>%
   mutate(
     share = observations / sum(observations),
@@ -242,14 +262,15 @@ source_counts <- df %>%
   )
 
 source_group_counts <- df %>%
+  filter(source_group != "Unknown source") %>%
   count(source_group, name = "observations") %>%
   mutate(share = observations / sum(observations))
 
 inat_share    <- source_group_counts$share[source_group_counts$source_group == "iNaturalist"]
-citizen_share <- sum(source_group_counts$share[source_group_counts$source_group %in% c("iNaturalist", "Pl@ntNet")])
+citizen_share <- sum(source_group_counts$share[source_group_counts$source_group %in% c("iNaturalist", "Pl@ntNet", "Other observation portals")])
 ```
 
-The source structure is highly concentrated: **iNaturalist alone contributes `r percent(inat_share, accuracy = 0.1)`** of observations, and **iNaturalist plus Pl@ntNet together contribute `r percent(citizen_share, accuracy = 0.1)`**.
+The source structure is highly concentrated: **iNaturalist alone contributes `r percent(inat_share, accuracy = 0.1)`** of observations, and **citizen-science or observation-portal sources together contribute `r percent(citizen_share, accuracy = 0.1)`**.
 
 ```{r source-pareto, fig.width=9, fig.height=5}
 # Pareto chart: bars are each source's individual share, the line is the
@@ -273,7 +294,7 @@ ggplot(source_group_counts, aes(x = reorder(source_group, observations), y = obs
   geom_text(aes(label = percent(share, accuracy = 0.1)), hjust = -0.08, size = 3.2) +
   coord_flip(clip = "off") +
   scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.18))) +
-  scale_fill_manual(values = source_colors) +
+  scale_fill_manual(values = source_colors_plot) +
   labs(
     title = "Observation share by broad source group",
     subtitle = "Citizen-science platforms dominate the grouped source structure.",
@@ -283,11 +304,12 @@ ggplot(source_group_counts, aes(x = reorder(source_group, observations), y = obs
 
 ```{r citizen-science-bar, fig.width=7, fig.height=4}
 citizen_summary <- df %>%
-  mutate(is_citizen = source_group %in% c("iNaturalist", "Pl@ntNet")) %>%
+  filter(source_group != "Unknown source") %>%
+  mutate(is_citizen = source_group %in% c("iNaturalist", "Pl@ntNet", "Other observation portals")) %>%
   count(is_citizen, name = "observations") %>%
   mutate(
     share = observations / sum(observations),
-    label = ifelse(is_citizen, "Citizen-science source", "Other or unclear source")
+    label = ifelse(is_citizen, "Citizen-science / observation portal", "Other source type")
   )
 
 ggplot(citizen_summary, aes(x = label, y = observations, fill = is_citizen)) +
@@ -296,8 +318,8 @@ ggplot(citizen_summary, aes(x = label, y = observations, fill = is_citizen)) +
   scale_y_continuous(labels = comma, expand = expansion(mult = c(0, 0.14))) +
   scale_fill_manual(values = c("TRUE" = "#8ECAE6", "FALSE" = "#9C6644")) +
   labs(
-    title = "Citizen-science platforms dominate the observations",
-    subtitle = "Citizen-science is defined here as iNaturalist plus Pl@ntNet.",
+    title = "Citizen-science and observation portals dominate the observations",
+    subtitle = "This includes iNaturalist, Pl@ntNet, and other regional observation portals.",
     x = NULL, y = "Observations"
   )
 ```
@@ -363,17 +385,18 @@ top_source_groups <- source_group_counts %>% arrange(desc(observations)) %>%
 # because of trees, or because of one platform" (RQ3 q4) and "are sources
 # tied to specific years" (RQ2 q4) at the same time - one table answers both
 source_year <- df %>%
-  filter(year_value >= start_year, year_value <= end_year) %>%
+  filter(year_value >= start_year, year_value <= end_year,
+         source_group != "Unknown source") %>%
   mutate(source_group_plot = ifelse(as.character(source_group) %in% top_source_groups,
                                      as.character(source_group), "Other source")) %>%
   count(year_value, source_group_plot, name = "observations") %>%
-  right_join(expand.grid(year_value = start_year:end_year, source_group_plot = source_group_levels),
+  right_join(expand.grid(year_value = start_year:end_year, source_group_plot = source_group_levels_plot),
              by = c("year_value", "source_group_plot")) %>%
   mutate(observations = ifelse(is.na(observations), 0L, observations)) %>%
   group_by(year_value) %>%
   mutate(share = observations / sum(observations)) %>%
   ungroup() %>%
-  mutate(source_group_plot = factor(source_group_plot, levels = source_group_levels))
+  mutate(source_group_plot = factor(source_group_plot, levels = source_group_levels_plot))
 ```
 
 ```{r stacked-area-source-year, fig.width=9, fig.height=5}
@@ -381,7 +404,7 @@ ggplot(source_year, aes(x = year_value, y = observations, fill = source_group_pl
   geom_area(alpha = 0.9, linewidth = 0.15, color = "white") +
   scale_x_continuous(breaks = start_year:end_year) +
   scale_y_continuous(labels = comma) +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "Observation volume by source group and year",
        subtitle = "A rising source group can drive the apparent growth of the full dataset.",
        x = "Year", y = "Observations", fill = "Source group")
@@ -392,7 +415,7 @@ ggplot(source_year, aes(x = year_value, y = share, fill = source_group_plot)) +
   geom_col(width = 0.9) +
   scale_x_continuous(breaks = start_year:end_year) +
   scale_y_continuous(labels = percent) +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "Source composition by year", subtitle = "Bars sum to 100% within each year.",
        x = "Year", y = "Share of observations", fill = "Source group",
        caption = "The most recent year may be incomplete depending on the data export date.")
@@ -412,7 +435,7 @@ ggplot(largest_source_growth, aes(x = reorder(label, source_change), y = source_
   geom_col(width = 0.72, show.legend = FALSE) +
   coord_flip() +
   scale_y_continuous(labels = comma) +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "Largest source-specific yearly increases", x = NULL, y = "Increase from previous year")
 ```
 
@@ -489,7 +512,8 @@ ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
 top_country_values <- df %>% count(country_value, sort = TRUE) %>% slice_head(n = top_n_countries) %>% pull(country_value)
 
 country_source <- df %>%
-  filter(country_value %in% top_country_values) %>%
+  filter(country_value %in% top_country_values,
+         source_group != "Unknown source") %>%
   mutate(source_group_plot = ifelse(as.character(source_group) %in% top_source_groups,
                                      as.character(source_group), "Other source")) %>%
   count(country_value, source_group_plot, name = "observations") %>%
@@ -500,9 +524,10 @@ country_source <- df %>%
 country_order <- country_source %>% distinct(country_value, country_total) %>% arrange(country_total) %>% pull(country_value)
 country_source <- country_source %>%
   mutate(country_value = factor(country_value, levels = country_order),
-         source_group_plot = factor(source_group_plot, levels = source_group_levels))
+         source_group_plot = factor(source_group_plot, levels = source_group_levels_plot))
 
 country_dominant <- df %>%
+  filter(source_group != "Unknown source") %>%
   count(country_value, source_group, name = "observations") %>%
   group_by(country_value) %>%
   mutate(country_total = sum(observations), share = observations / country_total) %>%
@@ -515,13 +540,13 @@ ggplot(country_source, aes(x = country_value, y = share, fill = source_group_plo
   geom_col(width = 0.75) +
   coord_flip() +
   scale_y_continuous(labels = percent) +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "Source composition differs by country",
        subtitle = paste0("Top ", top_n_countries, " countries by observations; bars sum to 100% within each country."),
        x = NULL, y = "Share of country observations", fill = "Source group")
 ```
 
-**Interpretation.** Countries differ both in volume and in source mix - a country dominated by iNaturalist is not directly comparable to one dominated by local inventories or unknown sources.
+**Interpretation.** Countries differ both in volume and in source mix - a country dominated by iNaturalist is not directly comparable to one dominated by local inventories, regional portals, or environmental-project datasets.
 
 ```{r country-diversity-data}
 # Shannon diversity -> "effective number of source groups" per country.
@@ -533,6 +558,7 @@ shannon_diversity <- function(counts) {
 }
 
 country_diversity <- df %>%
+  filter(source_group != "Unknown source") %>%
   count(country_value, source_group, name = "observations") %>%
   group_by(country_value) %>%
   summarise(
@@ -550,7 +576,7 @@ country_diversity <- df %>%
 ggplot(country_diversity, aes(x = country_value, y = effective_sources, fill = dominant_source)) +
   geom_col(width = 0.72) +
   coord_flip() +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "How source-diverse are the largest country samples?",
        subtitle = "Effective number of source groups is low when one source dominates a country.",
        x = NULL, y = "Effective number of source groups", fill = "Dominant source")
@@ -568,7 +594,8 @@ df <- df %>% mutate(family_clean = ifelse(family_value == "", "Unknown family", 
 top_families <- df %>% count(family_clean, sort = TRUE) %>% slice_head(n = top_n_taxa) %>% pull(family_clean)
 
 family_source <- df %>%
-  filter(family_clean %in% top_families) %>%
+  filter(family_clean %in% top_families,
+         source_group != "Unknown source") %>%
   mutate(source_group_plot = ifelse(as.character(source_group) %in% top_source_groups,
                                      as.character(source_group), "Other source")) %>%
   count(family_clean, source_group_plot, name = "observations") %>%
@@ -579,7 +606,7 @@ family_source <- df %>%
 family_order <- family_source %>% group_by(family_clean) %>% summarise(total = sum(observations)) %>% arrange(total) %>% pull(family_clean)
 family_source <- family_source %>%
   mutate(family_clean = factor(family_clean, levels = family_order),
-         source_group_plot = factor(source_group_plot, levels = source_group_levels))
+         source_group_plot = factor(source_group_plot, levels = source_group_levels_plot))
 ```
 
 ```{r taxon-source-share, fig.width=9, fig.height=5.6}
@@ -587,7 +614,7 @@ ggplot(family_source, aes(x = family_clean, y = share, fill = source_group_plot)
   geom_col(width = 0.75) +
   coord_flip() +
   scale_y_continuous(labels = percent) +
-  scale_fill_manual(values = source_colors, drop = TRUE) +
+  scale_fill_manual(values = source_colors_plot, drop = TRUE) +
   labs(title = "Source composition by family", subtitle = "Bars sum to 100% within each taxonomic group.",
        x = NULL, y = "Share of observations", fill = "Source group")
 ```
@@ -689,21 +716,36 @@ ggplot(cumulative_grid_cells, aes(x = year_value, y = cumulative_grid_cells)) +
 
 **Interpretation.** Source maps and map snapshots distinguish two different processes: where each platform records data, and whether records over time spread into new regions or just intensify in existing ones.
 
-# Unknown Source Diagnostics
+# Source Metadata Completeness
 
-```{r unknown-source-stat}
-n_unknown <- sum(df$source_group == "Unknown source")
+```{r unknown-source-diagnostics, results='asis'}
+unknown_sources <- df %>%
+  filter(source_group == "Unknown source") %>%
+  count(source_raw, sort = TRUE, name = "observations") %>%
+  mutate(share = observations / nrow(df))
+
+n_unknown <- sum(unknown_sources$observations)
 share_unknown <- n_unknown / nrow(df)
-```
 
-Out of `r comma(nrow(df))` observations, only `r comma(n_unknown)` (`r percent(share_unknown, accuracy = 0.01)`) come from an unknown or missing source. This is too small a group to break down by country - **metadata quality is not a meaningful concern for this dataset**, so source-specific patterns elsewhere in this report are not undermined by missing source labels.
+if (n_unknown == 0) {
+  cat("There are no observations with an unknown or missing source label in this dataset.\n")
+} else {
+  cat(
+    "Out of ", comma(nrow(df)), " observations, ",
+    comma(n_unknown), " (", percent(share_unknown, accuracy = 0.01),
+    ") come from an unknown or missing source.\n\n",
+    sep = ""
+  )
+  print(knitr::kable(unknown_sources, align = "lrr"))
+}
+```
 
 # Overall Interpretation
 
 This analysis shows that GlobalGeoTree is **not source-neutral and not time-neutral**:
 
 - A few platforms - mainly iNaturalist and Pl@ntNet - dominate the observation base.
-- "Other source" looks big in some charts, but it is a long tail of many different national/regional datasets, not one consistent collection method (see the dedicated section above).
+- The earlier "Other source" bucket contains several recognisable sub-patterns, including regional observation portals, atlas/flora databases, environmental-project datasets, invasive/non-native records, and research or conservation datasets.
 - Source composition varies by country, year, and taxonomic family, so geographic and taxonomic patterns are partly platform-coverage patterns.
 - The overall rise in observations from 2015-2024 is driven substantially by iNaturalist's growth, and the apparent decline in `r end_year` may be a data-export artifact rather than a real drop.
 - Geographic coverage genuinely expanded (more countries, more grid cells over time), but that expansion is also unevenly distributed across platforms.

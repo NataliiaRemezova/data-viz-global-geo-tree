@@ -110,7 +110,7 @@ raw <- fread("GlobalGeoTree.csv", showProgress = FALSE)
 #     section below for what's actually inside it.
 # -----------------------------------------------------------------------
 classify_source <- function(x) {
-  x_lower <- str_to_lower(x)
+  x_lower <- str_to_lower(str_trim(x))
   case_when(
     str_detect(x_lower, "inaturalist|inat")                     ~ "iNaturalist",
     str_detect(x_lower, "plantnet|pl@ntnet")                    ~ "Pl@ntNet",
@@ -118,7 +118,7 @@ classify_source <- function(x) {
     str_detect(x_lower, "wikidata|wikipedia")                    ~ "Wikidata/Wikipedia",
     str_detect(x_lower, "herbar|museum|botanic|arboretum")       ~ "Institutional collections",
     str_detect(x_lower, "inventory|census|survey|monitoring")    ~ "Inventory/survey",
-    str_detect(x_lower, "^(unknown|missing|n/a|na|none|null)$")  ~ "Unknown source",
+    str_detect(x_lower, "^(unknown( source)?|missing|n/?a|na|none|null)$") ~ "Unknown source",
     TRUE                                                         ~ "Other source"
   )
 }
@@ -227,6 +227,16 @@ ggplot(other_source_top, aes(x = reorder(str_trunc(source_raw, 45), observations
 ```
 
 **Interpretation.** "Other source" is not a single platform - it is a long tail of `r comma(n_other_sources)` individually named sources (national biodiversity portals, regional/government forestry or environmental-impact datasets, local citizen-science platforms such as Artportalen or Observation.org, and similar projects). Treat any chart that shows "Other source" as a group as a *mixture*, not as one consistent collection method - the countries and years where "Other source" is large are typically being driven by a handful of large national datasets rather than a single shared bias.
+
+```{r other-source-name-audit}
+other_source_name_audit <- df %>%
+  filter(source_group == "Other source") %>%
+  count(source_raw, sort = TRUE, name = "observations") %>%
+  mutate(share_of_other = observations / sum(observations)) %>%
+  slice_head(n = 50)
+
+knitr::kable(other_source_name_audit, align = "lrr")
+```
 
 # Source Concentration
 
@@ -689,14 +699,26 @@ ggplot(cumulative_grid_cells, aes(x = year_value, y = cumulative_grid_cells)) +
 
 **Interpretation.** Source maps and map snapshots distinguish two different processes: where each platform records data, and whether records over time spread into new regions or just intensify in existing ones.
 
-# Unknown Source Diagnostics
+```{r unknown-source-diagnostics, results='asis'}
+unknown_sources <- df %>%
+  filter(source_group == "Unknown source") %>%
+  count(source_raw, sort = TRUE, name = "observations") %>%
+  mutate(share = observations / nrow(df))
 
-```{r unknown-source-stat}
-n_unknown <- sum(df$source_group == "Unknown source")
+n_unknown <- sum(unknown_sources$observations)
 share_unknown <- n_unknown / nrow(df)
-```
 
-Out of `r comma(nrow(df))` observations, only `r comma(n_unknown)` (`r percent(share_unknown, accuracy = 0.01)`) come from an unknown or missing source. This is too small a group to break down by country - **metadata quality is not a meaningful concern for this dataset**, so source-specific patterns elsewhere in this report are not undermined by missing source labels.
+if (n_unknown > 0) {
+  cat("# Unknown Source Diagnostics\n\n")
+  cat(
+    "Out of ", comma(nrow(df)), " observations, ",
+    comma(n_unknown), " (", percent(share_unknown, accuracy = 0.01),
+    ") come from an unknown or missing source.\n\n",
+    sep = ""
+  )
+  print(knitr::kable(unknown_sources, align = "lrr"))
+}
+```
 
 # Overall Interpretation
 
