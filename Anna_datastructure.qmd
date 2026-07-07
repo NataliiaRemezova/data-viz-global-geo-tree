@@ -1,0 +1,538 @@
+---
+title: "Analysis of the GlobalGeoTree dataset"
+author: "Your Name"
+date: today
+format:
+  html:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Introduction
+
+The dataset GlobalGeoTree is a 6 million lines long dataset. It contains various informations about trees, collected by diverse groups all across the world, like the specie, taxonomic group and geographical location of the tree. Some environmental informations are also contained in this dataset, such as the annual mean temperature.
+
+## Data loading
+
+```{r}
+data <- read.csv("data/GlobalGeoTree.csv")
+```
+
+## Packaging loading
+
+The next packages are used for data analysis and data visualisation: 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(hexbin)
+library(knitr)
+library(maps)
+
+library(jsonlite)
+library(purrr)
+library(tibble)
+library(stringr)
+library(corrplot)
+library(tidyr)
+```
+
+
+
+## Data treatment
+
+First, we check whether the dataset contains missing data or not:
+```{r}
+any(is.na(data))
+sum(is.na(data))
+```
+
+We see that there is no missing data in this file. This dataset being a refined dataset, it is normal that it is clear of any missing data.
+
+## Presentation of the data set
+
+| Column | Description |
+|--------|-------------|
+| `sample_id` | Entry ID |
+| `country_code` | Code of the country (e.g. US for the USA) |
+| `level0` | Broad vegetation category grouping plants by shared ecological and physiological traits (e.g. Evergreen Broadleaf) |
+| `level1_family` | Taxonomic Family — a group of related genera sharing common evolutionary characteristics (e.g. Asphodelaceae) |
+| `level2_genus` | Taxonomic Genus — a group of closely related species (e.g. Aloe) |
+| `level3_species` | Taxonomic Species — the most specific classification level (e.g. Aloe africana) |
+| `location` | Country name |
+| `source` | Source from which the occurrence record was obtained (e.g. iNaturalist Research-grade Observations) |
+| `species_key` | Species identifier |
+| `year` | Year of the observation |
+| `longitude` | Geographic longitude |
+| `latitude` | Geographic latitude |
+
+First, we do a quick analysis of the global structure of the dataset: number of observations, number of features and summary if the data:
+
+```{r}
+n_obs <- nrow(data) 
+n_obs
+
+n_features <- ncol(data) 
+n_features
+
+feat_names <- colnames(data) 
+feat_names
+
+summary(data)
+```
+
+## Repartition of the data across the world
+
+Data repartition across the different countries:
+```{r}
+# Count for each country
+country_counts <- data %>% count(country_code, sort = TRUE)
+# Histogram of the 20 first countries only
+
+country_counts %>% slice_max(n, n = 20) %>% ggplot(aes(x = reorder(country_code, n), y = n)) + geom_col(fill = "steelblue") + coord_flip() + labs( x = "Country", y = "Number of observations", title = "20 most represented contries" )
+```
+We see that most of the data come from developped western countries, and especially the US that have a very important number of observations compared to the other countries.
+
+Yearly distribution of the data in different countries: is there any evolution of the data collected troughout the years? Do some countries present large imbalance in the data repartition? How could this affect our analysis?
+```{r}
+top20_countries <- data %>% count(country_code, sort = TRUE) %>% slice_head(n = 20)
+
+# Counting of every data for each country per year count(country_code, year)
+country_year_counts <- data %>%
+  filter(country_code %in% top20_countries$country_code) %>% 
+  count(country_code, year)
+
+# Order the years : recent -> old 
+country_year_counts$year <- factor(
+  country_year_counts$year,
+  levels = sort(unique(country_year_counts$year), decreasing = TRUE) 
+) 
+
+ggplot(country_year_counts, aes(x = reorder(country_code, n, FUN = sum), y = n, fill = year)) + geom_col() + coord_flip() + scale_fill_brewer(palette = "Paired") + labs( x = "Country", y = "Number of observations", fill = "Year", title = "20 most represented countries" ) + theme_minimal()
+```
+We see on this graph that the observations across the different countries were collected during a period of 10 years and that a slight increase in the number of yearly observations has been seen in the last years, from 2022 to 2024.
+
+## Species observed in this dataset
+
+What are the different tree families referenced in this dataset?
+```{r}
+level0_count <- data %>% count(level0, sort = TRUE)
+
+ggplot(level0_count, aes(x = reorder(level0, n), y = n)) + geom_col(fill = "steelblue") + labs( x = "Plant category", y = "Number of observations", title = "Number of observations for each plant category" ) + theme_minimal() 
+```
+
+Definition of each tree category:
+
+-   Evergreen Needleleaf: An evergreen needleleaf refers to woody vegetation that retains needle-like or scale-like foliage year-round
+
+-   Evergreen Broadleaf: An evergreen broadleaf is a plant or tree that has wide, flat leaves (rather than needles or scales) and retains its foliage year-round
+
+-   Deciduous Broadleaf: a diverse group of flowering plants (angiosperms) characterized by flat leaves that are shed annually before winter (Oak, Maple, Beech, Birch, and Poplar/Aspen)
+
+-   Deciduous Needleleaf : a unique group of conifers that, unlike their evergreen counterparts, shed all their needles annually in the autumn (rare trees)
+
+We see here that a very important part of the observations in this dataset are deciduous broedleaf trees. It makes sense because most of the tree species spread across the world are part of this family. On the countrary, Deciduous needleleaf are rare and located in much more restrained areas.
+
+What are the different taxonomic families represented in this dataset and in which proportion are they represented?
+```{r}
+# Number of level1_categories
+level1_count <- data %>% count(level1_family, sort=TRUE) 
+
+# selection of the 20 most represented families
+
+top20 <- level1_count %>% slice_head(n = 20)
+
+ggplot(top20, aes(x = reorder(level1_family, n), y = n)) + geom_col(fill = "steelblue") + labs( x = "Taxonomic family", y = "Number of observations", title = "Top 20 taxonomic families by number of observations" ) + theme_minimal() + theme( axis.text.x = element_text( angle = 45, hjust = 1 ) )
+```
+Again, here we see that the most represented taxonomic families in this dataset are also the most represented ones across the world, especially in North-America, Europe and the north of Asia, where most of the data come from.
+We can then consider that the data contained in this dataset are quite representative of the real worldwide tree repartition.
+
+## Geographical repartition of the observations
+
+How are the trees distributed depending on the latitude?
+```{r}
+ggplot(data, aes(x = latitude)) + geom_histogram(binwidth = 2, fill = "forestgreen", color = "white") + scale_x_reverse() + labs( title = "Distribution of the observations depending on the latitude", x = "Latitude (°)", y = "Number of observations" ) + annotate( "text", x = min(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "South",
+    vjust = 1,
+    hjust = 0,
+    col="darkgreen"
+  ) +
+  annotate(
+    "text",
+    x = max(data$latitude, na.rm = TRUE), y = -Inf, label = "North", vjust = 1, hjust = 1, col="darkgreen" ) + theme_minimal() + coord_cartesian(clip = "off") + theme( plot.margin = margin(10, 10, 30, 10) )
+
+# density curve
+
+ggplot(data, aes(x = latitude)) + geom_density(fill = "forestgreen", alpha = 0.5) + labs( title = "Tree density depending on the latitude", x = "Latitude (°)", y = "Density" ) + theme_minimal() + annotate( "text", x = min(data$latitude, na.rm = TRUE),
+    y = -Inf,
+    label = "South",
+    vjust = 2,
+    hjust = 0,
+    col="darkgreen"
+  ) +
+  annotate(
+    "text",
+    x = max(data$latitude, na.rm = TRUE), y = -Inf, label = "North", vjust = 2, hjust = 1, col="darkgreen" ) + coord_cartesian(clip = "off") + theme( plot.margin = margin(10, 10, 30, 10) )
+```
+We see on this graph that the observation density is much more important on the north hemisphere than in the south hemisphere, but this can be linked to the amount of land that differs between north and south hemisphere or the difference in the amount of observations between the two hemispheres.
+
+Larger representations are also often used in ecological studies, because 5° latitudinal bands contain a satisfying amount of information without showing too much noise.
+```{r}
+lat_band <- data %>% mutate(lat_bin = floor(latitude / 5) * 5) %>% count(lat_bin)
+
+ggplot(lat_band, aes(x = lat_bin, y = n)) + geom_col(fill = "steelblue") + labs( title = "Number of trees for each band of 5° latitude", x = "Latitude", y = "Number of observations" ) + theme_minimal() 
+```
+The same conclusions can be drawned as before.
+
+We usually take 5° slices because it is small enough to find local tendencies but also big enough to avoid noise and too much non useful information and generally fine enough to reveal geographical patterns (climatic gradients, biodiversity, species distribution, etc.) without creating too much noise.
+
+## Geographical observations of species
+
+How does the latitude influences the different species observed? (Lattitude and specific richness)
+```{r}
+richness <- data %>% mutate(lat_bin = floor(latitude / 5) * 5) %>% group_by(lat_bin) %>% summarise(species_richness = n_distinct(species_key))
+
+ggplot(richness, aes(lat_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + labs( title = "Specific richness depending on the latitude", x = "Latitude", y = "Number of species (Specific richness)" ) + theme_minimal()+ scale_x_reverse()
+```
+
+Species richness: simple count of the number of different species present in a specific biological community, landscape, or region Much more important in the north hemisphere than in the south hemisphere more important in tempered areas, much lower at the equador and near the poles.
+
+We see here that the maximum specie richness are very close in the two hemisphere, but that the repartition is broader in the norther hemisphere than in the southern hemisphere (it is also because trees grow at higher latitudes in the norther hemisphere than in the southern hemisphere). Similar environmental conditions can be found in the two hemispheres but they are not spread following the same pattern.
+
+How does the longitude influences the diffrent species observed (longitude and specifi richness)?
+```{r}
+richness_long <- data %>% mutate(long_bin = floor(longitude / 5) * 5) %>% group_by(long_bin) %>% summarise(species_richness = n_distinct(species_key))
+
+ggplot(richness_long, aes(long_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + labs( title = "Species richness by longitude", x = "Longitude", y = "Number of species observed" ) + theme_minimal()+ scale_x_reverse()
+```
+We see here that areas with a lot of specific richness correspond to the continental areas, but not much more can be taken out of this graph.
+
+What is the local specific richness across the world?
+```{r}
+richness_grid <- data %>% 
+  mutate( lat_bin = floor(latitude / 1) * 1, long_bin = floor(longitude / 1) * 1 ) %>% group_by(lat_bin, long_bin) %>% summarise( richness = n_distinct(species_key), .groups = "drop" )
+
+world <- map_data("world")
+
+ggplot() + geom_tile( data = richness_grid, aes( x = long_bin + 2.5, y = lat_bin + 2.5, fill = richness ) ) + geom_polygon( data = world, aes(long, lat, group = group), fill = NA, color = "black", linewidth = 0.2 ) + scale_fill_gradientn( colours = c( "yellow", "orange", "darkred" ), name = "Species richness" ) + coord_fixed(1.3) + labs( title = "Global tree species richness", x = "Longitude", y = "Latitude" ) + theme_minimal()
+```
+We see here that, in the areas presenting observations, the specie richness does not present too important variations and is homogenous in most areas. By crossing this with the previous results, we can think that the specie richness does not variates but that the species involved do variate across the world.
+
+How are the different tree species distributed depending on the latitude? Here, we only check for the most represented species.
+```{r}
+# latitude repartition of the 20 most frequent species
+top_species <- data %>% count(level3_species, sort = TRUE) %>% slice_head(n = 20)
+
+lat_species <- data %>% filter(level3_species %in% top_species$level3_species) %>% mutate(lat_bin = floor(latitude)) %>% count(level3_species, lat_bin)
+
+ggplot(lat_species, aes(lat_bin, n)) + geom_line() + facet_wrap(~level3_species)
+```
+With this figure, we see that among the most represented species in this dataset, they present different world repartitions.
+Most of them are mostly present in the norther hemisphere, but some are also present in the southern hemisphere (such as Dombeya acrifolia), and some are almost evenly present in the two hemispheres, such as Cornus acuminata.
+
+Another representation could be a heatmap representing the species depenting on the latitude:
+```{r}
+top50 <- data %>% count(level3_species, sort = TRUE) %>% slice_head(n = 50)
+
+heat <- data %>% filter(level3_species %in% top50$level3_species) %>% mutate(lat_bin = floor(latitude)) %>% count(level3_species, lat_bin)
+
+ggplot(heat, aes(lat_bin, reorder(level3_species, n), fill = n)) + geom_tile()
+```
+Again, we see here that most species are present mostly in the northern hemisphere, but some can also be present in both hemisphere or only in the southern hemisphere or near the equator (Guazuma umifolia, a tree largely present in Latin America and really rare in other areas).
+
+boxplot family x latitude
+
+```{r}
+top20_family <- data %>% count(level1_family, sort = TRUE) %>% slice_head(n = 20)
+
+ggplot( data %>% filter(level1_family %in% top20_family$level1_family), aes(x = reorder(level1_family, latitude, median), y = latitude) ) + geom_boxplot(fill = "steelblue") + coord_flip()
+```
+
+Same but on a map. Both maps below use a random subsample of 100,000 observations for rendering performance; plotting all 6M+ rows as individual points is prohibitively slow without changing the visual result.
+
+```{r}
+set.seed(42)
+data_sample <- data %>% slice_sample(n = 100000)
+
+ggplot(data_sample, aes(longitude, latitude)) +
+  geom_polygon(data = world, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
+  geom_point(alpha = 0.03, size = 0.05) +
+  coord_fixed() + theme_minimal()
+
+# one map for each family (20 first families)
+top_families <- data %>% count(level1_family, sort = TRUE) %>% slice_head(n = 12) %>% pull(level1_family)
+
+data_top <- data %>% filter(level1_family %in% top_families) %>% slice_sample(n = 100000)
+
+ggplot(data_top, aes(longitude, latitude)) +
+  geom_polygon(data = world, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
+  geom_point(alpha = 0.03, size = 0.05) +
+  facet_wrap(~ level1_family) + coord_fixed() + theme_minimal() +
+  labs( title = "Spatial distribution of the 12 most abundant families" )
+```
+On this visualization, we can see the repartition of the different taxonomical families across the world:
+- families are very widely spread across the world such as the Asteraceae: this family contains a very large amount of different species, that live in tempered areas. They can survive various non-extreme conditions.
+- families are observed in more restrictive areas, such as the families Ericaceae and Pinaceae: these families are very adapted to cold and unwelcoming places such as the toundra and boreal forests or places that are at a high altitude.
+
+
+## Analysis of the US data
+
+```{r setup}
+theme_set(theme_minimal())
+```
+
+
+## Filtration of the US data
+
+```{r}
+library(dplyr)
+
+us_trees <- data %>%
+  filter(country_code == "US")
+```
+
+## Summary of the US data
+
+```{r}
+us_summary <- us_trees %>%
+  summarise(
+    observations = n(),
+    species = n_distinct(level3_species),
+    genera = n_distinct(level2_genus),
+    families = n_distinct(level1_family)
+  )
+us_summary
+```
+
+## Analysis of the species repartition in the US
+
+We take the first 20 most represented species.
+
+```{r}
+species_dist <- us_trees %>%
+  count(level3_species, sort = TRUE) %>%
+  mutate(
+    pct = 100 * n / sum(n)
+  )
+
+head(species_dist, 20)
+```
+
+We visualize the amount of observation for each specie on the US
+territory:
+
+```{r}
+library(ggplot2)
+
+species_dist %>%
+  slice_max(n, n = 20) %>%
+  ggplot(aes(
+    x = reorder(level3_species, n),
+    y = n
+  )) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "20 most observed species on the US territory",
+    x = "Specie",
+    y = "Number of observations"
+  )
+```
+The species showed as most observed ones are very common species in North-America (large-leaved beech for the first one). As before, we can say that the observed species in this dataset are, to some extent, representative of the reality in the US.
+
+We now do the same but for the tree categories:
+
+```{r}
+type_dist <- us_trees %>%
+  count(level0) %>%
+  mutate(
+    pct = round(100 * n / sum(n), 2)
+  )
+
+type_dist
+
+ggplot(type_dist,
+       aes(x = "", y = n, fill = level0)) +
+  geom_col(width = 1) +
+  coord_polar("y") +
+  labs(
+    title = "Distribution of tree categories in the United States"
+  )
+
+ggplot(type_dist,
+       aes(x = reorder(level0, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip()
+```
+The repartition of the different tree categories is similar to the worldwide one, at least in terms of proportions. This repartition one again correspond to the worlswide representation of the species.
+
+## Geogrpahic repartition of the data
+
+The density map is computed on a subsample of at most 50,000 observations. Computing a kernel density estimate (`geom_density_2d_filled`) on the full US subset (over 1M rows) causes the render to hang.
+
+```{r}
+set.seed(42)
+us_trees_density <- us_trees %>%
+  filter(is.finite(longitude), is.finite(latitude)) %>%
+  slice_sample(n = min(50000L, n()))
+
+us_map <- map_data("world") %>% filter(region == "USA")
+ggplot(us_trees_density, aes(longitude, latitude)) +
+  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "black", linewidth = 0.2, inherit.aes = FALSE) +
+  geom_density_2d_filled(alpha = 0.8) +
+  scale_fill_viridis_d(direction = -1) +
+  coord_fixed(xlim = c(-125, -66), ylim = c(24, 50)) +
+  labs(
+    title = "GlobalGeoTree observations in the US"
+  )
+```
+We can see on this map that the observations cover almost the whole US territory, but that areas are missing data, namely in the center of the US and in Alaska. This is coherent since these areas are less populated than the coastal areas. However, there areas are also those presenting the most trees in the US, especially in the national parks zones. The conclusions drawned from the othe observations would then have to be put back into context.
+
+
+Specie Richness: - Depending on the latitude:
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+us_trees <- data %>%
+  filter(country_code == "US")
+
+lat_richness <- us_trees %>%
+  mutate(lat_bin = floor(latitude)) %>%
+  group_by(lat_bin) %>%
+  summarise(
+    richness = n_distinct(level3_species),
+    observations = n()
+  )
+
+ggplot(lat_richness,
+       aes(lat_bin, richness)) +
+  geom_line() +
+  labs(
+    title = "Specie richness depending on the latitude",
+    x = "Latitude",
+    y = "Number of species"
+  )
+```
+Here, we see that more trees are observed in the northern part of the US (it is also the largest part if the US, while the south is restrained). However, this also corresponds to the location of national parks that are known to be a place where many species are protected. The specie richness is then higher than in other places. These places are also known to be more humid and colder than the southern parts of the US, which is a much more welcoming environment for trees. These hypothesis would have to be compared with real humidity and temperature data.
+
+Specie richness depending on the longitude:
+```{r}
+lon_richness <- us_trees %>%
+  mutate(lon_bin = floor(longitude)) %>%
+  group_by(lon_bin) %>%
+  summarise(
+    richness = n_distinct(level3_species)
+  )
+
+ggplot(lon_richness,
+       aes(lon_bin, richness)) +
+  geom_line() +
+  labs(
+    title = "Species richness by longitude",
+    x = "Longitude",
+    y = "Number of species"
+  )
+```
+Once again, we see that more species have been observed in the eastern part of the US, where more observations have been made. However, even if less observations have been made in the central part of the US these observations still show various species, which results in a lower specie richness but still present (between -90 and -120°).
+
+Local specie richness across the US territory:
+```{r}
+richness_grid <- us_trees %>%
+  mutate(
+    lat_bin = floor(latitude),
+    lon_bin = floor(longitude)
+  ) %>%
+  group_by(lat_bin, lon_bin) %>%
+  summarise(
+    richness = n_distinct(level3_species),
+    .groups = "drop"
+  )
+
+us_map <- map_data("state")
+ggplot() +
+  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "darkgrey", linewidth = 0.3) +
+  geom_tile(data = richness_grid, aes(lon_bin, lat_bin, fill = richness)) +
+  coord_fixed() +
+  scale_fill_viridis_c() +
+  labs(
+    title = "Species richness of trees in the United States",
+    x = "Longitude",
+    y = "Latitude",
+    fill = "Species"
+  )
+```
+As we said before, the specie richness is much more important near the coasts (where more observations have been made). Still, a specie richness superior to 150 is still considered as a good value, and is one of the characteristic of a sane ecosystem.
+
+Geographic repartition of the 20 most represented species:
+
+```{r}
+top_species <- us_trees %>%
+  count(level3_species, sort = TRUE) %>%
+  slice_head(n = 20) %>%
+  pull(level3_species)
+
+species_maps <- us_trees %>%
+  filter(level3_species %in% top_species)
+
+us_map <- map_data("state")
+ggplot(species_maps,
+       aes(longitude, latitude)) +
+  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
+  geom_point(alpha = 0.03, size = 0.05) +
+  facet_wrap(~level3_species) +
+  coord_fixed()
+
+facet_wrap(
+  ~level3_species,
+  ncol = 4
+)
+```
+We see that the most represented specie can be spread:
+- all across the US territory: Acer negrundo is the most common specie of mapple, which is a widely and famously spread tree in North America,
+- in specific parts of the US territory: Acer rubrum is a specie of red maple that has made the fame of the canadian maple syrup, only located in the eastern part of North America ; Toxicodendron diversilobum or Pacific poison oak is a tree only present on the west coast and known for allergic reactions.
+
+
+Geographic repartition of the tree categories:
+
+```{r}
+us_map <- map_data("state")
+ggplot(us_trees, aes(longitude, latitude)) +
+  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
+  stat_bin2d(bins = 150) +
+  facet_wrap(~level0) +
+  coord_fixed() +
+  scale_fill_viridis_c()
+```
+We see different repartition of the tree categories across the US terrtory:
+- the most represented ones such as Deciduous Broadleaf have been observed all across the US territory
+- others, such as Deciduous Needleleaf have only been observed near the casts and in souther parts of the US, namely because thay easily loose their leaves, which makes the next spring more difficult for the tree in very cold areas.
+
+Specie richness by categories:
+
+```{r}
+richness_level0 <- us_trees %>%
+  mutate(
+    lat_bin = floor(latitude),
+    lon_bin = floor(longitude)
+  ) %>%
+  group_by(level0, lat_bin, lon_bin) %>%
+  summarise(
+    richness = n_distinct(level3_species),
+    .groups = "drop"
+  )
+
+us_map <- map_data("state")
+ggplot() +
+  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2) +
+  geom_tile(data = richness_level0, aes(lon_bin, lat_bin, fill = richness)) +
+  facet_wrap(~level0) +
+  coord_fixed() +
+  scale_fill_viridis_c()
+```
+Once again, wee see the huge difference between the species of each category and how some of them are variously spread across the US.
