@@ -57,7 +57,7 @@ if (params$latex) {
 # Introduction
 
 ::: {.callout-note appearance="minimal"}
-*Authors: Nataliia (source bias & Germany analysis), Anna (data structure & US analysis), Camille (worldwide distribution)*
+*Authors: Nataliia (source bias & Germany analysis), Anna (data structure), Camille (worldwide distribution), Santiago (US distribution) *
 :::
 
 ::: {.callout-note appearance="minimal"}
@@ -3061,318 +3061,405 @@ if (is.null(nrw_district_map)) {
 
 Comparing the density maps of Baden-Württemberg and NRW with that of Berlin highlights a notable difference in spatial distribution. While observations in BW and NRW are spread much more evenly across their respective territories — with multiple distinct hotspots corresponding to major cities and populated areas — Berlin's observations are heavily concentrated in a single location. This contrast reinforces the data quality concern raised earlier: the Berlin subset appears to reflect localised recording activity rather than a representative spatial sample of the city's tree cover.
 
-# Part III: Analysis of US Data {.unnumbered}
+# Part III: Repartition of the data in the United States {.unnumbered}
 
 ::: {.callout-note appearance="minimal"}
-*— Anna*
+*— Santiago*
 :::
 
-What species and geographic patterns characterise the most-represented country in the dataset? This section addresses two guiding questions:
 
-1.  Which species and tree categories are most frequently observed across the US?
-2.  How does species richness vary geographically across the US territory?
+This part focuses on the U.S. records and asks whether their distribution reflects ecological patterns, the way the data was collected, or a combination of both. Knowing which places and years contribute most of the observations is necessary before drawing conclusions about tree diversity from the dataset.
 
-As with the worldwide analysis, US maps use reproducible subsampling for point and density visualizations while all aggregate analyses (richness, species counts) use the full US subset. See Methodology for details.
+The analysis first describes national coverage and its regional imbalance. It then compares foliage categories, latitude profiles, and taxonomic richness. The final figures add the time dimension to show whether the geographical pattern changed as the number of records increased.
 
-## Filtration of the US data
+## Pre-Processing
 
-```{r us-filter}
-#| cache: true
+Rows labelled with the `US` country code were retained. Their coordinates were matched to state polygons from the `maps` package; points missed by the simplified coastal boundaries were linked to the closest state centre. The state names were then converted into the four Census regions—Northeast, South, Midwest, and West—so that comparisons would not be fragmented across fifty individual states.
 
-us_trees <- data %>%
-  filter(country_code == "US")
-```
-
-## Summary of the US data
-
-```{r us-summary}
-#| cache: true
-us_summary <- us_trees %>%
-  summarise(
-    observations = n(),
-    species = n_distinct(level3_species),
-    genera = n_distinct(level2_genus),
-    families = n_distinct(level1_family)
-  )
-us_summary
-```
-
-## Analysis of the species distribution in the US
-
-```{r us-species-distribution}
-#| cache: true
+```{r us-repartition-setup}
 #| include: false
-species_dist <- us_trees %>%
-  count(level3_species, sort = TRUE) %>%
-  mutate(
-    pct = 100 * n / sum(n)
-  )
-```
-
-```{r us-top-species-bar}
 #| cache: true
 
-species_dist %>%
-  slice_max(n, n = 20) %>%
-  ggplot(aes(
-    x = reorder(level3_species, n),
-    y = n
-  )) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(
-    title = "20 most observed species on the US territory",
-    subtitle = "Counts reflect recording frequency in the dataset, not a census of tree abundance.",
-    x = "Species",
-    y = "Number of observations"
-  ) +
-  theme_gtree()
+us_df <- data.table::as.data.table(data)
+us_df <- us_df[country_code == "US" & is.finite(longitude) & is.finite(latitude), ]
+
+# Assign observations to states. Points that fall just outside the simplified
+# map polygons (mainly coastlines) are assigned to their nearest state centre.
+state_raw <- maps::map.where("state", us_df$longitude, us_df$latitude)
+state_raw <- sub(":.*", "", state_raw)
+state_lookup <- setNames(as.character(state.region), tolower(state.name))
+us_df$state <- state_raw
+
+missing_state <- which(is.na(us_df$state) | !us_df$state %in% names(state_lookup))
+if (length(missing_state) > 0) {
+  best_distance <- rep(Inf, length(missing_state))
+  best_state <- integer(length(missing_state))
+  for (j in seq_along(state.name)) {
+    dx <- (state.center$x[j] - us_df$longitude[missing_state]) *
+      cos(us_df$latitude[missing_state] * pi / 180)
+    dy <- state.center$y[j] - us_df$latitude[missing_state]
+    distance <- dx^2 + dy^2
+    closer <- distance < best_distance
+    best_distance[closer] <- distance[closer]
+    best_state[closer] <- j
+  }
+  us_df$state[missing_state] <- tolower(state.name[best_state])
+}
+
+us_df$region <- unname(state_lookup[us_df$state])
+us_df$region[us_df$region == "North Central"] <- "Midwest"
+us_df$region <- factor(us_df$region,
+  levels = c("Northeast", "South", "Midwest", "West"))
+
+region_colors <- c(
+  "Northeast" = "#0072B2",
+  "South" = "#E69F00",
+  "Midwest" = "#009E73",
+  "West" = "#CC79A7"
+)
+
+foliage_colors <- c(
+  "Deciduous Broadleaf" = "#E69F00",
+  "Evergreen Broadleaf" = "#009E73",
+  "Evergreen Needleleaf" = "#0072B2",
+  "Deciduous Needleleaf" = "#CC79A7"
+)
+
+pct <- function(x, digits = 1) paste0(format(round(100*x, digits), nsmall=digits), "%")
+
+draw_conus <- function(fill = "grey92", border = "white") {
+  maps::map("state", fill = TRUE, col = fill, border = border,
+      xlim = c(-125, -66), ylim = c(24, 50), mar = c(0,0,0,0))
+}
 ```
 
-The species showed as most observed ones are very common species in North-America (large-leaved beech for the first one). As before, we can say that the observed species in this dataset are, to some extent, representative of the reality in the US.
+@tbl-us-dataset displays the working variables after this preparation.
 
-We now do the same but for the tree categories:
+```{r}
+#| label: tbl-us-dataset
+#| tbl-cap: "First observations after preparing the U.S. subset"
+#| tbl-cap-location: bottom
 
-```{r us-type-distribution}
-#| cache: true
-type_dist <- us_trees %>%
-  count(level0) %>%
-  mutate(
-    pct = round(100 * n / sum(n), 2)
-  )
-
-ggplot(type_dist,
-       aes(x = reorder(level0, n), y = n)) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(
-    title = "Distribution of tree categories in the United States",
-    subtitle = "Deciduous Broadleaf dominates, consistent with the global pattern.",
-    x = "Tree category",
-    y = "Number of observations"
-  ) +
-  theme_gtree()
+knitr::kable(head(us_df[, c("sample_id", "level0", "level1_family", "level2_genus",
+                         "level3_species", "year", "longitude", "latitude",
+                         "state", "region"), with=FALSE]), row.names = FALSE)
 ```
 
-The distribution of the different tree categories is similar to the worldwide one, at least in terms of proportions. This distribution once again corresponds to the worldwide representation of the species.
+The regional colors in @fig-us-colour-region remain unchanged from one graph to another. They come from the colorblind-friendly Okabe-Ito palette.
 
-## Geographic distribution of the data
+```{r}
+#| label: fig-us-colour-region
+#| fig-cap: "Regional colors used throughout the U.S. analysis"
+#| fig-cap-location: bottom
+#| fig-height: 2.5
 
-The density map below is computed on a reproducible random subsample (see Methodology for the subsampling rationale).
+par(mar = c(1,1,1,1))
+plot.new(); plot.window(xlim=c(0,4), ylim=c(0,1))
+for (i in seq_along(region_colors)) {
+  rect(i-1, 0, i, 1, col=region_colors[i], border=NA)
+  text(i-.5, .58, names(region_colors)[i], font=2, cex=.9)
+  text(i-.5, .35, region_colors[i], cex=.75)
+}
+```
 
-```{r us-density-map}
-#| cache: true
-#| fig-width: 10
+## United States overview
+
+The initial overview separates national reach from sampling intensity. A dataset may include all major parts of the country and still be dominated by a few places.
+
+For that reason, @fig-us-map-region shows the individual coordinates, @fig-us-bar-region compares the regional totals, and @fig-us-density-map identifies the cells where records accumulate most strongly.
+
+```{r}
+#| label: fig-us-map-region
+#| fig-cap: "Location of U.S. observations, colored by Census region"
+#| fig-cap-location: bottom
 #| fig-height: 7
-set.seed(map_sample_seed)
-us_trees_density <- us_trees %>%
-  filter(is.finite(longitude), is.finite(latitude))
-us_trees_density <- us_trees_density %>%
-  slice_sample(n = min(density_map_sample_n, nrow(us_trees_density)))
 
-us_map <- map_data("world") %>% filter(region == "USA")
-ggplot(us_trees_density, aes(longitude, latitude)) +
-  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "black", linewidth = 0.2, inherit.aes = FALSE) +
-  geom_density_2d_filled(alpha = 0.8) +
-  scale_fill_viridis_d(direction = -1) +
-  coord_fixed(xlim = c(-180, -66), ylim = c(18, 72)) +
-  labs(
-    title = "GlobalGeoTree observations in the US",
-    subtitle = "Density estimate based on a subsample of 50,000 observations.",
-    x = "Longitude", y = "Latitude", fill = "Density"
-  ) +
-  theme_gtree() +
-  theme(legend.key.size = unit(0.3, "cm")) +
-  guides(fill = guide_legend(ncol = 2))
+conus <- us_df[us_df$longitude >= -125 & us_df$longitude <= -66 &
+            us_df$latitude >= 24 & us_df$latitude <= 50, ]
+alaska <- us_df[us_df$state == "alaska", ]
+hawaii <- us_df[us_df$state == "hawaii", ]
+
+layout(matrix(c(1,1,1,1,2,3), nrow=2, byrow=TRUE), heights=c(3,1.25))
+par(mar=c(3,3,2,1))
+draw_conus()
+points(conus$longitude, conus$latitude, pch=16, cex=.32,
+       col=adjustcolor(region_colors[as.character(conus$region)], alpha.f=.35))
+title("Contiguous United States", xlab="Longitude", ylab="Latitude")
+par(mar=c(3,3,2,1))
+maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
+    xlim=c(-170,-130), ylim=c(50,72))
+points(alaska$longitude, alaska$latitude, pch=16, cex=.45,
+       col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Alaska")
+maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
+    xlim=c(-161,-154), ylim=c(18,23))
+points(hawaii$longitude, hawaii$latitude, pch=16, cex=.45,
+       col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Hawaii")
+layout(1)
 ```
 
-We can see on this map that the observations cover almost the whole US territory, but that areas are missing data, namely in the center of the US and in Alaska. This is coherent since these areas are less populated than the coastal areas. However, there areas are also those presenting the most trees in the US, especially in the national parks zones. The conclusions drawn from the other observations would then have to be put back into context.
+The points in @fig-us-map-region cover most of the country, but not with the same intensity. Texas, California, Florida, and the Northeast form visible clusters, whereas the Great Plains and much of the interior West are sparsely represented. Accessibility and the location of contributors probably explain part of this contrast, so the map cannot be read as a map of tree abundance.
 
-Species Richness: - Depending on the latitude:
+```{r}
+#| label: fig-us-bar-region
+#| fig-cap: "Contribution of each U.S. region to the complete U.S. subset"
+#| fig-cap-location: bottom
+#| fig-height: 4.5
 
-```{r us-latitude-richness}
-#| cache: true
-#| fig-width: 9
-#| fig-height: 5
-lat_richness <- us_trees %>%
-  mutate(lat_bin = floor(latitude)) %>%
-  group_by(lat_bin) %>%
-  summarise(
-    richness = n_distinct(level3_species),
-    observations = n()
-  )
-
-ggplot(lat_richness,
-       aes(lat_bin, richness)) +
-  geom_line(linewidth = 1) +
-  geom_point() +
-  labs(
-    title = "Species richness depending on the latitude",
-    subtitle = "Number of distinct species recorded per 1-degree latitudinal band.",
-    x = "Latitude",
-    y = "Number of species"
-  ) +
-  theme_gtree()
+region_n <- sort(table(us_df$region), decreasing=TRUE)
+par(mar=c(5,8,2,2))
+bp <- barplot(rev(region_n), horiz=TRUE, las=1, border=NA,
+              col=region_colors[names(rev(region_n))],
+              xlim=c(0,max(region_n)*1.22), xlab="Number of observations")
+text(rev(region_n), bp,
+     labels=paste0(rev(region_n), "  (", pct(rev(region_n)/sum(region_n)), ")"),
+     pos=4, cex=.85)
 ```
 
-Here, we see that more species are observed in the northern part of the US (it is also the largest part of the US, while the south is more geographically restrained). This pattern may reflect both genuine ecological gradients and the concentration of sampling effort in certain regions. These hypotheses would need to be compared with real humidity and temperature data to disentangle biological patterns from recording bias.
+The regional counts in @fig-us-bar-region make the imbalance more explicit. The South supplies the largest share of records, followed by the West. The Northeast and Midwest have considerably fewer rows. These percentages refer to dataset participation and should not be interpreted as regional forest shares.
 
-Species richness depending on the longitude:
+```{r}
+#| label: fig-us-density-map
+#| fig-cap: "Local concentration of records across the contiguous United States"
+#| fig-cap-location: bottom
+#| fig-height: 5.5
 
-```{r us-longitude-richness}
-#| cache: true
-#| fig-width: 9
-#| fig-height: 5
-lon_richness <- us_trees %>%
-  mutate(lon_bin = floor(longitude)) %>%
-  group_by(lon_bin) %>%
-  summarise(
-    richness = n_distinct(level3_species)
-  )
-
-ggplot(lon_richness,
-       aes(lon_bin, richness)) +
-  geom_line(linewidth = 1) +
-  geom_point() +
-  labs(
-    title = "Species richness by longitude",
-    subtitle = "Number of distinct species recorded per 1-degree longitudinal band.",
-    x = "Longitude",
-    y = "Number of species"
-  ) +
-  theme_gtree()
+xb <- seq(-125,-65,by=1); yb <- seq(24,51,by=1)
+h <- table(cut(conus$longitude,xb), cut(conus$latitude,yb))
+image(xb[-length(xb)]+.5, yb[-length(yb)]+.5, log10(h+1),
+      col=colorRampPalette(c("white","#B8E0D2","#4C956C","#173F35"))(40),
+      xlab="Longitude", ylab="Latitude", useRaster=TRUE)
+maps::map("state", add=TRUE, col="grey55", lwd=.45)
 ```
 
-Once again, we see that more species have been observed in the eastern part of the US, where more observations have been made. However, even if less observations have been made in the central part of the US these observations still show various species, which results in a lower species richness but still present (between -90 and -120°).
+The grid representation in @fig-us-density-map isolates the main hotspots around central Texas, southern California, Florida, and the northeastern corridor. Pale inland cells indicate limited sampling rather than an absence of trees.
 
-Local species richness across the US territory:
+Overall, the U.S. subset has a wide footprint but an uneven internal balance. The following comparisons are therefore interpreted as patterns within the available records, not as a national census.
 
-```{r us-local-richness-map}
-#| cache: true
-#| fig-width: 10
-#| fig-height: 7
-richness_grid <- us_trees %>%
-  mutate(
-    lat_bin = floor(latitude),
-    lon_bin = floor(longitude)
-  ) %>%
-  group_by(lat_bin, lon_bin) %>%
-  summarise(
-    richness = n_distinct(level3_species),
-    .groups = "drop"
-  )
+## Spatial distribution of foliage types
 
-us_map <- map_data("state")
-ggplot() +
-  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "darkgrey", linewidth = 0.3) +
-  geom_tile(data = richness_grid, aes(lon_bin, lat_bin, fill = richness)) +
-  coord_fixed() +
-  scale_fill_viridis_c() +
-  labs(
-    title = "Species richness of trees in the United States",
-    subtitle = "Number of distinct species per 1-degree grid cell.",
-    x = "Longitude",
-    y = "Latitude",
-    fill = "Species"
-  ) +
-  theme_gtree()
+The next step is to compare the kinds of trees recorded in different places. Foliage categories summarize important ecological strategies: broad or needle-shaped leaves and evergreen or deciduous behavior respond differently to cold, drought, and seasonality.
+
+The small maps in @fig-us-maps-foliage preserve the spatial detail. @fig-us-bar-foliage-region converts those records into regional percentages, while @fig-us-ridge-latitude removes the administrative boundaries and follows the north–south gradient directly.
+
+```{r}
+#| label: fig-us-maps-foliage
+#| fig-cap: "U.S. locations recorded for each foliage category"
+#| fig-cap-location: bottom
+#| fig-height: 8
+
+observed_types <- names(sort(table(conus$level0), decreasing=TRUE))
+op <- par(mfrow=c(2,2), mar=c(2,2,2,.5), oma=c(2,2,0,0))
+for (tp in observed_types) {
+  z <- conus[conus$level0 == tp,]
+  draw_conus()
+  points(z$longitude,z$latitude,pch=16,cex=.3,
+         col=adjustcolor(foliage_colors[tp],alpha.f=.4))
+  title(tp, cex.main=.9)
+}
+if (length(observed_types)<4) plot.new()
+mtext("Longitude",1,outer=TRUE); mtext("Latitude",2,outer=TRUE)
+par(op)
 ```
 
-As we said before, the recorded species richness is higher near the coasts, where more observations have been made. The lower values in the interior may partly reflect lower sampling effort rather than genuinely lower diversity.
+The categories in @fig-us-maps-foliage do not occupy identical spaces. Deciduous Broadleaf is found throughout the contiguous states and is particularly visible in the East and South. Evergreen Broadleaf is concentrated farther south and on the Pacific coast, while Evergreen Needleleaf forms strong western and northern clusters. Deciduous Needleleaf is present in pink, but its 10,951 records make it much rarer than the other three categories.
 
-Geographic distribution of the 20 most represented species:
+```{r}
+#| label: fig-us-bar-foliage-region
+#| fig-cap: "Foliage composition within each U.S. region"
+#| fig-cap-location: bottom
+#| fig-height: 5.5
 
-```{r us-species-map}
-#| cache: true
-#| fig-width: 12
+fol_region <- prop.table(table(us_df$level0,us_df$region),2)*100
+fol_region <- fol_region[,colSums(fol_region)>0,drop=FALSE]
+par(mar=c(7,5,2,1))
+barplot(fol_region, col=foliage_colors[rownames(fol_region)], border=NA,
+        las=2, ylab="Proportion of observations (%)")
+legend("topright",legend=rownames(fol_region),
+       fill=foliage_colors[rownames(fol_region)],bty="n",cex=.75)
+```
+
+Using percentages in @fig-us-bar-foliage-region prevents the South's larger sample from dominating the comparison. Deciduous Broadleaf remains the largest group everywhere, although its share varies greatly. Evergreen Broadleaf reaches its largest regional shares in the South and West, while Evergreen Needleleaf is especially prominent in the West. Deciduous Needleleaf occurs in every region but never exceeds a little over 1%. Regional climate is one plausible contributor to these differences.
+
+```{r}
+#| label: fig-us-ridge-latitude
+#| fig-cap: "Latitude profiles of the foliage categories"
+#| fig-cap-location: bottom
+#| fig-height: 6.5
+
+types <- names(sort(table(us_df$level0), decreasing=FALSE))
+plot(NA,xlim=c(18,70),ylim=c(.7,length(types)+1),axes=FALSE,
+     xlab="Latitude",ylab="")
+axis(1,at=seq(20,65,5),labels=paste0(seq(20,65,5),"°N"))
+abline(v=seq(20,65,5),col="grey90",lty=3)
+for(i in seq_along(types)){
+  z <- us_df$latitude[us_df$level0==types[i]]
+  den <- density(z,from=18,to=68,bw=2)
+  yy <- i + .8*den$y/max(den$y)
+  polygon(c(den$x,rev(den$x)),c(rep(i,length(den$x)),rev(yy)),
+          col=adjustcolor(foliage_colors[types[i]],alpha.f=.7),border="white")
+  text(69,i,types[i],pos=2,cex=.82,font=2)
+}
+box()
+```
+
+The curves in @fig-us-ridge-latitude overlap, but their peaks occur in different places. Evergreen Broadleaf has a clear southern component, including Hawaii, whereas Evergreen Needleleaf is weighted toward the northern half of the country. Deciduous Broadleaf covers the broadest span of the contiguous states. Deciduous Needleleaf is much less frequent but is not absent: its pink curve has concentrations around 30°N and 45°N.
+
+These shifts support the idea that climate helps structure foliage type. Moving north usually changes temperature, season length, and frost exposure. Still, latitude does not measure climate directly, and other factors—precipitation, elevation, soil, land use, historical range, and sampling density—change at the same time. The figure therefore provides evidence of association, not a causal estimate.
+
+## Taxonomic richness by region
+
+Taxonomic richness is measured here at three levels: family, genus, and species. Simple totals are useful, but they favor regions with more observations because additional records create more opportunities to encounter a new taxon.
+
+@tbl-us-taxa-region and @fig-us-richness-region present the unadjusted counts. @fig-us-rarefaction then places the regions on a common sampling scale. The last visualization, @fig-us-species-ranges, changes the question from “how many species?” to “how geographically concentrated is each common species?”
+
+```{r}
+#| label: tbl-us-taxa-region
+#| tbl-cap: "Recorded taxonomic diversity and sample size by region"
+#| tbl-cap-location: bottom
+
+taxa_region <- as.data.frame(us_df[, .(
+  Foliage=uniqueN(level0),
+  Families=uniqueN(level1_family),
+  Genera=uniqueN(level2_genus),
+  Species=uniqueN(level3_species),
+  Observations=.N
+), by=.(Region=region)])
+taxa_region <- taxa_region[order(-taxa_region$Observations),]
+knitr::kable(taxa_region,row.names=FALSE)
+```
+
+```{r}
+#| label: fig-us-richness-region
+#| fig-cap: "Unadjusted family, genus, and species counts by region"
+#| fig-cap-location: bottom
+#| fig-height: 5.5
+
+rich_mat <- t(as.matrix(taxa_region[,c("Families","Genera","Species")]))
+colnames(rich_mat) <- taxa_region$Region
+barplot(rich_mat,beside=TRUE,border=NA,
+        col=c("#56B4E9","#009E73","#E69F00"),
+        ylab="Number of distinct taxa",las=2)
+legend("topright",legend=rownames(rich_mat),
+       fill=c("#56B4E9","#009E73","#E69F00"),bty="n")
+```
+
+The South leads the raw counts in @tbl-us-taxa-region and @fig-us-richness-region, followed by the West. Their advantage is partly expected because these are also the two largest regional subsets. Despite having fewer observations, the Northeast and Midwest still include a notable share of the 3,001 species recorded for the United States.
+
+```{r}
+#| label: fig-us-rarefaction
+#| fig-cap: "Growth of recorded species richness as regional sample size increases"
+#| fig-cap-location: bottom
+#| fig-height: 6
+
+set.seed(42)
+plot(NA,xlim=c(0,max(table(us_df$region))),ylim=c(0,length(unique(us_df$level3_species))),
+     xlab="Number of observations",ylab="Expected number of species")
+grid(col="grey90")
+for(r in levels(us_df$region)){
+  sp <- us_df$level3_species[us_df$region==r]
+  steps <- unique(round(seq(1,length(sp),length.out=min(80,length(sp)))))
+  curves <- replicate(20,{
+    ord <- sample(sp)
+    cum <- cumsum(!duplicated(ord))
+    cum[steps]
+  })
+  lines(steps,rowMeans(curves),lwd=2.2,col=region_colors[r])
+}
+legend("bottomright",legend=levels(us_df$region),col=region_colors,lwd=2.2,bty="n")
+```
+
+In @fig-us-rarefaction, regions can be compared at the same horizontal position and therefore at the same number of sampled records. The curves reveal how quickly additional observations continue to add species in each region. Comparing them at a shared sample size separates part of the diversity pattern from the very different regional record totals.
+
+```{r}
+#| label: fig-us-species-ranges
+#| fig-cap: "Observed ranges of the 12 most frequent species in the contiguous states"
+#| fig-cap-location: bottom
+#| fig-height: 9
+
+top_species <- names(head(sort(table(conus$level3_species),decreasing=TRUE),12))
+op <- par(mfrow=c(4,3),mar=c(1.5,1.5,2,.5),oma=c(2,2,0,0))
+for(sp in top_species){
+  z <- conus[conus$level3_species==sp,]
+  draw_conus()
+  points(z$longitude,z$latitude,pch=16,cex=.45,
+         col=adjustcolor("#173F35",alpha.f=.55))
+  title(sp,cex.main=.68)
+}
+mtext("Longitude",1,outer=TRUE);mtext("Latitude",2,outer=TRUE)
+par(op)
+```
+
+There is no single answer to whether members of one species grow together. In @fig-us-species-ranges, several species are restricted to compact clusters on the Pacific coast, in Texas, Florida, or the Northeast, while others extend across several states or regions. Each species has its own observed range, but that range may be broad or discontinuous. Environmental requirements and dispersal history matter, and the gaps may also reflect missing observations.
+
+## Changes in the distribution over time
+
+All previous figures combine ten collection years into one picture. This can hide changes in participation, especially for data coming mainly from citizen-science platforms.
+
+The bars and line in @fig-us-obs-per-year compare annual volume with the number of represented states. @fig-us-obs-per-year-region identifies which parts of the country produce the increase, and @fig-us-maps-periods checks whether later records spread into new territory or reinforce existing hotspots.
+
+```{r}
+#| label: fig-us-obs-per-year
+#| fig-cap: "Annual U.S. record volume and number of represented states"
+#| fig-cap-location: bottom
+#| fig-height: 6
+
+years <- sort(unique(us_df$year))
+year_obs <- sapply(years,function(y)sum(us_df$year==y))
+year_states <- sapply(years,function(y)length(unique(us_df$state[us_df$year==y])))
+coef <- max(year_obs)/max(year_states)
+par(mar=c(5,5,2,5))
+barplot(year_obs,names.arg=years,col=adjustcolor("steelblue",alpha.f=.65),
+        border=NA,ylab="Number of observations",xlab="Year")
+par(new=TRUE)
+plot(seq_along(years),year_states,type="b",pch=16,lwd=2,col="firebrick",
+     axes=FALSE,xlab="",ylab="",ylim=c(0,max(year_states)*1.1))
+axis(4,col.axis="firebrick");mtext("Distinct states",side=4,line=3,col="firebrick")
+```
+
+The annual series in @fig-us-obs-per-year rises markedly after 2018 and reaches its highest level near the end of the period. State coverage expands earlier and then changes much less. In other words, recent growth mostly adds records within an already broad national footprint. It indicates greater data-collection activity, not rapid growth in the tree population.
+
+```{r}
+#| label: fig-us-obs-per-year-region
+#| fig-cap: "Yearly observation counts separated by U.S. region"
+#| fig-cap-location: bottom
+#| fig-height: 6
+
+yr <- table(us_df$year,us_df$region)
+matplot(as.numeric(rownames(yr)),yr,type="o",pch=16,lty=1,lwd=2,
+        col=region_colors[colnames(yr)],xlab="Year",ylab="Number of observations")
+grid(col="grey90")
+legend("topleft",legend=colnames(yr),col=region_colors[colnames(yr)],
+       pch=16,lwd=2,bty="n")
+```
+
+The regional lines in @fig-us-obs-per-year-region do not grow in parallel. Most of the national increase comes from the South and West, whereas the Northeast and Midwest stay at lower levels. The regional imbalance is therefore repeated across several collection years rather than being produced by one exceptional year.
+
+```{r}
+#| label: fig-us-maps-periods
+#| fig-cap: "Spatial coverage of U.S. observations across five collection periods"
+#| fig-cap-location: bottom
 #| fig-height: 10
-top_species <- us_trees %>%
-  count(level3_species, sort = TRUE) %>%
-  slice_head(n = 20) %>%
-  pull(level3_species)
 
-species_maps <- us_trees %>%
-  filter(
-    level3_species %in% top_species,
-    is.finite(longitude), is.finite(latitude)
-  ) %>%
-  group_by(level3_species) %>%
-  group_modify(~ sample_up_to(.x, ceiling(us_map_sample_n / length(top_species)))) %>%
-  ungroup()
-
-us_map <- map_data("state")
-ggplot(species_maps,
-       aes(longitude, latitude)) +
-  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
-  geom_point(alpha = 0.03, size = 0.05) +
-  facet_wrap(~level3_species) +
-  coord_fixed() +
-  labs(
-    title = "Spatial distribution of the 20 most observed species in the US",
-    caption = paste("Displayed points:", format_number(nrow(species_maps)), "sampled across the 20 most represented species.")
-  ) +
-  theme_gtree()
-
+us_df$period <- ifelse(us_df$year %in% c(2015,2016),"2015–2016",
+             ifelse(us_df$year %in% c(2017,2018),"2017–2018",
+             ifelse(us_df$year %in% c(2019,2020),"2019–2020",
+             ifelse(us_df$year %in% c(2021,2022),"2021–2022","2023–2024"))))
+periods <- c("2015–2016","2017–2018","2019–2020","2021–2022","2023–2024")
+op <- par(mfrow=c(3,2),mar=c(1.5,1.5,2,.5),oma=c(2,2,0,0))
+for(p in periods){
+  z <- conus[conus$year %in% as.numeric(unlist(strsplit(p,"–")))[1]:
+                           as.numeric(unlist(strsplit(p,"–")))[2],]
+  draw_conus()
+  points(z$longitude,z$latitude,pch=16,cex=.3,
+         col=adjustcolor(foliage_colors[z$level0],alpha.f=.45))
+  title(p,cex.main=.9)
+}
+plot.new()
+mtext("Longitude",1,outer=TRUE);mtext("Latitude",2,outer=TRUE)
+par(op)
 ```
 
-We see that the most represented species can be spread: - all across the US territory: Acer negrundo is the most common species of maple, which is a widely and famously spread tree in North America, - in specific parts of the US territory: Acer rubrum is a species of red maple that has made the fame of the canadian maple syrup, only located in the eastern part of North America ; Toxicodendron diversilobum or Pacific poison oak is a tree only present on the west coast and known for allergic reactions.
-
-Geographic distribution of the tree categories:
-
-```{r us-category-bin-map}
-#| cache: true
-#| fig-width: 10
-#| fig-height: 7
-us_map <- map_data("state")
-ggplot(us_trees, aes(longitude, latitude)) +
-  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
-  stat_bin2d(bins = 150) +
-  facet_wrap(~level0) +
-  coord_fixed() +
-  scale_fill_viridis_c() +
-  labs(
-    title = "Geographic distribution of tree categories across the US",
-    subtitle = "Binned observation counts by foliage type.",
-    x = "Longitude", y = "Latitude", fill = "Observations"
-  ) +
-  theme_gtree()
-```
-
-We see different distribution of the tree categories across the US territory: - the most represented ones such as Deciduous Broadleaf have been observed all across the US territory - others, such as Deciduous Needleleaf have only been observed near the coasts and in southern parts of the US, namely because they easily lose their leaves, which makes the next spring more difficult for the tree in very cold areas.
-
-Species richness by categories:
-
-```{r us-category-richness-map}
-#| cache: true
-#| fig-width: 10
-#| fig-height: 7
-richness_level0 <- us_trees %>%
-  mutate(
-    lat_bin = floor(latitude),
-    lon_bin = floor(longitude)
-  ) %>%
-  group_by(level0, lat_bin, lon_bin) %>%
-  summarise(
-    richness = n_distinct(level3_species),
-    .groups = "drop"
-  )
-
-us_map <- map_data("state")
-ggplot() +
-  geom_polygon(data = us_map, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2) +
-  geom_tile(data = richness_level0, aes(lon_bin, lat_bin, fill = richness)) +
-  facet_wrap(~level0) +
-  coord_fixed() +
-  scale_fill_viridis_c() +
-  labs(
-    title = "Species richness by tree category across the US",
-    subtitle = "Number of distinct species per 1-degree grid cell, faceted by foliage type.",
-    x = "Longitude", y = "Latitude", fill = "Species"
-  ) +
-  theme_gtree()
-```
-
-Once again, we see the large difference between the species of each category and how some of them are spread across the US.
+The period maps in @fig-us-maps-periods repeatedly show the same geographical cores, although the number of visible points increases. Coverage becomes denser more often than it becomes geographically broader. The dataset thus preserves a similar internal bias throughout the decade.
 
 # Overall Interpretation
 
@@ -3384,7 +3471,7 @@ This report has examined the GlobalGeoTree dataset from multiple angles — sour
 
 **Germany and Berlin analysis.** Within Germany, the same citizen-science dominance reproduces at the national level, with several platforms shaping partially different spatial footprints. At the Bundesland level, observation counts vary widely, reflecting differences in population density, platform coverage, and observer activity. Berlin is examined in detail, while Baden-Württemberg and NRW provide only brief map-based context for larger federal states with high observation counts. The Berlin oak analysis demonstrates a practical application of the dataset: identifying areas with high concentrations of recorded oak trees to support monitoring of oak processionary moth risk.
 
-**United States.** The US analysis — the most-represented country in the dataset — showed that the most frequently recorded species (e.g. *Acer negundo*, *Acer rubrum*) correspond to genuinely common North American trees, but that species richness values are higher near the coasts where sampling effort is greatest. The central US shows lower recorded diversity, which may partly reflect lower sampling effort rather than genuinely lower biodiversity.
+**United States.** The US analysis — the most-represented country in the dataset — showed strong regional imbalance in recording intensity, with the South and West contributing the largest shares of observations. Foliage composition varies geographically: Deciduous Broadleaf dominates everywhere, while Evergreen Broadleaf is more southern/coastal and Evergreen Needleleaf is more western and northern. Taxonomic richness remains partly shaped by sample size, so regional diversity comparisons should be read alongside the rarefaction results.
 
 **Limitations and outlook.** All visualisations in this report show **recording intensity** in the dataset, not a direct census of trees. High values can reflect true tree presence, but they equally reflect where observers and platforms are most active. For any analysis built on GlobalGeoTree, the source composition of the sample should be reported alongside geographic, temporal, or taxonomic results, and key findings should be checked with and without the largest citizen-science source. Future work could refine the source classification rules, particularly for non-English source names, and explore whether the patterns observed in this analysis hold when the dominant citizen-science sources are excluded as a sensitivity check.
 
