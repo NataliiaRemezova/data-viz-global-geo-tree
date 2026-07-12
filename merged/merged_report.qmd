@@ -72,7 +72,13 @@ Because GlobalGeoTree is assembled from many independent sources, it does not re
 
 The report is organised in three parts. **Part I** examines global patterns: which sources dominate the dataset and how they shape what we see, how observations have changed over time, and how taxonomic composition and species richness vary across the world. **Part II** zooms into Germany as a whole and then Berlin in detail. Baden-Württemberg and NRW appear only through selected density and NUTS3 district maps that provide visual context for interpreting Berlin. **Part III** examines the United States, the most-represented country in the dataset, analysing species composition and geographic patterns at the national level.
 
+Because this is a data-visualisation project, several questions are intentionally shown through more than one visual encoding. These alternatives demonstrate different techniques and emphasise different aspects of the same data — for example, absolute counts versus distribution shape, or geographic coverage versus local concentration.
+
 All charts in this report show **recording intensity** — how many observations were recorded and where — not a direct census of trees. High values can reflect actual tree presence, but they equally reflect where observers and platforms are most active.
+
+::: {.callout-caution title="Limitations to keep in mind"}
+The dataset has no systematic global sampling design, so observation patterns must not be interpreted as direct measures of tree abundance. Records redistributed through aggregators such as GBIF may overlap with records attributed to individual platforms; source classification is based on keyword rules and remains uncertain for multilingual or opaque source names; and the `year` field describes when an observation was recorded, not necessarily when it was added to GlobalGeoTree. These limitations apply throughout the report.
+:::
 
 # Setup {.unnumbered}
 
@@ -310,7 +316,7 @@ classify_source <- function(x) {
 
 This section summarises the analytical choices that the code implements. It provides context for interpreting the results without requiring the reader to examine every code block.
 
-**Data scope.** The loaded GlobalGeoTree observation file covers the period 2015–2024. Rows with missing country codes or missing species names are removed during loading. The remaining records form the working dataset for the global, Germany, and US analyses.
+**Data scope.** The loaded GlobalGeoTree observation file covers observations dated from 2015 to 2024. Rows with missing country codes or species names are removed during loading. Coordinates are converted to numeric values and validated before the continent spatial join; records with missing or out-of-range coordinates, unmatched continents, or open-ocean assignments are excluded from the spatially analysed dataset. The remaining records form the working dataset for the global, Germany, and US analyses.
 
 **Source classification.** Each observation carries a free-text source field with thousands of distinct values. A keyword-matching function (`classify_source()`) assigns each source name to one of seven groups: iNaturalist, Pl\@ntNet, Other citizen-science apps, GBIF (aggregator), Institutional & survey data, Reference & thematic databases, and Other / unknown. The rules are applied in order, and the first match wins. This approach works well for English-language source names and major platforms but can misclassify source names in other languages or those using project-specific abbreviations. The "Other / unknown" group is a catch-all for everything that did not match any rule.
 
@@ -360,6 +366,11 @@ rm(raw)
 
 ```{r continent-assignment}
 #| cache: true
+# Validate coordinates before converting rows to spatial features. Records that
+# cannot be assigned spatially would otherwise fail here and are excluded later
+# in any case because the report requires a continent assignment.
+df <- valid_map_points(df)
+
 points <- st_as_sf(df,
                    coords = c("longitude", "latitude"),
                    crs = 4326)
@@ -907,13 +918,13 @@ ggplot(source_year, aes(x = year, y = observations, fill = source_group_plot)) +
   scale_fill_manual(values = source_colors, drop = TRUE) +
   labs(
     title    = "Observation volume by source group and year",
-    subtitle = "A rising source group can drive the apparent growth of the full dataset.",
+    subtitle = "Changes in one source group can drive the trend in dated observations.",
     x = "Year", y = "Observations", fill = "Source group"
   ) +
   theme_gtree()
 ```
 
-The stacked area chart shows that the dataset's overall growth is largely driven by the expansion of citizen-science platforms, particularly iNaturalist. When iNaturalist's contribution grows, the total observation count rises accordingly, meaning the overall trend reflects platform adoption more than any change in tree populations.
+The stacked area chart shows that the increase in dated observations is largely associated with citizen-science platforms, particularly iNaturalist. When iNaturalist's contribution rises, the total observation count rises accordingly. This pattern is consistent with changing platform activity and coverage, but the observation year does not reveal when records entered GlobalGeoTree.
 
 ```{r source-share-year, fig.width=6, fig.height=3.5}
 ggplot(source_year, aes(x = year, y = share, fill = source_group_plot)) +
@@ -937,10 +948,10 @@ largest_source_growth <- source_year |>
   arrange(source_group_plot, year) |>
   group_by(source_group_plot) |>
   mutate(source_change = observations - lag(observations)) |>
-  ungroup() |>
   filter(!is.na(source_change)) |>
-  slice_max(source_change, n = 8, with_ties = FALSE) |>
-  mutate(label = paste0(year, ": ", source_group_plot))
+  slice_max(source_change, n = 1, with_ties = FALSE) |>
+  mutate(label = paste0(year, ": ", source_group_plot)) |>
+  ungroup()
 
 ggplot(largest_source_growth,
        aes(x = reorder(label, source_change), y = source_change, fill = source_group_plot)) +
@@ -956,7 +967,7 @@ The chart above highlights the single largest year-over-year jumps for each sour
 
 ## Geographic Coverage Over Time
 
-This subsection examines whether the dataset's geographic reach has expanded over time by looking at the rate of new countries entering the dataset and by comparing observation locations at selected snapshot years.
+This subsection examines how the geographic reach of observations dated from 2015 to 2024 differs over time. It compares the first observation year represented for each country within this period and maps observation locations at selected snapshot years. This describes the dates attached to the records, not when countries or records were added to GlobalGeoTree.
 
 ```{r country-coverage-data}
 country_year <- df |>
@@ -982,8 +993,8 @@ ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
   scale_x_continuous(breaks = (start_year + 1):end_year) +
   scale_y_continuous(labels = comma) +
   labs(
-    title   = "New countries entering the dataset by year",
-    x = "First observed year in period", y = "New countries",
+    title   = "Countries first represented by observation year",
+    x = "First observation year represented in period", y = "Countries",
     caption = paste0(
       start_year, " is excluded: ", countries_at_start,
       " countries already had observations in the first year of the window."
@@ -992,7 +1003,7 @@ ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
   theme_gtree()
 ```
 
-The rate of new countries entering the dataset shows whether the geographic reach is still expanding. A declining rate suggests that most accessible countries are already covered and further growth is primarily a matter of densification rather than discovery of new regions.
+This chart shows when countries first appear among the observations dated within the selected period. A declining count suggests that later observation years add relatively few countries not already represented by earlier-dated records, although it does not reveal when those records were ingested into GlobalGeoTree.
 
 The maps below show observation locations at four snapshot years, revealing whether records spread into new regions or simply become denser in existing ones.
 
@@ -1026,7 +1037,7 @@ ggplot() +
   theme_map_gtree()
 ```
 
-Comparing the four snapshot years shows that the geographic footprint of the dataset was already broadly established early in the period: North America, Europe, and parts of Oceania and South America are visible from the first panel. Later panels show a clear increase in point density within these same regions, but comparatively little expansion into previously unsampled areas such as central Africa, interior Asia, or the Amazon basin. This confirms that the dataset's growth over time has been primarily a matter of intensification rather than geographic expansion.
+Comparing the four snapshot years shows that the geographic footprint of the dated observations was already broadly established early in the period: North America, Europe, and parts of Oceania and South America are visible from the first panel. Later panels show a clear increase in point density within these same regions, but comparatively little expansion into previously unrepresented areas such as central Africa, interior Asia, or the Amazon basin. Within the observation-year window, the pattern is therefore more consistent with intensification than with geographic expansion.
 
 # Taxonomic Composition and Geographic Patterns
 
@@ -1041,6 +1052,7 @@ What are the different tree families referenced in this dataset?
 ```{r level0-count-plot}
 #| cache: true
 #| fig-height: 3.5
+#| fig-cap: "Observation counts for the four foliage categories in GlobalGeoTree."
 level0_count <- data %>% count(level0, sort = TRUE)
 
 ggplot(level0_count, aes(x = reorder(level0, n), y = n)) + geom_col(fill = "steelblue") + coord_flip() + labs( x = "Plant category", y = "Number of observations", title = "Number of observations for each plant category" ) + theme_gtree()
@@ -1056,12 +1068,13 @@ Definition of each tree category:
 
 -   Deciduous Needleleaf : a unique group of conifers that, unlike their evergreen counterparts, shed all their needles annually in the autumn (rare trees)
 
-We see here that a very important part of the observations in this dataset are deciduous broadleaf trees. It makes sense because most of the tree species spread across the world are part of this family. On the contrary, Deciduous needleleaf are rare and located in much more restricted areas.
+Deciduous Broadleaf is the largest foliage category among observations in this dataset. Deciduous Needleleaf accounts for a much smaller share and appears in more geographically restricted areas. These values describe the composition of GlobalGeoTree observations rather than the worldwide abundance of each foliage type.
 
 What are the different taxonomic families represented in this dataset and in which proportion are they represented?
 
 ```{r family-count-plot}
 #| cache: true
+#| fig-cap: "The 20 taxonomic families with the largest observation counts in the dataset."
 # Number of level1_categories
 level1_count <- data %>% count(level1_family, sort=TRUE) 
 
@@ -1097,7 +1110,7 @@ ggplot(data, aes(x = latitude)) + geom_histogram(binwidth = 2, fill = "forestgre
 
 # density curve
 
-ggplot(data, aes(x = latitude)) + geom_density(fill = "forestgreen", alpha = 0.5) + labs( title = "Tree density depending on the latitude", x = "Latitude (°)", y = "Density" ) + theme_gtree() + annotate( "text", x = min(data$latitude, na.rm = TRUE),
+ggplot(data, aes(x = latitude)) + geom_density(fill = "forestgreen", alpha = 0.5) + labs( title = "Distribution shape of observations by latitude", x = "Latitude (°)", y = "Relative density" ) + theme_gtree() + annotate( "text", x = min(data$latitude, na.rm = TRUE),
     y = -Inf,
     label = "South",
     vjust = 2,
@@ -1109,7 +1122,7 @@ ggplot(data, aes(x = latitude)) + geom_density(fill = "forestgreen", alpha = 0.5
     x = max(data$latitude, na.rm = TRUE), y = -Inf, label = "North", vjust = 2, hjust = 1, col="darkgreen" ) + coord_cartesian(clip = "off") + theme( plot.margin = margin(10, 10, 30, 10) )
 ```
 
-We see on this graph that the observation density is much more important on the north hemisphere than in the south hemisphere, but this can be linked to the amount of land that differs between north and south hemisphere or the difference in the amount of observations between the two hemispheres.
+The histogram preserves absolute observation counts in each latitude interval, while the density curve emphasises the overall distribution shape. Both show substantially more recorded observations in the Northern Hemisphere, which may reflect differences in land area and sampling effort as well as tree distribution.
 
 Larger representations are also often used in ecological studies, because 5° latitudinal bands contain a satisfying amount of information without showing too much noise.
 
@@ -1117,7 +1130,7 @@ Larger representations are also often used in ecological studies, because 5° la
 #| cache: true
 lat_band <- data %>% mutate(lat_bin = floor(latitude / 5) * 5) %>% count(lat_bin)
 
-ggplot(lat_band, aes(x = lat_bin, y = n)) + geom_col(fill = "steelblue") + labs( title = "Number of trees for each band of 5° latitude", x = "Latitude", y = "Number of observations" ) + theme_gtree() 
+ggplot(lat_band, aes(x = lat_bin, y = n)) + geom_col(fill = "steelblue") + labs( title = "Number of observations for each 5° latitude band", x = "Latitude", y = "Number of observations" ) + theme_gtree()
 ```
 
 The same conclusions can be drawn as before.
@@ -1130,20 +1143,20 @@ We usually take 5° slices because it is small enough to find local tendencies b
 *— Anna*
 :::
 
-How does the latitude influences the different species observed? (Lattitude and specific richness)
+How does latitude influence the different species observed (latitude and species richness)?
 
 ```{r global-species-richness-latitude}
 #| cache: true
 richness <- data %>% mutate(lat_bin = floor(latitude / 5) * 5) %>% group_by(lat_bin) %>% summarise(species_richness = n_distinct(species_key))
 
-ggplot(richness, aes(lat_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + labs( title = "Specific richness depending on the latitude", x = "Latitude", y = "Number of species (Specific richness)" ) + theme_gtree()+ scale_x_reverse()
+ggplot(richness, aes(lat_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + labs( title = "Recorded species richness by latitude", x = "Latitude", y = "Number of recorded species" ) + theme_gtree()+ scale_x_reverse()
 ```
 
-Species richness: simple count of the number of different species present in a specific biological community, landscape, or region Much more important in the north hemisphere than in the south hemisphere more important in temperate areas, much lower at the equator and near the poles.
+Species richness is the number of distinct species recorded in a particular area. Here, recorded richness is higher across many Northern Hemisphere latitude bands and lower near the equator and poles; because observation effort is uneven, this is not a direct estimate of biological richness.
 
 We see here that the maximum species richness are very close in the two hemisphere, but that the distribution is broader in the northern hemisphere than in the southern hemisphere (it is also because trees grow at higher latitudes in the northern hemisphere than in the southern hemisphere). Similar environmental conditions can be found in the two hemispheres but they are not spread following the same pattern.
 
-How does the longitude influences the diffrent species observed (longitude and specifi richness)?
+How does longitude influence the different species observed (longitude and species richness)?
 
 ```{r global-species-richness-longitude}
 #| cache: true
@@ -1152,12 +1165,13 @@ richness_long <- data %>% mutate(long_bin = floor(longitude / 5) * 5) %>% group_
 ggplot(richness_long, aes(long_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + labs( title = "Species richness by longitude", x = "Longitude", y = "Number of species observed" ) + theme_gtree()+ scale_x_reverse()
 ```
 
-We see here that areas with a lot of specific richness correspond to the continental areas, but not much more can be taken out of this graph.
+Areas with high recorded species richness correspond to continental areas, but little more can be concluded from longitude alone.
 
-What is the local specific richness across the world?
+What is the local recorded species richness across the world?
 
 ```{r global-richness-grid-map}
 #| cache: true
+#| fig-cap: "Recorded species richness per 1° grid cell. Counts use all observations; the map shows recorded richness rather than estimated biological richness."
 richness_grid <- data %>% 
   mutate( lat_bin = floor(latitude / 1) * 1, long_bin = floor(longitude / 1) * 1 ) %>% group_by(lat_bin, long_bin) %>% summarise( richness = n_distinct(species_key), .groups = "drop" )
 
@@ -1168,10 +1182,10 @@ world <- if (exists("world_outline_plot")) {
     filter(region != "Antarctica")
 }
 
-ggplot() + geom_tile( data = richness_grid, aes( x = long_bin + 2.5, y = lat_bin + 2.5, fill = richness ) ) + geom_polygon( data = world, aes(long, lat, group = group), fill = NA, color = "black", linewidth = 0.2 ) + scale_fill_gradientn( colours = c( "yellow", "orange", "darkred" ), name = "Species richness" ) + coord_fixed(1.3) + labs( title = "Global tree species richness", x = "Longitude", y = "Latitude" ) + theme_gtree()
+ggplot() + geom_tile( data = richness_grid, aes( x = long_bin + 0.5, y = lat_bin + 0.5, fill = richness ) ) + geom_polygon( data = world, aes(long, lat, group = group), fill = NA, color = "black", linewidth = 0.2 ) + scale_fill_gradientn( colours = c( "yellow", "orange", "darkred" ), name = "Recorded species" ) + coord_fixed(1.3) + labs( title = "Global recorded tree-species richness", x = "Longitude", y = "Latitude" ) + theme_gtree()
 ```
 
-We see here that, in the areas presenting observations, the species richness does not present too important variations and is homogenous in most areas. By crossing this with the previous results, we can think that the species richness does not vary but that the species involved do vary across the world.
+Within sampled areas, many grid cells show similar recorded richness, while the species involved vary geographically. Observation effort also varies strongly between cells, so the map should not be read as showing homogeneous underlying biodiversity.
 
 How are the different tree species distributed depending on the latitude? Here, we only check for the most represented species.
 
@@ -1218,7 +1232,9 @@ data_sample <- df_world_map_sample
 ggplot(data_sample, aes(longitude, latitude)) +
   geom_polygon(data = world, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
   geom_point(alpha = 0.03, size = 0.05) +
-  coord_fixed() + theme_gtree()
+  coord_fixed() +
+  labs(caption = paste("Displayed points:", format_number(nrow(data_sample)), "sampled observations.")) +
+  theme_gtree()
 
 # one map for each family (20 first families)
 top_families <- data %>% count(level1_family, sort = TRUE) %>% slice_head(n = 12) %>% pull(level1_family)
@@ -1233,7 +1249,10 @@ ggplot(data_top, aes(longitude, latitude)) +
   geom_polygon(data = world, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
   geom_point(alpha = 0.03, size = 0.05) +
   facet_wrap(~ level1_family) + coord_fixed() + theme_gtree() +
-  labs( title = "Spatial distribution of the 12 most abundant families" )
+  labs(
+    title = "Spatial distribution of the 12 most abundant families",
+    caption = paste("Displayed points: up to", format_number(world_map_sample_n), "per family.")
+  )
 ```
 
 On this visualization, we can see the distribution of the different taxonomical families across the world: - families are very widely spread across the world such as the Asteraceae: this family contains a very large amount of different species, that live in temperate areas. They can survive various non-extreme conditions. - families are observed in more restrictive areas, such as the families Ericaceae and Pinaceae: these families are very adapted to cold and unwelcoming places such as the tundra and boreal forests or places that are at a high altitude.
@@ -1644,7 +1663,7 @@ ggplot(df, aes(x = latitude, y = level0, fill = level0)) +
 
 ```
 
-@fig-ridge-latitude confirms and refines, with much greater precision, the patterns suggested by the previous map and bar chart. Evergreen Needleleaf (blue) shows the most clearly defined latitudinal signal in the entire figure: a sharp, dominant peak around 45–50°N, with only a small secondary bump around 30–40°S, confirming that this foliage type is overwhelmingly associated with Northern Hemisphere temperate/boreal latitudes, with a much smaller presence in the Southern Hemisphere's temperate zone. Deciduous Needleleaf (pink) is similarly concentrated at high northern latitudes, with a pronounced peak around 45–55°N and virtually no presence in the Southern Hemisphere. Its distribution is the narrowest and most latitude-restricted of the four foliage types, consistent with its very limited geographical range observed in @fig-maps-foliage. Deciduous Broadleaf (orange) is dominated by a large peak around 45–50°N, overlapping closely with the two needleleaf types, alongside a much smaller secondary bump near 10°N and a minor bump around 30°S. Evergreen Broadleaf (green) stands out as the most latitudinally spread category, with density visible almost continuously from 40°S to 50°N, including a distinct concentration in the tropical band (0–20°N) that is more pronounced than for the other three types, plus a bump around 30–40°S and a peak around 45–50°N that overlaps with Deciduous Broadleaf. This last point directly resolves the ambiguity raised in @fig-maps-foliage and @fig-bar-foliage-continent: while Deciduous Broadleaf and Evergreen Broadleaf appeared to occupy similar geographical ranges at the continent level, this ridge plot shows they are only partially overlapping in latitude. Evergreen Broadleaf is the only foliage type with a substantial tropical presence, while Deciduous Broadleaf, like both needleleaf types, remains overwhelmingly concentrated in the temperate Northern Hemisphere. This confirms that latitude (more than continental identity) is the primary driver structuring the geographical distribution of foliage types in this dataset, consistent with ecological expectations linking foliage strategy to climate.
+@fig-ridge-latitude refines the patterns suggested by the previous map and bar chart. Evergreen Needleleaf (blue) shows a sharp peak around 45–50°N, with only a small secondary bump around 30–40°S. Deciduous Needleleaf (pink) is similarly concentrated at high northern latitudes, with a pronounced peak around 45–55°N and little recorded presence in the Southern Hemisphere. Deciduous Broadleaf (orange) has a large peak around 45–50°N, while Evergreen Broadleaf (green) is more widely distributed and has a more substantial tropical presence. Unlike the continent-level chart, the ridge plot exposes the continuous latitudinal shape of each category. These patterns are consistent with an association between foliage strategy and climate, but the plot alone cannot establish latitude as the primary driver because observation effort and other environmental variables are not controlled.
 
 ## Taxonomic richness by continent
 
@@ -1664,7 +1683,7 @@ Three complementary views are used to address this issue. @tbl-taxa-continent fi
 #| tbl-align: center
 
 
-tableau_taxons <- df %>%
+tableau_taxa <- df %>%
   filter(!is.na(continent)) %>%
   group_by(continent) %>%
   summarise(
@@ -1672,7 +1691,7 @@ tableau_taxons <- df %>%
     Families = n_distinct(level1_family),
     Genus   = n_distinct(level2_genus),
     Species  = n_distinct(level3_species),
-    Complete_taxons = n_distinct(paste(
+    Complete_taxa = n_distinct(paste(
       level1_family,
       level2_genus,
       level3_species,
@@ -1682,7 +1701,7 @@ tableau_taxons <- df %>%
   )
 
 
-kable(tableau_taxons)
+kable(tableau_taxa)
 
 ```
 
@@ -1738,7 +1757,7 @@ ggplot(richness_long_raw,
   scale_fill_manual(values = palette_taxa) +
   
   labs(
-    x = NULL, y = "Number of unique taxons",
+    x = NULL, y = "Number of unique taxa",
     fill = NULL
   ) +
   
@@ -1758,7 +1777,7 @@ Comparing this ranking to the observation volume documented in @fig-bar-continen
 
 This pattern suggests that raw taxonomic richness, as shown here, is not simply proportional to sampling volume, but it does not yet establish whether these differences reflect genuine biodiversity patterns or are still partly shaped by uneven sampling effort within each continent. A question addressed directly by the rarefaction analysis in @fig-rarefaction.
 
-**Methodological note :** Rarefaction curves are obtained through repeated random subsampling. For a given continent, a subset of n observations is drawn at random (without replacement) from all its recorded observations, and the number of distinct species present in that subset is counted. This process is repeated many times for each sample size n, and the results are averaged to produce a smooth expected curve. This is repeated for increasing values of n, from a small sample up to the full number of observations available for that continent, producing one curve per continent.
+**Methodological note:** The `vegan::rarefy()` function calculates the expected number of recorded species in a random sample of *n* observations, drawn without replacement from each continent's species-abundance counts. It evaluates this expectation analytically rather than performing repeated random simulations. Calculating the expectation across increasing sample sizes produces one rarefaction curve per continent. This standardises the number of observations being compared, but it does not correct for geographic coverage, source composition, detectability, or other differences in sampling design.
 
 ```{r}
 #| label: fig-rarefaction
@@ -1819,19 +1838,19 @@ ggplot(rare_df, aes(x = n, y = S, color = continent)) +
 
 ```
 
-@fig-rarefaction delivers the central result of this subsection, and substantially revises the picture suggested by the raw counts in @fig-richness-continent. At the shared sampling effort marked by the dashed line (n=198,000, the size of Africa's full sample), the ranking of continents changes considerably. Oceania and South America emerge as the most diverse, both reaching close to 4,000 expected unique species, closely followed by Africa (around 3,900). North America and Asia form an intermediate group (roughly 3,700 and 3,400 respectively), while Europe remains clearly the least diverse continent, with only around 1,300 expected species (less than a third of the leading continents, despite being the second most heavily sampled continent overall).
+@fig-rarefaction provides an equal-observation comparison that substantially revises the picture suggested by the raw counts in @fig-richness-continent. At the shared sampling effort marked by the dashed line (n=198,000, the size of Africa's full sample), the ranking of recorded richness changes considerably. Oceania and South America reach close to 4,000 expected recorded species, followed by Africa (around 3,900). North America and Asia form an intermediate group (roughly 3,700 and 3,400 respectively), while Europe has around 1,300 expected recorded species at this sample size.
 
-The most striking result of this analysis concerns North America. While it recorded by far the highest raw species count in @fig-richness-continent (6,528 species), this advantage all but disappears once sampling effort is equalized. Its rarefaction curve is overtaken by Oceania, South America, and Africa well before reaching the comparison point. This confirms that North America's apparent leadership in raw richness was largely an artifact of its considerably larger sample size (@fig-bar-continent), rather than evidence of genuinely higher tree diversity.
+The most striking change concerns North America. While it has the highest raw species count in @fig-richness-continent (6,528 species), this advantage largely disappears once observation count is equalised. Its rarefaction curve is overtaken by Oceania, South America, and Africa before reaching the comparison point. This suggests that North America's raw lead is strongly influenced by its larger sample size (@fig-bar-continent), without establishing how the continents compare in underlying biological diversity.
 
-Europe presents the opposite and arguably more informative case. Its rarefaction curve remains consistently and substantially below all other continents across the entire range shown, including at very small sample sizes where all continents should, in principle, be more directly comparable. This indicates that Europe's low species richness is not primarily a sampling artifact (as it was heavily sampled overall) but likely reflects a genuine ecological pattern, plausibly linked to lower tree species diversity in temperate European forests compared to the other regions.
+Europe's rarefaction curve remains below the other continents across the range shown. This indicates lower recorded richness even at equal observation counts. The difference may be consistent with ecological patterns, but it may also reflect source composition, geographic concentration, detectability, or other sampling differences that rarefaction does not remove.
 
-Finally, the relative ranking of Africa, Oceania, and South America appears fairly stable and closely clustered across the observed range, suggesting a comparable level of underlying diversity between these three continents once sampling bias is accounted for.
+Finally, Africa, Oceania, and South America remain fairly closely clustered across the observed range, suggesting comparable recorded richness after standardising observation count. This adjustment addresses sample size rather than all forms of sampling bias.
 
 ## Changes in the distribution over time
 
-The two previous subsections examined the spatial and taxonomic distribution of observations as a static snapshot, without considering when this data was collected. However, given the strong reliance on citizen-science platforms such as iNaturalist, sampling effort is unlikely to have remained constant over time. It has likely grown alongside the adoption of these platforms, and may have expanded geographically as new contributors joined from previously under-sampled regions. This final subsection therefore introduces the temporal dimension, examining how both the volume and the geographical spread of observations have evolved over the years.
+The two previous subsections examined the spatial and taxonomic distribution of observations as a static snapshot, without considering their recorded year. Given the strong reliance on citizen-science platforms such as iNaturalist, the number and coverage of dated observations are unlikely to be constant across the period. This final subsection therefore examines how observation volume and represented geography differ by observation year. The figures do not show when records were ingested into GlobalGeoTree.
 
-@fig-obs-per-year first tracks the total number of observations recorded each year, alongside the number of distinct countries contributing data, allowing global growth in sampling effort to be distinguished from genuine geographical expansion.
+@fig-obs-per-year first tracks the total number of observations dated to each year, alongside the number of distinct countries represented, allowing changes in record volume to be compared with changes in geographic representation.
 
 @fig-obs-per-year-continent then breaks this trend down by continent, revealing whether this growth has been shared evenly across regions or driven primarily by a subset of continents, which would in turn affect the balance of the geographical biases identified earlier.
 
@@ -1844,7 +1863,7 @@ Taken together, these figures assess whether the spatial imbalances observed in 
 #| eval: true
 #| warning: false
 #| message: false
-#| fig-cap: "Trends in data collection over time"
+#| fig-cap: "Observation volume and represented countries by observation year"
 #| fig-cap-location: bottom
 #| fig-width: 14
 #| fig-height: 8
@@ -1898,9 +1917,9 @@ ggplot(summary_year, aes(x = year)) +
 
 ```
 
-@fig-obs-per-year reveals a marked and rapid growth in data collection, particularly from 2018 onward. After remaining relatively stable and low between 2015 and 2018 (150,000 – 200,000 observations per year), the number of observations increases sharply each year, peaking in 2022 at just over 1,000,000 annual observations, a roughly six-fold increase in only four years. This pattern is consistent with the growing global adoption of citizen-science platforms such as iNaturalist over this period, rather than a sudden change in tree biodiversity itself.
+@fig-obs-per-year reveals a marked increase in observations dated from 2018 onward. After remaining between roughly 150,000 and 200,000 observations per year from 2015 to 2018, the count rises sharply and peaks in 2022 at just over 1,000,000. This pattern is consistent with changes in citizen-science activity and source coverage, but observation year alone cannot establish when or why records were added to the combined dataset.
 
-For his part, the number of distinct countries contributing observations (red line) shows an upward trend, growing from 166 in 2015 to over 198 by 2021, before stabilizing around 197–202 through 2024. This increase indicates a genuine geographical expansion of data collection over time, to the point where the dataset now includes at least one observation from nearly every country in the world (since there are only around 200 countries globally). This near-complete country coverage, however, should be interpreted carefully alongside the sharp rise in observation volume over the same period. The fact that almost every country is represented does not imply that sampling effort is evenly distributed within or between them. A single observation in a given country carries very different weight than the hundreds of thousands recorded annually in others, such as those in North America or Europe.
+The number of distinct countries represented by dated observations (red line) also increases, from 166 in 2015 to over 198 by 2021, before stabilising around 197–202 through 2024. This broad representation should be interpreted carefully alongside the sharp difference in observation volume: one observation and hundreds of thousands of observations both count as country presence. The chart therefore shows breadth of representation by observation year, not equal sampling within or between countries.
 
 Whether this recent growth in volume has been accompanied by a more even distribution across continents, or remains concentrated in already-dominant regions, is examined more directly in the next figure (@fig-obs-per-year-continent).
 
@@ -1909,7 +1928,7 @@ Whether this recent growth in volume has been accompanied by a more even distrib
 #| eval: true
 #| warning: false
 #| message: false
-#| fig-cap: "Collection volume by continent and by year"
+#| fig-cap: "Observation volume by continent and observation year"
 #| fig-cap-location: bottom
 #| fig-width: 14
 #| fig-height: 8
@@ -1940,7 +1959,7 @@ ggplot(summary_continent, aes(x = year, y = n, colour = continent)) +
 
 ```
 
-@fig-obs-per-year-continent confirms and refines the hypothesis raised in the previous figure. The overall growth in observation volume since 2018 is almost entirely driven by North America and Europe, while the other four continents remain comparatively flat throughout the entire period. North America shows the strongest and most sustained growth, rising from roughly 20,000 observations in 2015 to over 450,000 in 2023, before a slight decline in 2024. Europe follows a broadly similar trajectory until 2022, reaching nearly 385,000 observations, but then declines sharply over the following two years, dropping to around 220,000 by 2024. This pattern is not observed on any other continent. Asia, Africa, and Oceania, by comparison, remain at a much lower and comparatively stable level throughout the period, together never exceeding roughly 100,000–150,000 combined observations per year even at their 2022–2023 peak. This confirms that the massive increase in global volume documented previously has not translated into meaningful growth for these regions, and that the spatial imbalance identified earlier has, if anything, widened in absolute terms over the past decade. South America stands out with a distinct, isolated spike in 2018 (around 180,000 observations), sharply contrasting with its otherwise low and flat trend before and after that year. This one-off anomaly likely reflects a specific, temporary factor rather than a lasting shift in regional sampling activity, since volume returns to its previous low level as early as 2019.
+@fig-obs-per-year-continent refines the pattern in the previous figure. The increase in observations dated since 2018 is concentrated mainly in North America and Europe, while the other four continents remain comparatively flat. North America rises from roughly 20,000 observations dated 2015 to over 450,000 dated 2023, followed by a slight decline in 2024. Europe follows a similar trajectory until 2022 and then declines. Asia, Africa, and Oceania remain at lower levels, while South America has a distinct spike in 2018. These differences show that the imbalance between continents persists across observation years. They may reflect changes in platform activity, source coverage, or the temporal completeness of contributed records rather than changes in tree populations.
 
 ```{r}
 #| label: fig-maps-periods
@@ -2000,7 +2019,7 @@ ggplot() +
 
 @fig-maps-periods provides a direct spatial confirmation of the trends identified in the two previous figures, while also introducing an additional dimension: foliage type (Evergreen Broadleaf, Evergreen Needleleaf, Deciduous Broadleaf). Across all five sampled period panels, the overall geographical footprint of the dataset remains remarkably stable. The same broad regions (North America, Europe, coastal South America, parts of Africa and Southeast Asia/Oceania) are already represented as early as 2015–2016, with no major new region appearing in later periods. This is consistent with the near-total country coverage observed in @fig-obs-per-year: geographical breadth was established early, and subsequent growth in volume (@fig-obs-per-year-continent) has taken the form of densification within already-sampled areas rather than expansion into new ones. This densification is visually apparent when comparing early and recent periods: point coverage becomes progressively denser and more continuous over North America and Europe, particularly for deciduous broadleaf (orange) and evergreen broadleaf (green) foliage, while regions such as central Africa, the Amazon interior, and Central Asia remain visibly sparse throughout all five periods, showing little to no improvement over the decade.
 
-Overall, this final figure reinforces the central finding of this subsection: the sampling bias identified earlier in the report is not a transient artifact of an early, immature dataset that has since been corrected, but a structural and persistent feature that has remained stable over the full ten-year period covered by the data.
+Overall, this final figure shows that the geographic imbalance is visible throughout the full range of observation years. This is consistent with a persistent structural bias in the dated records, while not describing when the contributing records were actually ingested into GlobalGeoTree.
 
 # Part II: Germany and Berlin Analysis {.unnumbered}
 
@@ -2260,7 +2279,7 @@ de_input_summary <- tibble::tibble(
 nice_table(de_input_summary, "Germany data check")
 ```
 
-## Species observed in Germany and common name lookup
+# Germany: Species and Common-Name Lookup
 
 To make charts easier to read, English common names are shown next to Latin names wherever possible. As described in the Methodology section, the GlobalGeoTree dataset contains `species_key`, a unique GBIF identifier for each species. This key is used to query the GBIF vernacular-names API once and cache the result in `data/external/species_common_names.csv`. On every subsequent render, the report reads from that file.
 
@@ -2686,6 +2705,7 @@ if (nrow(berlin_points_for_map) < 3) {
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
     labs(title = "Tree observation density in Berlin",
          subtitle = "Filled contours show observation density; local-area borders provide spatial context.",
+         caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
 } else {
@@ -2696,6 +2716,7 @@ if (nrow(berlin_points_for_map) < 3) {
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
     labs(title = "Tree observation density in Berlin",
          subtitle = "District borders were unavailable, so this map uses the Berlin bounding-box fallback.",
+         caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = "Longitude", y = "Latitude") +
     theme_gtree()
 }
@@ -2816,7 +2837,7 @@ The most frequently recorded species in Berlin reflect the city's urban tree sto
 
 ## Berlin oak tree groups
 
-This section demonstrates a practical application of the dataset. Oak trees are a public-health concern in Berlin because the oak processionary moth (*Thaumetopoea processionea*) can cause allergic reactions and skin irritation in people and pets near affected trees. Mapping recorded oak locations can help identify areas where monitoring or public warnings may be needed.
+This section demonstrates a possible practical application of the dataset. The oak processionary moth (*Thaumetopoea processionea*) can cause allergic reactions and skin irritation near affected oak trees. Mapping recorded oak locations provides a starting point that could be compared with official tree inventories and pest-surveillance data; GlobalGeoTree observations alone do not show whether the moth is present or whether a public warning is needed.
 
 ```{r berlin-oak-summary}
 berlin_oaks <- berlin |>
@@ -2901,13 +2922,13 @@ if (nrow(berlin_oak_area_counts) == 0) {
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
     labs(title = "Recorded oak observations by Berlin local area",
-         subtitle = "This helps locate oak record groups that may need monitoring for oak processionary risk.",
+         subtitle = "Recorded oak locations can be compared with official inventories and pest-surveillance data.",
          x = NULL, y = "Oak observations") +
     theme_gtree()
 }
 ```
 
-The oak map and local-area ranking show where recorded oak groups are concentrated across Berlin. High-density areas in the dataset are candidates for targeted monitoring and public warning campaigns, though the records reflect observer activity and are not a complete oak census. This analysis demonstrates how the GlobalGeoTree dataset can be used for practical applications beyond general biodiversity research.
+The oak map and local-area ranking show where recorded oak groups are concentrated across Berlin. Because these records reflect observer activity and are not a complete oak census, they cannot determine pest presence or risk by themselves. The visualization instead demonstrates how GlobalGeoTree locations could be combined with official inventories and surveillance records in a practical follow-up analysis.
 
 # Baden-Württemberg and Nordrhein-Westfalen
 
@@ -3031,7 +3052,7 @@ if (nrow(nrw_points_for_map) < 3) {
 }
 ```
 
-As with Baden-Württemberg, this density map should be read as recording intensity rather than true tree density.
+As with Baden-Württemberg, this density map should be read as recording intensity rather than true tree abundance.
 
 ### NRW observations by NUTS3 district
 
@@ -3074,6 +3095,8 @@ What species and geographic patterns characterise the most-represented country i
 
 As with the worldwide analysis, US maps use reproducible subsampling for point and density visualizations while all aggregate analyses (richness, species counts) use the full US subset. See Methodology for details.
 
+# United States: National Patterns
+
 ## Filtration of the US data
 
 ```{r us-filter}
@@ -3111,6 +3134,7 @@ species_dist <- us_trees %>%
 
 ```{r us-top-species-bar}
 #| cache: true
+#| fig-cap: "The 20 species with the largest observation counts in the US subset."
 
 species_dist %>%
   slice_max(n, n = 20) %>%
@@ -3129,7 +3153,7 @@ species_dist %>%
   theme_gtree()
 ```
 
-The species showed as most observed ones are very common species in North-America (large-leaved beech for the first one). As before, we can say that the observed species in this dataset are, to some extent, representative of the reality in the US.
+Several of the most frequently recorded species have distributions that are consistent with well-known North American ranges. However, high observation counts alone do not establish that the ranking is representative of true abundance across the US.
 
 We now do the same but for the tree categories:
 
@@ -3186,7 +3210,7 @@ ggplot(us_trees_density, aes(longitude, latitude)) +
   guides(fill = guide_legend(ncol = 2))
 ```
 
-We can see on this map that the observations cover almost the whole US territory, but that areas are missing data, namely in the center of the US and in Alaska. This is coherent since these areas are less populated than the coastal areas. However, there areas are also those presenting the most trees in the US, especially in the national parks zones. The conclusions drawn from the other observations would then have to be put back into context.
+The map shows broad US coverage but lower observation density in parts of the central US and Alaska. Population, accessibility, and platform activity may contribute to this pattern. Because ecologically important forest and protected areas can also be sparsely recorded, subsequent richness results must be interpreted in the context of uneven observation effort.
 
 Species Richness: - Depending on the latitude:
 
@@ -3315,7 +3339,13 @@ ggplot(species_maps,
 
 ```
 
-We see that the most represented species can be spread: - all across the US territory: Acer negrundo is the most common species of maple, which is a widely and famously spread tree in North America, - in specific parts of the US territory: Acer rubrum is a species of red maple that has made the fame of the canadian maple syrup, only located in the eastern part of North America ; Toxicodendron diversilobum or Pacific poison oak is a tree only present on the west coast and known for allergic reactions.
+The faceted point maps reveal different recorded ranges among the most frequently observed species:
+
+- *Acer negundo* appears across a broad portion of the US.
+- *Acer rubrum* is concentrated mainly in the eastern US.
+- *Toxicodendron diversilobum* (Pacific poison oak) is concentrated along the West Coast.
+
+These point maps emphasise geographic coverage for individual species, whereas the density and grid maps above emphasise concentration and local richness.
 
 Geographic distribution of the tree categories:
 
@@ -3338,7 +3368,7 @@ ggplot(us_trees, aes(longitude, latitude)) +
   theme_gtree()
 ```
 
-We see different distribution of the tree categories across the US territory: - the most represented ones such as Deciduous Broadleaf have been observed all across the US territory - others, such as Deciduous Needleleaf have only been observed near the coasts and in southern parts of the US, namely because they easily lose their leaves, which makes the next spring more difficult for the tree in very cold areas.
+The foliage categories have different recorded distributions across the US. Deciduous Broadleaf appears across much of the mapped territory, while Deciduous Needleleaf has a more restricted footprint in this dataset. These differences may reflect ecological ranges as well as uneven sampling, and the maps alone do not establish the environmental mechanism behind them.
 
 Species richness by categories:
 
@@ -3378,15 +3408,31 @@ Once again, we see the large difference between the species of each category and
 
 This report has examined the GlobalGeoTree dataset from multiple angles — source bias, temporal trends, taxonomic composition, worldwide distribution, regional patterns in Germany, and a country-level analysis of the United States.
 
-**Source bias and temporal trends.** The global analysis confirmed that citizen-science platforms — above all iNaturalist — dominate the dataset and drive both its temporal growth and its geographic biases, making the combined dataset a composite of several geographically non-uniform "lenses" rather than a single coherent survey.
+**Source bias and temporal trends.** The global analysis showed that citizen-science platforms — above all iNaturalist — dominate the dataset and strongly shape patterns by observation year and geography, making the combined dataset a composite of several geographically non-uniform "lenses" rather than a single coherent survey.
 
-**Taxonomic composition and worldwide distribution.** The taxonomic analysis showed that Deciduous Broadleaf trees dominate observations globally, and that species richness peaks in temperate latitudes of both hemispheres. The continent-level analysis revealed that sampling effort is heavily concentrated in North America and Europe, while regions such as central Africa, the Amazon interior, and Central Asia remain sparsely sampled across the dataset years. Importantly, this geographic bias has remained structurally stable over 2015–2024, with growth taking the form of densification within already-sampled areas rather than expansion into new regions.
+**Taxonomic composition and worldwide distribution.** The taxonomic analysis showed that Deciduous Broadleaf is the largest foliage category in the observations and that recorded species richness peaks in several temperate latitude bands. Sampling is heavily concentrated in North America and Europe, while regions such as central Africa, the Amazon interior, and Central Asia remain sparsely represented. This geographic bias is visible throughout 2015–2024 observation years, with later-dated records tending to intensify already represented areas rather than adding major new regions.
 
-**Germany and Berlin analysis.** Within Germany, the same citizen-science dominance reproduces at the national level, with several platforms shaping partially different spatial footprints. At the Bundesland level, observation counts vary widely, reflecting differences in population density, platform coverage, and observer activity. Berlin is examined in detail, while Baden-Württemberg and NRW provide only brief map-based context for larger federal states with high observation counts. The Berlin oak analysis demonstrates a practical application of the dataset: identifying areas with high concentrations of recorded oak trees to support monitoring of oak processionary moth risk.
+**Germany and Berlin analysis.** Within Germany, the same citizen-science dominance reproduces at the national level, with several platforms shaping partially different spatial footprints. At the Bundesland level, observation counts vary widely, reflecting differences in population density, platform coverage, and observer activity. Berlin is examined in detail, while Baden-Württemberg and NRW provide brief map-based context. The Berlin oak analysis demonstrates how recorded oak locations could be compared with official inventories and pest-surveillance data in a follow-up application.
 
-**United States.** The US analysis — the most-represented country in the dataset — showed that the most frequently recorded species (e.g. *Acer negundo*, *Acer rubrum*) correspond to genuinely common North American trees, but that species richness values are higher near the coasts where sampling effort is greatest. The central US shows lower recorded diversity, which may partly reflect lower sampling effort rather than genuinely lower biodiversity.
+**United States.** The US analysis — the most-represented country in the dataset — showed that the mapped patterns of several frequently recorded species (e.g. *Acer negundo*, *Acer rubrum*) are consistent with familiar North American ranges. Recorded species richness is higher near the coasts where observation effort is also greatest, while lower values in the central US may partly reflect lower sampling effort rather than genuinely lower biodiversity.
 
 **Limitations and outlook.** All visualisations in this report show **recording intensity** in the dataset, not a direct census of trees. High values can reflect true tree presence, but they equally reflect where observers and platforms are most active. For any analysis built on GlobalGeoTree, the source composition of the sample should be reported alongside geographic, temporal, or taxonomic results, and key findings should be checked with and without the largest citizen-science source. Future work could refine the source classification rules, particularly for non-English source names, and explore whether the patterns observed in this analysis hold when the dominant citizen-science sources are excluded as a sensitivity check.
+
+# Visualisation Techniques {.unnumbered}
+
+The report intentionally uses multiple visual encodings, including complementary views of the same question. The table summarises the main techniques and what each contributes.
+
+| Technique | Main visual purpose |
+|---|---|
+| Bar and stacked-bar charts | Compare rankings, totals, and within-group composition |
+| Line and area charts | Show changes across observation years and their source composition |
+| Histograms and density curves | Contrast absolute frequency with distribution shape |
+| Boxplots, heatmaps, and ridge plots | Compare distributions across taxa and latitude |
+| Point and faceted maps | Show coverage, individual locations, and group-specific footprints |
+| KDE maps and spatial bins | Emphasise relative hotspots and local concentration |
+| Choropleth maps | Compare aggregated counts across administrative areas |
+| Richness grids and rarefaction curves | Compare recorded taxonomic richness spatially and at equal observation counts |
+| Spatial joins | Connect observation coordinates with continents and administrative boundaries |
 
 # References {.unnumbered}
 

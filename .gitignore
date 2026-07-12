@@ -10,3 +10,6 @@ GlobalGeoTree.csv
 /GlobalGeoTree_combined_report_files
 /merged/merged_report_cache
 /merged/merged_report_files
+/merged/final_report_cache/
+/merged/final_report_files/
+/merged/data/
