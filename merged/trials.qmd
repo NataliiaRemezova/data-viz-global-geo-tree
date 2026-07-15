@@ -1,0 +1,35 @@
+```{r family-count-plot}
+#| cache: true
+#| fig-cap: "The 20 taxonomic families with the largest observation counts in the dataset."
+# Number of level1_categories
+level1_count <- data %>% count(level1_family, sort=TRUE)
+
+# selection of the 20 most represented families
+
+top20 <- level1_count %>%
+  slice_head(n = 20)
+
+ggplot(
+  top20,
+  aes(
+    x = reorder(level1_family, n),
+    y = n,
+    fill = plant_category
+  )
+) +
+  geom_col() +
+  plot_labs(
+    x = "Taxonomic family",
+    y = "Observations (×100,000)",
+    title = "Top 20 Plant Families by Observations",
+    fill = "Plant category"
+  ) +
+  scale_y_continuous(
+    labels = scales::label_number(scale = 1 / 100000, accuracy = 0.1)
+  ) +
+  theme_gtree() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+
+```
