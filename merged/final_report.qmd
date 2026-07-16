@@ -656,7 +656,6 @@ ggplot(source_group_counts,
   scale_fill_manual(values = source_colors) +
   plot_labs(
     title    = "Observation share by source group",
-    subtitle = "Citizen-science platforms dominate; GBIF is shown separately.",
     x = NULL, y = "Observations"
   ) +
   theme_gtree()
@@ -727,9 +726,31 @@ country_source <- country_source |>
     country_code     = factor(country_code, levels = country_order),
     source_group_plot = factor(source_group_plot, levels = source_group_levels)
   )
+
+# Country code -> full name (most frequent location per code), used to build a
+# readable key caption for the by-country charts (ISO codes alone are unclear).
+country_name_lookup <- df |>
+  filter(!is.na(location), location != "") |>
+  count(country_code, location, sort = TRUE) |>
+  group_by(country_code) |>
+  slice_head(n = 1) |>
+  ungroup() |>
+  select(country_code, location)
+
+# Builds a wrapped "US = United States; DE = Germany; ..." key for chart captions.
+make_country_code_key <- function(codes) {
+  key <- country_name_lookup |>
+    filter(country_code %in% as.character(codes)) |>
+    arrange(country_code)
+  stringr::str_wrap(
+    paste0("Country codes: ",
+           paste0(key$country_code, " = ", key$location, collapse = "; ")),
+    width = if (params$latex) 60 else 100
+  )
+}
 ```
 
-```{r country-source-stacked-share, fig.width=6.5, fig.height=4}
+```{r country-source-stacked-share, fig.width=7.5, fig.height=5.5}
 ggplot(country_source, aes(x = country_code, y = share, fill = source_group_plot)) +
   geom_col(width = 0.75) +
   coord_flip() +
@@ -742,9 +763,12 @@ ggplot(country_source, aes(x = country_code, y = share, fill = source_group_plot
       " countries by observations; bars sum to 100% within each country.\n",
       "GBIF (aggregator) is shown separately — its true source mix is unknown."
     ),
-    x = NULL, y = "Share of country observations", fill = "Source group"
+    x = NULL, y = "Share of country observations", fill = "Source group",
+    caption = make_country_code_key(country_order)
   ) +
-  theme_gtree()
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  theme_gtree() +
+  theme(plot.margin = margin(6, 12, 6, 6))
 ```
 
 The stacked bar chart reveals that source composition varies sharply by country. Some countries are almost entirely supplied by a single platform (e.g. iNaturalist in the US), while others draw from a more balanced mix. Countries dominated by a single source inherit that platform's geographic and taxonomic biases.
@@ -773,7 +797,7 @@ country_diversity <- df |>
   mutate(country_code = factor(country_code, levels = rev(country_code)))
 ```
 
-```{r source-diversity-country, fig.width=6.5, fig.height=4}
+```{r source-diversity-country, fig.width=7.5, fig.height=5.5}
 ggplot(country_diversity, aes(x = country_code, y = effective_sources, fill = dominant_source)) +
   geom_col(width = 0.72) +
   coord_flip() +
@@ -781,9 +805,12 @@ ggplot(country_diversity, aes(x = country_code, y = effective_sources, fill = do
   plot_labs(
     title    = "How source-diverse are the largest country samples?",
     subtitle = "Effective number of source groups is low when one source dominates a country.",
-    x = NULL, y = "Effective number of source groups", fill = "Dominant source"
+    x = NULL, y = "Effective number of source groups", fill = "Dominant source",
+    caption = make_country_code_key(levels(country_diversity$country_code))
   ) +
-  theme_gtree()
+  guides(fill = guide_legend(nrow = 2, byrow = TRUE)) +
+  theme_gtree() +
+  theme(plot.margin = margin(6, 12, 6, 6))
 ```
 
 Countries with low effective source diversity (close to 1) are essentially single-source samples, meaning their apparent species composition and geographic coverage are shaped almost entirely by one platform's user base. Countries with higher diversity draw from multiple independent collection efforts, making their data more robust to any single platform's biases.
@@ -880,7 +907,6 @@ ggplot() +
   coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
   plot_labs(
     title    = "Geographic coverage of major source groups",
-    subtitle = "Different source groups leave visibly different spatial footprints.",
     x = "Longitude", y = "Latitude",
     caption  = "Points show recording locations, not species ranges. Points are sampled for readability."
   ) +
@@ -988,7 +1014,6 @@ ggplot(source_year, aes(x = year, y = observations, fill = source_group_plot)) +
   scale_fill_manual(values = source_colors, drop = TRUE) +
   plot_labs(
     title    = "Observation volume by source group and year",
-    subtitle = "Changes in one source group can drive the trend in dated observations.",
     x = "Year", y = "Observations", fill = "Source group"
   ) +
   theme_gtree()
@@ -1000,7 +1025,7 @@ The stacked area chart shows that the increase in dated observations is largely 
 ggplot(source_year, aes(x = year, y = share, fill = source_group_plot)) +
   geom_col(width = 0.9) +
   scale_x_continuous(breaks = start_year:end_year) +
-  scale_y_continuous(labels = percent) +
+  scale_y_continuous(labels = percent, expand = expansion(mult = c(0, 0.08))) +
   scale_fill_manual(values = source_colors, drop = TRUE) +
   plot_labs(
     title    = "Source composition by year",
@@ -1008,7 +1033,13 @@ ggplot(source_year, aes(x = year, y = share, fill = source_group_plot)) +
     x = "Year", y = "Share of observations", fill = "Source group",
     caption  = paste0("Shares are calculated within each year of the ", start_year, "–", end_year, " dataset period.")
   ) +
-  theme_gtree()
+  theme_gtree() +
+  # Centre title and subtitle over the plotting panel so they clear the y-axis label.
+  theme(
+    plot.title.position = "panel",
+    plot.title    = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5)
+  )
 ```
 
 The year-by-year source share view shows whether the source mix is shifting over time. If one source group's share is growing while others shrink, the dataset's overall character is changing — even if total volume increases. A stable composition would suggest that all sources are growing at roughly the same rate.
@@ -1035,79 +1066,7 @@ ggplot(largest_source_growth,
 
 The chart above highlights the single largest year-over-year jumps for each source group, making it easy to identify which platforms drove the biggest surges in data volume and when those surges occurred.
 
-## Geographic Coverage Over Time
-
-This subsection examines how the geographic reach of observations dated from 2015 to 2024 differs over time. It compares the first observation year represented for each country within this period and maps observation locations at selected snapshot years. This describes the dates attached to the records, not when countries or records were added to GlobalGeoTree.
-
-```{r country-coverage-data}
-country_year <- df |>
-  filter(year >= start_year, year <= end_year) |>
-  count(year, country_code, name = "observations")
-
-country_first_year <- country_year |>
-  group_by(country_code) |>
-  summarise(first_observed_year = min(year), .groups = "drop")
-```
-
-```{r new-countries-plot, fig.width=6, fig.height=3.2}
-new_countries <- country_first_year |>
-  filter(first_observed_year > start_year) |>
-  count(first_observed_year, name = "new_countries") |>
-  right_join(tibble(first_observed_year = (start_year + 1):end_year), by = "first_observed_year") |>
-  mutate(new_countries = ifelse(is.na(new_countries), 0L, new_countries))
-
-countries_at_start <- sum(country_first_year$first_observed_year == start_year)
-
-ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
-  geom_col(fill = "#2171B5", width = 0.72) +
-  scale_x_continuous(breaks = (start_year + 1):end_year) +
-  scale_y_continuous(labels = comma) +
-  plot_labs(
-    title   = "Countries first represented by observation year",
-    x = "First observation year represented in period", y = "Countries",
-    caption = paste0(
-      start_year, " is excluded: ", countries_at_start,
-      " countries already had observations in the first year of the window."
-    )
-  ) +
-  theme_gtree()
-```
-
-This chart shows when countries first appear among the observations dated within the selected period. A declining count suggests that later observation years add relatively few countries not already represented by earlier-dated records, although it does not reveal when those records were ingested into GlobalGeoTree.
-
-The maps below show observation locations at four snapshot years, revealing whether records spread into new regions or simply become denser in existing ones.
-
-```{r map-snapshots-data}
-#| cache: true
-snapshot_years_valid <- snapshot_years[snapshot_years >= start_year & snapshot_years <= end_year]
-
-map_data_by_year <- df |>
-  filter(year %in% snapshot_years_valid,
-         !is.na(latitude), !is.na(longitude),
-         between(latitude, -90, 90), between(longitude, -180, 180)) |>
-  group_by(year) |>
-  group_modify(~ sample_up_to(.x, world_map_sample_n)) |>
-  ungroup()
-```
-
-```{r map-snapshots-plot, fig.width=7, fig.height=5}
-ggplot() +
-  geom_polygon(data = world_outline_plot, aes(x = long, y = lat, group = group),
-               fill = "gray96", color = "gray82", linewidth = 0.12, inherit.aes = FALSE) +
-  geom_point(data = map_data_by_year, aes(x = longitude, y = latitude),
-             alpha = 0.15, size = 0.22, color = "#1F5B74") +
-  facet_wrap(~ year, ncol = 2) +
-  coord_quickmap(xlim = c(-180, 180), ylim = c(-60, 85), expand = FALSE) +
-  plot_labs(
-    title    = "Map snapshots of observations over time",
-    subtitle = "Selected years show whether records spread or intensify in existing regions.",
-    x = "Longitude", y = "Latitude",
-    caption  = "Points are sampled per year for readability."
-  ) +
-  theme_map_gtree()
-```
-
-Comparing the four snapshot years shows that the geographic footprint of the dated observations was already broadly established early in the period: North America, Europe, and parts of Oceania and South America are visible from the first panel. Later panels show a clear increase in point density within these same regions, but comparatively little expansion into previously unrepresented areas such as central Africa, interior Asia, or the Amazon basin. Within the observation-year window, the pattern is therefore more consistent with intensification than with geographic expansion.
+How the dataset's geographic coverage evolves over these same years — whether it broadens into new regions or mainly becomes denser in the ones already covered — is examined from a worldwide perspective in Camille's *Changes in the distribution over time* section.
 
 # Taxonomic Composition and Geographic Patterns
 
@@ -2516,7 +2475,6 @@ if (nrow(year_counts) == 0) {
     scale_y_continuous(labels = scales::comma_format()) +
     plot_labs(
       title = "Germany observations by year",
-      subtitle = "When was Germany recording activity strongest?",
       x = "Year", y = "Observations"
     ) +
     theme_gtree()
@@ -2572,7 +2530,6 @@ p +
   coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
   plot_labs(
     title = "Source footprints in Germany",
-    subtitle = "Sampled points per source group.",
     caption = paste("Maximum displayed points per source group:", format_number(max_points_per_source_group))
   ) +
   theme_map_gtree()
@@ -2658,7 +2615,6 @@ if (nrow(bundesland_counts) == 0) {
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
     plot_labs(
       title = "Germany observations by Bundesland",
-      subtitle = "Counts from spatial join to NUTS1 boundaries.",
       x = NULL, y = "Observations"
     ) +
     theme_gtree()
@@ -2757,11 +2713,8 @@ nice_table(berlin_summary, "Berlin observation summary")
 Source composition is important context for every Berlin map. If one platform dominates, Berlin hotspots may partly reflect that platform's recording behaviour rather than tree distribution.
 
 ```{r berlin-source-summary}
+# Counts feed the bar chart below; the table view was removed as it duplicated that chart.
 berlin_source_counts <- make_source_counts(berlin)
-
-berlin_source_counts |>
-  mutate(observations = format_number(observations), share = format_percent(share)) |>
-  nice_table("Berlin observations by source")
 ```
 
 ```{r berlin-source-bar, fig.width=6, fig.height=3.5}
@@ -2795,7 +2748,6 @@ if (nrow(berlin_points_for_map) < 3) {
     coord_sf() +
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
     plot_labs(title = "Tree observation density in Berlin",
-         subtitle = "Density contours with local-area borders.",
          caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
@@ -2828,15 +2780,7 @@ if ("district" %in% names(berlin) && any(!is.na(berlin$district))) {
 } else {
   berlin_district_counts <- tibble::tibble()
 }
-
-if (nrow(berlin_district_counts) > 0) {
-  berlin_district_counts |>
-    slice_head(n = 20) |>
-    mutate(observations = format_number(observations), species = format_number(species), sources = format_number(sources)) |>
-    nice_table("Top Berlin local areas by observation count")
-} else {
-  nice_table(tibble::tibble(note = "Berlin local-area counts are unavailable because polygons were not loaded."))
-}
+# Counts feed the bar charts and choropleth below; the table view was removed as redundant.
 ```
 
 ```{r berlin-district-bar, fig.width=6, fig.height=4.5}
@@ -2910,12 +2854,7 @@ berlin_named <- add_species_display_name(berlin)
 berlin_top_species <- berlin_named |>
   count(level3_species, species_display_name, display_common_name_en, sort = TRUE, name = "observations") |>
   mutate(share = observations / sum(observations))
-
-berlin_top_species |>
-  slice_head(n = 15) |>
-  select(scientific_name = level3_species, common_name_en = display_common_name_en, observations, share) |>
-  mutate(observations = format_number(observations), share = format_percent(share)) |>
-  nice_table("Top recorded species in Berlin")
+# The top-species table was removed; the bar chart below shows the same ranking.
 ```
 
 ```{r berlin-top-species-bar, fig.width=6, fig.height=4.5}
@@ -2966,13 +2905,7 @@ if ("district" %in% names(berlin_oaks) && any(!is.na(berlin_oaks$district))) {
 } else {
   berlin_oak_area_counts <- tibble::tibble()
 }
-
-if (nrow(berlin_oak_area_counts) > 0) {
-  berlin_oak_area_counts |>
-    slice_head(n = 20) |>
-    mutate(oak_observations = format_number(oak_observations)) |>
-    nice_table("Top Berlin local areas by recorded oak observations")
-}
+# Counts feed the oak map and the bar chart below; the table view was removed as redundant.
 ```
 
 ```{r berlin-oak-map, fig.width=6, fig.height=5}
@@ -2996,7 +2929,6 @@ if (nrow(berlin_oak_points_for_map) == 0) {
     coord_sf() +
     scale_fill_viridis_d(option = "B", direction = -1, name = "Oak density") +
     plot_labs(title = "Recorded oak tree groups in Berlin",
-         subtitle = "Quercus records with local-area boundaries.",
          caption = paste("Displayed oak points:", format_number(nrow(berlin_oak_points_for_map)), "of", format_number(nrow(berlin_oaks)), "Berlin oak observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
@@ -3023,7 +2955,6 @@ if (nrow(berlin_oak_area_counts) == 0) {
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
     plot_labs(title = "Recorded oak observations by Berlin local area",
-         subtitle = "Recorded oak locations by local area.",
          x = NULL, y = "Oak observations") +
     theme_gtree()
 }
