@@ -4511,6 +4511,20 @@ Source composition changes with scale: iNaturalist dominates globally and in Ber
 
 These biases do not make the dataset unusable; they define the questions it can answer reliably. GlobalGeoTree is well suited to analysing recording activity, comparing source footprints, identifying coverage gaps, and generating hypotheses. Claims about biological abundance, species richness, regional diversity, or pest risk require independent validation, correction for observation effort, and careful taxonomic quality control. The concentrated Berlin sample and the mislabelled German records demonstrate why these safeguards are essential.
 
+# AI Assistance Disclosure {.unnumbered}
+
+ChatGPT and Codex were used as supporting tools during the development of this project. Their assistance included reviewing and debugging R and Quarto code, identifying hard-coded or inconsistent values, suggesting improvements to reproducibility and visualisation design, refining the report's structure and language, and checking whether interpretations were adequately supported by the analyses and figures.
+
+This assistance enabled faster iteration, clearer writing, more consistent visualisations, improved code quality, and earlier detection of potential errors. The tools did not replace the authors' analytical judgement. All AI-assisted code, analyses, interpretations, and text were reviewed and validated by the authors, who retain full responsibility for the content and conclusions of the final report.
+
+The following are representative examples of prompts used during the project; they illustrate the types of requests made and are not necessarily verbatim records:
+
+1.  "Review this R/Quarto code for hard-coded values and replace them with calculations derived directly from the data."
+2.  "Debug this `ggplot2` visualisation and identify why its scales, legend, or rendering are incorrect."
+3.  "Propose a reproducible subsampling method for a large spatial dataset that preserves meaningful regional patterns."
+4.  "Edit this report section for clarity and concision without changing its analytical meaning."
+5.  "Check whether this visualisation supports the accompanying interpretation and identify any claims that require qualification."
+
 # References {.unnumbered}
 
 Code for Germany. (n.d.). *Berlin district boundaries* \[GeoJSON data file\]. GitHub. https://github.com/codeforgermany/click_that_hood
