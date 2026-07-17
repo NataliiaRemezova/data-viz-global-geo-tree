@@ -281,6 +281,11 @@ sample_up_to <- function(data, n_max) {
   if (nrow(data) <= n_max) {
     return(data)
   }
+  # Restore the caller's RNG stream on exit (see sample_us_stratified()).
+  if (exists(".Random.seed", envir = .GlobalEnv)) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+  }
   set.seed(map_sample_seed)
   dplyr::slice_sample(data, n = n_max)
 }
@@ -398,7 +403,7 @@ This section explains the analytical choices that we implemented throughout the 
 
 **Geographic boundaries.** For the Germany analysis, administrative boundaries at the NUTS1 level — the federal states (Bundesländer) — and the NUTS3 level (districts) are loaded from GISCO, the geographic information system of the European Commission. Berlin local-area boundaries come from a separate open-data project, listed under sources. If a local copy of these files exists, it is used directly; otherwise the file is downloaded from the public URL on first render.
 
-**Visualisation and subsampling.** The dataset contains more than 6 million observations, so plotting every record would be slow, produce very large files, and add little visual value. Point-based maps therefore use reproducible random subsamples with a fixed seed of 42. Global maps display up to 40,000 observations, while source-specific and density maps use up to 50,000 records per group or map. US point and ridge figures use a 50,000-row figure-wide budget allocated proportionally across their displayed groups; the US period map uses the same inclusion rate in every panel so visible density remains comparable over time. Germany maps retain their region-specific limits, and the dataset is often small enough that all German observations can be shown. The sampling affects only the visualisations. All counts, rankings, species-richness tables, rarefaction analyses, and source summaries use the full relevant dataset.
+**Visualisation and subsampling.** The dataset contains more than 6 million observations, so plotting every record would be slow, produce very large files, and add little visual value. Point-based maps therefore use reproducible random subsamples with a fixed seed of 42. Global maps display up to 40,000 observations, while source-specific and density maps use up to 50,000 records per group or map. US point and ridge figures use a 50,000-row figure-wide budget allocated proportionally across their displayed groups. To keep the rarest category legible, a small per-group minimum is applied, so on the point maps the scarcest categories are shown slightly above their true proportional share; the US period map applies no such minimum and uses the same inclusion rate in every panel, so its visible density remains proportional and comparable over time. Germany maps retain their region-specific limits, and the dataset is often small enough that all German observations can be shown. The sampling affects only the visualisations. All counts, rankings, species-richness tables, rarefaction analyses, and source summaries use the full relevant dataset.
 
 # Part I: Global Patterns {.unnumbered}
 
@@ -3727,7 +3732,12 @@ allocate_us_sample_counts <- function(counts, budget, minimum = 0L) {
   allocation <- pmin(counts, minimum)
   if (sum(allocation) > budget) {
     # If a requested minimum cannot fit, fall back to a purely proportional
-    # allocation rather than exceeding the figure-wide budget.
+    # allocation rather than exceeding the figure-wide budget. Warn so the
+    # silent loss of the per-stratum legibility floor is visible.
+    warning(sprintf(
+      "US sampling: %d strata x minimum %d exceed budget %d; dropping the minimum floor and allocating purely proportionally.",
+      length(counts), minimum, budget
+    ))
     allocation[] <- 0L
   }
 
@@ -3784,6 +3794,12 @@ sample_us_stratified <- function(data, strata, budget = us_map_sample_n,
   group_counts <- lengths(row_groups)
   allocation <- allocate_us_sample_counts(group_counts, budget, minimum)
 
+  # Restore the caller's RNG stream on exit: seeding here is an implementation
+  # detail and must not perturb random draws made elsewhere in the report.
+  if (exists(".Random.seed", envir = .GlobalEnv)) {
+    old_seed <- get(".Random.seed", envir = .GlobalEnv)
+    on.exit(assign(".Random.seed", old_seed, envir = .GlobalEnv), add = TRUE)
+  }
   set.seed(seed)
   selected_rows <- unlist(Map(function(rows, n_take) {
     if (n_take >= length(rows)) {
@@ -3913,22 +3929,22 @@ stopifnot(nrow(us_region_map_data) <= us_map_sample_n)
 layout(matrix(c(1,1,1,1,2,3), nrow=2, byrow=TRUE), heights=c(3,1.25))
 par(mar=c(3,3,2,1))
 draw_conus()
-points(conus_map_data$longitude, conus_map_data$latitude, pch=16, cex=.32,
-       col=adjustcolor(region_colors[as.character(conus_map_data$region)], alpha.f=.35))
+points(conus_map_data$longitude, conus_map_data$latitude, pch=16, cex=.5,
+       col=adjustcolor(region_colors[as.character(conus_map_data$region)], alpha.f=.4))
 title("Contiguous United States", xlab="Longitude", ylab="Latitude")
 par(mar=c(3,3,2,1))
 maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
     xlim=c(-170,-130), ylim=c(50,72))
-points(alaska_map_data$longitude, alaska_map_data$latitude, pch=16, cex=.45,
+points(alaska_map_data$longitude, alaska_map_data$latitude, pch=16, cex=.6,
        col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Alaska")
 maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
     xlim=c(-161,-154), ylim=c(18,23))
-points(hawaii_map_data$longitude, hawaii_map_data$latitude, pch=16, cex=.45,
+points(hawaii_map_data$longitude, hawaii_map_data$latitude, pch=16, cex=.6,
        col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Hawaii")
 layout(1)
 ```
 
-The map displays a proportional sample of `r format_number(nrow(us_region_map_data))` from `r format_number(nrow(us_region_map_base))` mapped US observations. The sample is allocated across the contiguous states, Alaska, and Hawaii before drawing.
+The map displays a proportional sample of `r format_number(nrow(us_region_map_data))` from `r format_number(nrow(us_region_map_base))` mapped US observations. The sample is allocated across the contiguous states, Alaska, and Hawaii before drawing, with a small minimum that keeps the sparsely recorded Alaska and Hawaii areas visible above their true proportional share.
 
 The points in @fig-us-map-region cover most of the country, but not with the same intensity. Texas, California, Florida, and the Northeast form visible clusters, whereas the Great Plains and much of the interior West are sparsely represented. Accessibility and the location of contributors probably explain part of this contrast, so the map cannot be read as a map of tree abundance.
 
@@ -4049,7 +4065,13 @@ ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
 
   conus_layers() +
 
-  geom_point(aes(colour = level0), size = 0.6, alpha = 0.4) +
+  # Gray backdrop of the whole figure sample in every panel (facet column
+  # dropped so it repeats), so each category reads against the full US
+  # footprint rather than an empty map. Reuses the existing sample.
+  geom_point(data = dplyr::select(foliage_map_data, -level0),
+             colour = "grey85", size = 0.45, alpha = 0.3) +
+
+  geom_point(aes(colour = level0), size = 1.0, alpha = 0.6) +
 
   scale_colour_manual(values = palette_level0, guide = "none") +
 
@@ -4059,7 +4081,8 @@ ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
     x = "Longitude", y = "Latitude",
     caption = paste(
       "Displayed points:", format_number(nrow(foliage_map_data)),
-      "of", format_number(nrow(conus)), "CONUS observations; allocated proportionally by foliage type."
+      "of", format_number(nrow(conus)),
+      "CONUS observations; allocated proportionally by foliage type, with a small minimum that shows the rarest type above its true share."
     )
   ) +
 
@@ -4284,7 +4307,13 @@ ggplot(species_range_data, aes(x = longitude, y = latitude)) +
 
   conus_layers() +
 
-  geom_point(colour = "#173F35", size = 0.7, alpha = 0.55) +
+  # Gray backdrop of every displayed species in each panel (facet column
+  # dropped so it repeats), so each species range reads against the full US
+  # footprint rather than an empty map. Reuses the existing sample.
+  geom_point(data = dplyr::select(species_range_data, -level3_species),
+             colour = "grey85", size = 0.45, alpha = 0.3) +
+
+  geom_point(colour = "#173F35", size = 1.0, alpha = 0.65) +
 
   facet_wrap(~ level3_species, ncol = 3) +
 
@@ -4293,7 +4322,7 @@ ggplot(species_range_data, aes(x = longitude, y = latitude)) +
     caption = paste(
       "Displayed points:", format_number(nrow(species_range_data)),
       "of", format_number(nrow(species_range_base)),
-      "observations for the 12 most frequent CONUS species."
+      "observations for the 12 most frequent CONUS species; a small per-species minimum shows the rarer species above their true share."
     )
   ) +
 
