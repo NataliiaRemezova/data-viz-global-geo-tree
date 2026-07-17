@@ -1553,7 +1553,7 @@ ggplot(data_sample, aes(longitude, latitude)) +
 ```{r family-facet-map}
 #| cache: true
 #| fig-width: 7
-#| fig-height: 8.5
+#| fig-height: 5
 
 # one map for each of the top 12 families
 top_families <- data %>% count(level1_family, sort = TRUE) %>% slice_head(n = 12) %>% pull(level1_family)
