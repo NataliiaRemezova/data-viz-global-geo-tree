@@ -398,7 +398,7 @@ This section explains the analytical choices that we implemented throughout the 
 
 **Geographic boundaries.** For the Germany analysis, administrative boundaries at the NUTS1 level — the federal states (Bundesländer) — and the NUTS3 level (districts) are loaded from GISCO, the geographic information system of the European Commission. Berlin local-area boundaries come from a separate open-data project, listed under sources. If a local copy of these files exists, it is used directly; otherwise the file is downloaded from the public URL on first render.
 
-**Visualisation and subsampling.** The dataset contains more than 6 million observations, so plotting every record would be slow, produce very large files, and add little visual value. Point-based maps therefore use reproducible random subsamples with a fixed seed of 42. Global maps display up to 40,000 observations, while source-specific and density maps use up to 50,000 records per group or map. US and Germany maps use region-specific limits; for Germany, the dataset is often small enough that all observations can be shown. The sampling affects only the visualisations. All counts, rankings, species-richness tables, rarefaction analyses, and source summaries use the full relevant dataset.
+**Visualisation and subsampling.** The dataset contains more than 6 million observations, so plotting every record would be slow, produce very large files, and add little visual value. Point-based maps therefore use reproducible random subsamples with a fixed seed of 42. Global maps display up to 40,000 observations, while source-specific and density maps use up to 50,000 records per group or map. US point and ridge figures use a 50,000-row figure-wide budget allocated proportionally across their displayed groups; the US period map uses the same inclusion rate in every panel so visible density remains comparable over time. Germany maps retain their region-specific limits, and the dataset is often small enough that all German observations can be shown. The sampling affects only the visualisations. All counts, rankings, species-richness tables, rarefaction analyses, and source summaries use the full relevant dataset.
 
 # Part I: Global Patterns {.unnumbered}
 
@@ -3705,6 +3705,126 @@ region_colors <- c(
 
 # Foliage colors come from the report-wide palette_level0 (config-global).
 
+# US-only display sampling. Every heavy US figure gets one figure-wide budget;
+# full-data summaries elsewhere in Part III continue to use us_df or conus.
+us_sample_min_n <- 500L
+us_ridge_sample_min_n <- 2000L
+us_sample_seeds <- c(
+  region = map_sample_seed + 100L,
+  foliage = map_sample_seed + 200L,
+  ridge = map_sample_seed + 300L,
+  species = map_sample_seed + 400L,
+  period = map_sample_seed + 500L
+)
+
+allocate_us_sample_counts <- function(counts, budget, minimum = 0L) {
+  count_names <- names(counts)
+  counts <- as.integer(counts)
+  names(counts) <- count_names
+  budget <- min(as.integer(budget), sum(counts))
+  minimum <- max(0L, as.integer(minimum))
+
+  allocation <- pmin(counts, minimum)
+  if (sum(allocation) > budget) {
+    # If a requested minimum cannot fit, fall back to a purely proportional
+    # allocation rather than exceeding the figure-wide budget.
+    allocation[] <- 0L
+  }
+
+  remaining <- budget - sum(allocation)
+  capacity <- counts - allocation
+  if (remaining > 0L && sum(capacity) > 0L) {
+    # Cast before multiplication: a 50,000-row budget times a million-row
+    # stratum exceeds R's 32-bit integer range.
+    ideal_extra <- as.double(remaining) * as.double(capacity) / sum(capacity)
+    extra <- pmin(as.integer(floor(ideal_extra)), capacity)
+    allocation <- allocation + extra
+    remainder <- budget - sum(allocation)
+
+    # Largest-remainder allocation reaches the budget exactly and resolves
+    # ties deterministically by the stratum label.
+    if (remainder > 0L) {
+      fractional <- ideal_extra - floor(ideal_extra)
+      while (remainder > 0L) {
+        eligible <- which(allocation < counts)
+        tie_key <- if (is.null(names(counts))) as.character(eligible) else names(counts)[eligible]
+        ranked <- eligible[order(-fractional[eligible], tie_key)]
+        take <- head(ranked, min(remainder, length(ranked)))
+        allocation[take] <- allocation[take] + 1L
+        remainder <- budget - sum(allocation)
+      }
+    }
+  }
+
+  stopifnot(sum(allocation) == budget, all(allocation <= counts))
+  allocation
+}
+
+sample_us_stratified <- function(data, strata, budget = us_map_sample_n,
+                                 minimum = 0L, seed = map_sample_seed) {
+  stopifnot(length(strata) >= 1L, all(strata %in% names(data)))
+  n_rows <- nrow(data)
+  budget <- min(as.integer(budget), n_rows)
+  if (n_rows <= budget) {
+    return(data)
+  }
+
+  strata_values <- lapply(strata, function(column) {
+    values <- as.character(data[[column]])
+    values[is.na(values)] <- "<NA>"
+    values
+  })
+  stratum_key <- if (length(strata_values) == 1L) {
+    strata_values[[1L]]
+  } else {
+    do.call(interaction, c(strata_values, list(drop = TRUE, lex.order = TRUE, sep = "\r")))
+  }
+
+  row_groups <- split(seq_len(n_rows), stratum_key, drop = TRUE)
+  group_counts <- lengths(row_groups)
+  allocation <- allocate_us_sample_counts(group_counts, budget, minimum)
+
+  set.seed(seed)
+  selected_rows <- unlist(Map(function(rows, n_take) {
+    if (n_take >= length(rows)) {
+      rows
+    } else {
+      rows[sample.int(length(rows), n_take)]
+    }
+  }, row_groups, allocation), use.names = FALSE)
+  # Randomise drawing order as well, so one category is not systematically
+  # painted over another where points overlap.
+  selected_rows <- selected_rows[sample.int(length(selected_rows))]
+
+  stopifnot(length(selected_rows) == budget,
+            length(unique(selected_rows)) == length(selected_rows))
+  if (data.table::is.data.table(data)) {
+    data[selected_rows]
+  } else {
+    data[selected_rows, , drop = FALSE]
+  }
+}
+
+# Fast, render-time checks for exact allocation, source membership, and
+# reproducibility without re-sampling the multi-million-row US subset.
+us_sampling_test_data <- data.frame(
+  row_id = seq_len(100L),
+  stratum = rep(letters[1:4], c(60L, 25L, 10L, 5L))
+)
+us_sampling_test_a <- sample_us_stratified(
+  us_sampling_test_data, "stratum", budget = 40L, minimum = 5L, seed = 42L
+)
+us_sampling_test_b <- sample_us_stratified(
+  us_sampling_test_data, "stratum", budget = 40L, minimum = 5L, seed = 42L
+)
+stopifnot(
+  identical(us_sampling_test_a$row_id, us_sampling_test_b$row_id),
+  nrow(us_sampling_test_a) == 40L,
+  all(us_sampling_test_a$row_id %in% us_sampling_test_data$row_id),
+  !anyDuplicated(us_sampling_test_a$row_id)
+)
+rm(us_sampling_test_data, us_sampling_test_a, us_sampling_test_b)
+
 # Base-R basemap, used only by fig-us-map-region (which keeps the layout()
 # grid because it recomputes the aspect ratio per panel).
 draw_conus <- function(fill = "grey92", border = "white") {
@@ -3769,28 +3889,46 @@ For that reason, @fig-us-map-region shows the individual coordinates, @fig-us-ba
 #| fig-cap-location: bottom
 #| fig-height: 7
 
-conus <- us_df[us_df$longitude >= -125 & us_df$longitude <= -66 &
-            us_df$latitude >= 24 & us_df$latitude <= 50, ]
-alaska <- us_df[us_df$state == "alaska", ]
-hawaii <- us_df[us_df$state == "hawaii", ]
+us_df[, map_area := dplyr::case_when(
+  longitude >= -125 & longitude <= -66 & latitude >= 24 & latitude <= 50 ~ "CONUS",
+  state == "alaska" ~ "Alaska",
+  state == "hawaii" ~ "Hawaii",
+  TRUE ~ NA_character_
+)]
+
+conus <- us_df[map_area == "CONUS"]
+us_region_map_base <- us_df[!is.na(map_area)]
+us_region_map_data <- sample_us_stratified(
+  us_region_map_base,
+  strata = "map_area",
+  budget = us_map_sample_n,
+  minimum = us_sample_min_n,
+  seed = us_sample_seeds[["region"]]
+)
+conus_map_data <- us_region_map_data[map_area == "CONUS"]
+alaska_map_data <- us_region_map_data[map_area == "Alaska"]
+hawaii_map_data <- us_region_map_data[map_area == "Hawaii"]
+stopifnot(nrow(us_region_map_data) <= us_map_sample_n)
 
 layout(matrix(c(1,1,1,1,2,3), nrow=2, byrow=TRUE), heights=c(3,1.25))
 par(mar=c(3,3,2,1))
 draw_conus()
-points(conus$longitude, conus$latitude, pch=16, cex=.32,
-       col=adjustcolor(region_colors[as.character(conus$region)], alpha.f=.35))
+points(conus_map_data$longitude, conus_map_data$latitude, pch=16, cex=.32,
+       col=adjustcolor(region_colors[as.character(conus_map_data$region)], alpha.f=.35))
 title("Contiguous United States", xlab="Longitude", ylab="Latitude")
 par(mar=c(3,3,2,1))
 maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
     xlim=c(-170,-130), ylim=c(50,72))
-points(alaska$longitude, alaska$latitude, pch=16, cex=.45,
+points(alaska_map_data$longitude, alaska_map_data$latitude, pch=16, cex=.45,
        col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Alaska")
 maps::map("world", regions="USA", fill=TRUE, col="grey92", border="white",
     xlim=c(-161,-154), ylim=c(18,23))
-points(hawaii$longitude, hawaii$latitude, pch=16, cex=.45,
+points(hawaii_map_data$longitude, hawaii_map_data$latitude, pch=16, cex=.45,
        col=adjustcolor(region_colors["West"], alpha.f=.45)); title("Hawaii")
 layout(1)
 ```
+
+The map displays a proportional sample of `r format_number(nrow(us_region_map_data))` from `r format_number(nrow(us_region_map_base))` mapped US observations. The sample is allocated across the contiguous states, Alaska, and Hawaii before drawing.
 
 The points in @fig-us-map-region cover most of the country, but not with the same intensity. Texas, California, Florida, and the Northeast form visible clusters, whereas the Great Plains and much of the interior West are sparsely represented. Accessibility and the location of contributors probably explain part of this contrast, so the map cannot be read as a map of tree abundance.
 
@@ -3836,13 +3974,24 @@ The regional counts in @fig-us-bar-region make the imbalance more explicit. The 
 #| fig-height: 6
 #| fig-align: center
 
-# Counts are binned on whole degrees (boundary = 0) and shown as log10(count + 1),
-# so that single-record cells stay faintly visible instead of washing out to white.
-ggplot(conus, aes(x = longitude, y = latitude)) +
+# Aggregate the complete CONUS subset before plotting. This keeps the cell
+# counts exact while avoiding a stat calculation over almost two million rows.
+conus_density <- conus[, .(records = .N), by = .(
+  longitude_bin = floor(longitude),
+  latitude_bin = floor(latitude)
+)]
+conus_density[, `:=`(
+  longitude_center = longitude_bin + 0.5,
+  latitude_center = latitude_bin + 0.5
+)]
+stopifnot(sum(conus_density$records) == nrow(conus))
 
-  geom_bin2d(
-    aes(fill = after_stat(log10(count + 1))),
-    binwidth = c(1, 1), boundary = 0
+# Counts use whole-degree cells and are shown as log10(count + 1), so that
+# single-record cells stay faintly visible instead of washing out to white.
+ggplot(conus_density, aes(x = longitude_center, y = latitude_center)) +
+
+  geom_tile(
+    aes(fill = log10(records + 1)), width = 1, height = 1
   ) +
 
   geom_path(
@@ -3884,10 +4033,17 @@ The small maps in @fig-us-maps-foliage preserve the spatial detail. @fig-us-bar-
 #| fig-height: 8.5
 #| fig-align: center
 
-# All CONUS points are shown (as in the base-R original). These maps render to
-# raster PNG, so the full point count does not inflate the HTML.
-foliage_map_data <- conus |>
+# Allocate one figure-wide budget proportionally across foliage categories.
+# The minimum keeps the rarest category legible without equalising panel sizes.
+foliage_map_data <- sample_us_stratified(
+  conus,
+  strata = "level0",
+  budget = us_map_sample_n,
+  minimum = us_sample_min_n,
+  seed = us_sample_seeds[["foliage"]]
+) |>
   dplyr::mutate(level0 = factor(level0, levels = names(palette_level0)))
+stopifnot(nrow(foliage_map_data) <= us_map_sample_n)
 
 ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
 
@@ -3899,7 +4055,13 @@ ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
 
   facet_wrap(~ level0, ncol = 2) +
 
-  plot_labs(x = "Longitude", y = "Latitude") +
+  plot_labs(
+    x = "Longitude", y = "Latitude",
+    caption = paste(
+      "Displayed points:", format_number(nrow(foliage_map_data)),
+      "of", format_number(nrow(conus)), "CONUS observations; allocated proportionally by foliage type."
+    )
+  ) +
 
   theme_map_gtree()
 ```
@@ -3942,10 +4104,19 @@ Using percentages in @fig-us-bar-foliage-region prevents the South's larger samp
 #| fig-height: 6.5
 #| fig-align: center
 
-# Order rarest at the bottom, and normalise every ridge to a common peak height
-# (ndensity) so broad and narrow profiles are equally readable.
-ridge_data <- us_df |>
-  dplyr::mutate(level0 = factor(level0, levels = names(sort(table(level0)))))
+# Order categories from the complete US data, then use a proportional display
+# sample. A 2,000-row minimum stabilises the rarest category; ridge heights are
+# normalised independently, so this does not imply equal category abundance.
+ridge_levels <- names(sort(table(us_df$level0)))
+ridge_data <- sample_us_stratified(
+  us_df,
+  strata = "level0",
+  budget = us_map_sample_n,
+  minimum = us_ridge_sample_min_n,
+  seed = us_sample_seeds[["ridge"]]
+) |>
+  dplyr::mutate(level0 = factor(level0, levels = ridge_levels))
+stopifnot(nrow(ridge_data) <= us_map_sample_n)
 
 ggplot(ridge_data, aes(x = latitude, y = level0, fill = level0)) +
 
@@ -3963,7 +4134,13 @@ ggplot(ridge_data, aes(x = latitude, y = level0, fill = level0)) +
 
   coord_cartesian(xlim = c(18, 70)) +
 
-  plot_labs(x = "Latitude", y = NULL) +
+  plot_labs(
+    x = "Latitude", y = NULL,
+    caption = paste(
+      "Density curves use", format_number(nrow(ridge_data)),
+      "sampled observations from", format_number(nrow(us_df)), "US records."
+    )
+  ) +
 
   theme_gtree()
 ```
@@ -4090,9 +4267,18 @@ In @fig-us-rarefaction, regions can be compared at the same horizontal position 
 
 top_species <- names(head(sort(table(conus$level3_species), decreasing = TRUE), top_n_taxa))
 
-species_range_data <- conus |>
-  dplyr::filter(level3_species %in% top_species) |>
+species_range_base <- conus |>
+  dplyr::filter(level3_species %in% top_species)
+
+species_range_data <- sample_us_stratified(
+  species_range_base,
+  strata = "level3_species",
+  budget = us_map_sample_n,
+  minimum = us_sample_min_n,
+  seed = us_sample_seeds[["species"]]
+) |>
   dplyr::mutate(level3_species = factor(level3_species, levels = top_species))
+stopifnot(nrow(species_range_data) <= us_map_sample_n)
 
 ggplot(species_range_data, aes(x = longitude, y = latitude)) +
 
@@ -4102,7 +4288,14 @@ ggplot(species_range_data, aes(x = longitude, y = latitude)) +
 
   facet_wrap(~ level3_species, ncol = 3) +
 
-  plot_labs(x = "Longitude", y = "Latitude") +
+  plot_labs(
+    x = "Longitude", y = "Latitude",
+    caption = paste(
+      "Displayed points:", format_number(nrow(species_range_data)),
+      "of", format_number(nrow(species_range_base)),
+      "observations for the 12 most frequent CONUS species."
+    )
+  ) +
 
   theme_map_gtree() +
 
@@ -4204,14 +4397,67 @@ The regional lines in @fig-us-obs-per-year-region do not grow in parallel. Most 
 #| fig-height: 12.5
 #| fig-align: center
 
-# All CONUS points are shown, so the later, denser periods read as denser
-# (raster PNG output, so the full point count does not inflate the HTML).
-period_map_data <- conus |>
+# Build periods and their complete-data totals before drawing. The display
+# sample uses one common inclusion rate across periods: no minimum allocation
+# and no spatial balancing are applied, so visible density remains proportional
+# to the underlying number of observations.
+period_map_base <- conus |>
   dplyr::mutate(
     period = period_levels[pmin((year - 2015) %/% 2 + 1, length(period_levels))],
     period = factor(period, levels = period_levels),
     level0 = factor(level0, levels = names(palette_level0))
+  ) |>
+  dplyr::filter(!is.na(period))
+
+us_period_full_counts <- period_map_base |>
+  dplyr::count(period, name = "full_observations")
+
+period_map_data <- sample_us_stratified(
+  period_map_base,
+  strata = "period",
+  budget = us_map_sample_n,
+  minimum = 0L,
+  seed = us_sample_seeds[["period"]]
+)
+
+us_period_display_counts <- period_map_data |>
+  dplyr::count(period, name = "displayed_observations")
+
+us_period_panel_labels <- us_period_full_counts |>
+  dplyr::left_join(us_period_display_counts, by = "period") |>
+  dplyr::arrange(period) |>
+  dplyr::mutate(
+    panel_label = paste0(
+      period, "\n",
+      format_number(full_observations), " total; ",
+      format_number(displayed_observations), " shown"
+    )
   )
+
+period_label_lookup <- stats::setNames(
+  us_period_panel_labels$panel_label,
+  as.character(us_period_panel_labels$period)
+)
+period_map_data <- period_map_data |>
+  dplyr::mutate(
+    period_panel = factor(
+      period_label_lookup[as.character(period)],
+      levels = us_period_panel_labels$panel_label
+    )
+  )
+
+period_sampling_rate <- min(1, us_map_sample_n / nrow(period_map_base))
+period_allocation_check <- us_period_panel_labels |>
+  dplyr::mutate(
+    expected_display = as.double(nrow(period_map_data)) *
+      as.double(full_observations) /
+      sum(full_observations)
+  )
+stopifnot(
+  nrow(period_map_data) <= us_map_sample_n,
+  all(abs(period_allocation_check$displayed_observations -
+            period_allocation_check$expected_display) < 1 + sqrt(.Machine$double.eps))
+)
 
 ggplot(period_map_data, aes(x = longitude, y = latitude)) +
 
@@ -4223,9 +4469,16 @@ ggplot(period_map_data, aes(x = longitude, y = latitude)) +
 
   guides(colour = guide_legend(override.aes = list(alpha = 1, size = 3))) +
 
-  facet_wrap(~ period, ncol = 2) +
+  facet_wrap(~ period_panel, ncol = 2) +
 
-  plot_labs(x = "Longitude", y = "Latitude") +
+  plot_labs(
+    x = "Longitude", y = "Latitude",
+    caption = paste0(
+      "Every period uses the same ",
+      scales::percent(period_sampling_rate, accuracy = 0.01),
+      " inclusion rate. Panel labels report complete and displayed counts, so visible density remains comparable over time."
+    )
+  ) +
 
   theme_map_gtree()
 ```
