@@ -1682,6 +1682,50 @@ ggplot(
 
 ```
 
+```{r}
+#| label: worldwide-stats
+#| include: false
+#| warning: false
+#| message: false
+
+# Narrative figures below are computed from the same `df` as the section's
+# charts, so prose and figures cannot drift apart. See the fig-* chunks for the
+# plotting code that these summaries mirror.
+
+round_to <- function(x, to = 100) round(x / to) * to          # for "close to ~" figures
+fp       <- function(x) formatC(x, format = "f", digits = 1)  # 1-dp percent
+
+# Continent observation shares (identical basis to fig-bar-continent)
+ww_cont <- df |>
+  count(continent, name = "n") |>
+  mutate(pct = n / sum(n) * 100)
+cpct <- setNames(ww_cont$pct, ww_cont$continent)   # cpct[["Europe"]]
+cobs <- setNames(ww_cont$n,   ww_cont$continent)
+min_n_stat <- min(cobs)                            # smallest continent sample (Africa)
+
+# Taxonomic richness per continent
+ww_rich <- df |>
+  group_by(continent) |>
+  summarise(
+    families = n_distinct(level1_family),
+    genera   = n_distinct(level2_genus),
+    species  = n_distinct(level3_species),
+    .groups  = "drop"
+  )
+fam <- setNames(ww_rich$families, ww_rich$continent)
+gen <- setNames(ww_rich$genera,   ww_rich$continent)
+spp <- setNames(ww_rich$species,  ww_rich$continent)
+
+# Year breadth + per-continent-per-year volume
+ww_year <- df |>
+  group_by(year) |>
+  summarise(n_obs = n(), n_countries = n_distinct(country_code), .groups = "drop")
+ww_cont_year <- df |> count(continent, year, name = "n")
+cy <- function(cont, yr) {
+  ww_cont_year$n[ww_cont_year$continent == cont & ww_cont_year$year == yr]
+}
+```
+
 ## Global overview
 
 @fig-map-continent projects a reproducible subsample of observations on a world map, and @fig-bar-continent quantifies the total per continent.
@@ -1772,7 +1816,7 @@ ggplot(df_n_obs, aes(x = reorder(continent, n), y = n)) +
 
 ```
 
-@fig-bar-continent quantifies the imbalance already suggested by @fig-map-continent. North America and Europe together account for 74.4% of all observations (41.3% and 33.1% respectively), despite representing only a fraction of the world's land area and tree biodiversity. Oceania follows at 10.3%, largely driven by Australia, before a sharp drop to South America (6.6%), Asia (5.5%) and Africa (3.3%). This ranking reveals a nuance compared to the previous map: although Asia appeared visually extensive in @fig-map-continent, spanning a wide longitudinal range with a dense cluster of points, it accounts for only 5.5% of total observations, far below Europe or North America. Points can appear numerous and spread out on a map while still representing a small share of a dataset containing several million observations.
+@fig-bar-continent quantifies the imbalance already suggested by @fig-map-continent. North America and Europe together account for `r fp(cpct[["North America"]] + cpct[["Europe"]])`% of all observations (`r fp(cpct[["North America"]])`% and `r fp(cpct[["Europe"]])`% respectively), despite representing only a fraction of the world's land area and tree biodiversity. Oceania follows at `r fp(cpct[["Oceania"]])`%, largely driven by Australia, before a sharp drop to South America (`r fp(cpct[["South America"]])`%), Asia (`r fp(cpct[["Asia"]])`%) and Africa (`r fp(cpct[["Africa"]])`%). This ranking reveals a nuance compared to the previous map: although Asia appeared visually extensive in @fig-map-continent, spanning a wide longitudinal range with a dense cluster of points, it accounts for only `r fp(cpct[["Asia"]])`% of total observations, far below Europe or North America. Points can appear numerous and spread out on a map while still representing a small share of a dataset containing several million observations.
 
 ```{r}
 #| label: fig-density-map
@@ -1816,7 +1860,7 @@ ggplot() +
 
 ```
 
-*Note: the density estimate is based on a reproducible random subsample of 50,000 observations (drawn with the report-level map seed from the full dataset), rather than all 6.26 million records. Passing the full dataset to `geom_density_2d_filled()` caused a crash in ggplot2 3.5.2 due to memory limitations in the internal stat pipeline. At this sample size, kernel density estimation produces a visually identical result, as the smoothing operation is stable well below this threshold.*
+*Note: the density estimate is based on a reproducible random subsample of `r format_number(density_map_sample_n)` observations (drawn with the report-level map seed from the full dataset), rather than all `r round(nrow(df) / 1e6, 2)` million records. Passing the full dataset to `geom_density_2d_filled()` caused a crash in ggplot2 3.5.2 due to memory limitations in the internal stat pipeline. At this sample size, kernel density estimation produces a visually identical result, as the smoothing operation is stable well below this threshold.*
 
 @fig-density-map reveals that observations are not only concentrated on certain continents, but highly clustered within a small number of localised hotspots. The most intense concentration is found in Western Europe (particularly around France, Germany and the United Kingdom), followed closely by the northeastern United States. Secondary hotspots appear along the US West Coast, in Central America, in southeastern Australia, and around Taiwan / southern Japan, while the vast majority of the remaining land surface, including most of Africa, Asia and South America, shows minimal to no density.
 This reinforces the hypothesis raised earlier: sampling effort appears strongly correlated with population density and citizen-science activity rather than with the underlying distribution of tree biodiversity. Even within high-observation continents such as North America (@fig-bar-continent), density is far from uniform — observations concentrate along the East and West Coasts, while large inland areas remain comparatively under-sampled.
@@ -2102,9 +2146,9 @@ ggplot(richness_long_raw,
 
 ```
 
-@tbl-taxa-continent and @fig-richness-continent report the raw number of distinct taxa recorded per continent, at three taxonomic levels: family, genus, and species. All six continents show a comparable number of families (168–203), suggesting that the dataset captures a broadly similar range of major taxonomic groups everywhere. This similarity breaks down markedly at finer taxonomic resolution: genus counts range from 737 (Europe) to 1,219 (North America), and species counts range even more widely, from 2,437 (Europe) to 6,528 (North America). North America stands out as the richest continent at every taxonomic level, while Europe consistently ranks lowest.
+@tbl-taxa-continent and @fig-richness-continent report the raw number of distinct taxa recorded per continent, at three taxonomic levels: family, genus, and species. All six continents show a comparable number of families (`r min(fam)`–`r max(fam)`), suggesting that the dataset captures a broadly similar range of major taxonomic groups everywhere. This similarity breaks down markedly at finer taxonomic resolution: genus counts range from `r format_number(min(gen))` (`r names(which.min(gen))`) to `r format_number(max(gen))` (`r names(which.max(gen))`), and species counts range even more widely, from `r format_number(min(spp))` (`r names(which.min(spp))`) to `r format_number(max(spp))` (`r names(which.max(spp))`). North America stands out as the richest continent at every taxonomic level, while Europe consistently ranks lowest.
 
-Comparing this ranking to the observation volume documented in @fig-bar-continent reveals an interesting discrepancy. Europe, despite being the second most heavily sampled continent overall (33.1% of observations), records the lowest species richness of all six continents (even lower than Africa and Asia, which together account for less than 9% of total observations). Conversely, South America and Oceania, which together represent under 17% of observations, show species counts (4,968 and 4,900 respectively) roughly double that of Europe, despite Europe having been sampled nearly four times more intensively.
+Comparing this ranking to the observation volume documented in @fig-bar-continent reveals an interesting discrepancy. Europe, despite being the second most heavily sampled continent overall (`r fp(cpct[["Europe"]])`% of observations), records the lowest species richness of all six continents (even lower than Africa and Asia, which together account for `r fp(cpct[["Africa"]] + cpct[["Asia"]])`% of total observations). Conversely, South America and Oceania, which together represent `r fp(cpct[["South America"]] + cpct[["Oceania"]])`% of observations, show species counts (`r format_number(spp[["South America"]])` and `r format_number(spp[["Oceania"]])` respectively) roughly `r round(mean(c(spp[["South America"]], spp[["Oceania"]])) / min(spp), 1)` times that of Europe, despite Europe having been sampled roughly `r round(cpct[["Europe"]] / mean(c(cpct[["South America"]], cpct[["Oceania"]])), 1)` times more intensively.
 
 This pattern suggests that raw taxonomic richness, as shown here, is not simply proportional to sampling volume, but it does not yet establish whether these differences reflect genuine biodiversity patterns or are still partly shaped by uneven sampling effort within each continent.
 
@@ -2142,6 +2186,16 @@ rare_df <- purrr::map_dfr(rownames(comm_matrix), function(cont) {
   tibble(continent = cont, n = ns, S = as.numeric(S))
 })
 
+# Expected recorded species at the shared effort (min_n), used by the prose below.
+rare_at_min <- setNames(
+  vapply(
+    rownames(comm_matrix),
+    function(c) as.numeric(rarefy(matrix(comm_matrix[c, ], nrow = 1), sample = min_n)),
+    numeric(1)
+  ),
+  rownames(comm_matrix)
+)
+
 rm(comm_matrix)
 
 ggplot(rare_df, aes(x = n, y = S, color = continent)) +
@@ -2169,9 +2223,9 @@ ggplot(rare_df, aes(x = n, y = S, color = continent)) +
 
 ```
 
-@fig-rarefaction provides an equal-observation comparison that substantially revises the picture suggested by the raw counts in @fig-richness-continent. At the shared sampling effort marked by the dashed line (n=198,000, the size of Africa's full sample), the ranking of recorded richness changes considerably. Oceania and South America reach close to 4,000 expected recorded species, followed by Africa (around 3,900). North America and Asia form an intermediate group (roughly 3,700 and 3,400 respectively), while Europe has around 1,300 expected recorded species at this sample size.
+@fig-rarefaction provides an equal-observation comparison that substantially revises the picture suggested by the raw counts in @fig-richness-continent. At the shared sampling effort marked by the dashed line (n=`r format_number(min_n_stat)`, the size of Africa's full sample), the ranking of recorded richness changes considerably. Oceania and South America reach close to `r format_number(round_to(max(rare_at_min[c("Oceania", "South America")])))` expected recorded species, followed by Africa (around `r format_number(round_to(rare_at_min[["Africa"]]))`). North America and Asia form an intermediate group (roughly `r format_number(round_to(rare_at_min[["North America"]]))` and `r format_number(round_to(rare_at_min[["Asia"]]))` respectively), while Europe has around `r format_number(round_to(rare_at_min[["Europe"]]))` expected recorded species at this sample size.
 
-The most striking change concerns North America. While it has the highest raw species count in @fig-richness-continent (6,528 species), this advantage largely disappears once observation count is equalised. Its rarefaction curve is overtaken by Oceania, South America, and Africa before reaching the comparison point. This suggests that North America's raw lead is strongly influenced by its larger sample size (@fig-bar-continent), without establishing how the continents compare in underlying biological diversity.
+The most striking change concerns North America. While it has the highest raw species count in @fig-richness-continent (`r format_number(max(spp))` species), this advantage largely disappears once observation count is equalised. Its rarefaction curve is overtaken by Oceania, South America, and Africa before reaching the comparison point. This suggests that North America's raw lead is strongly influenced by its larger sample size (@fig-bar-continent), without establishing how the continents compare in underlying biological diversity.
 
 Europe's rarefaction curve remains below the other continents across the range shown. This indicates lower recorded richness even at equal observation counts. The difference may be consistent with ecological patterns, but it may also reflect source composition, geographic concentration, detectability, or other sampling differences that rarefaction does not remove.
 
@@ -2243,9 +2297,9 @@ ggplot(summary_year, aes(x = year)) +
 
 ```
 
-@fig-obs-per-year reveals a marked increase in observations dated from 2018 onward. After remaining between roughly 150,000 and 200,000 observations per year from 2015 to 2018, the count rises sharply and peaks in 2022 at just over 1,000,000. This pattern is consistent with changes in citizen-science activity and source coverage, but observation year alone cannot establish when or why records were added to the combined dataset.
+@fig-obs-per-year reveals a marked increase in observations dated from 2018 onward. After remaining between roughly `r format_number(round_to(min(ww_year$n_obs[ww_year$year %in% 2015:2018]), 1e4))` and `r format_number(round_to(max(ww_year$n_obs[ww_year$year %in% 2015:2018]), 1e4))` observations per year from 2015 to 2018, the count rises sharply and peaks in `r ww_year$year[which.max(ww_year$n_obs)]` at just over `r format_number(round_to(max(ww_year$n_obs), 1e5))`. This pattern is consistent with changes in citizen-science activity and source coverage, but observation year alone cannot establish when or why records were added to the combined dataset.
 
-The number of distinct countries represented by dated observations (red line) also increases, from 166 in 2015 to over 198 by 2021, before stabilising around 197–202 through 2024. This broad representation should be interpreted carefully alongside the sharp difference in observation volume: one observation and hundreds of thousands of observations both count as country presence. The chart therefore shows breadth of representation by observation year, not equal sampling within or between countries.
+The number of distinct countries represented by dated observations (red line) also increases, from `r ww_year$n_countries[ww_year$year == 2015]` in 2015 to over `r ww_year$n_countries[ww_year$year == 2021]` by 2021, before stabilising around `r min(ww_year$n_countries[ww_year$year %in% 2022:2024])`–`r max(ww_year$n_countries[ww_year$year %in% 2022:2024])` through 2024. This broad representation should be interpreted carefully alongside the sharp difference in observation volume: one observation and hundreds of thousands of observations both count as country presence. The chart therefore shows breadth of representation by observation year, not equal sampling within or between countries.
 
 ```{r}
 #| label: fig-obs-per-year-continent
@@ -2283,7 +2337,7 @@ ggplot(summary_continent, aes(x = year, y = n, colour = continent)) +
 
 ```
 
-@fig-obs-per-year-continent refines the pattern in the previous figure. The increase in observations dated since 2018 is concentrated mainly in North America and Europe, while the other four continents remain comparatively flat. North America rises from roughly 20,000 observations dated 2015 to over 450,000 dated 2023, followed by a slight decline in 2024. Europe follows a similar trajectory until 2022 and then declines. Asia, Africa, and Oceania remain at lower levels, while South America has a distinct spike in 2018. These differences show that the imbalance between continents persists across observation years. They may reflect changes in platform activity, source coverage, or the temporal completeness of contributed records rather than changes in tree populations.
+@fig-obs-per-year-continent refines the pattern in the previous figure. The increase in observations dated since 2018 is concentrated mainly in North America and Europe, while the other four continents remain comparatively flat. North America rises from roughly `r format_number(round_to(cy("North America", 2015), 1000))` observations dated 2015 to over `r format_number(round_to(cy("North America", 2023), 1e4))` dated 2023, followed by a slight decline in 2024. Europe follows a similar trajectory until 2022 and then declines. Asia, Africa, and Oceania remain at lower levels, while South America has a distinct spike in 2018. These differences show that the imbalance between continents persists across observation years. They may reflect changes in platform activity, source coverage, or the temporal completeness of contributed records rather than changes in tree populations.
 
 ```{r}
 #| label: fig-maps-periods
@@ -3824,11 +3878,10 @@ The small maps in @fig-us-maps-foliage preserve the spatial detail. @fig-us-bar-
 #| fig-height: 8.5
 #| fig-align: center
 
-# One global subsample (not one per category), so the relative rarity of the
-# categories is preserved across the panels.
+# All CONUS points are shown (as in the base-R original). These maps render to
+# raster PNG, so the full point count does not inflate the HTML.
 foliage_map_data <- conus |>
-  dplyr::mutate(level0 = factor(level0, levels = names(palette_level0))) |>
-  sample_up_to(us_map_sample_n)
+  dplyr::mutate(level0 = factor(level0, levels = names(palette_level0)))
 
 ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
 
@@ -3840,11 +3893,7 @@ ggplot(foliage_map_data, aes(x = longitude, y = latitude)) +
 
   facet_wrap(~ level0, ncol = 2) +
 
-  plot_labs(
-    x = "Longitude", y = "Latitude",
-    caption = paste0("Showing ", format_number(nrow(foliage_map_data)),
-                     " of ", format_number(nrow(conus)), " US records.")
-  ) +
+  plot_labs(x = "Longitude", y = "Latitude") +
 
   theme_map_gtree()
 ```
@@ -4037,11 +4086,7 @@ top_species <- names(head(sort(table(conus$level3_species), decreasing = TRUE), 
 
 species_range_data <- conus |>
   dplyr::filter(level3_species %in% top_species) |>
-  dplyr::mutate(level3_species = factor(level3_species, levels = top_species)) |>
-  # per-species cap: this figure is about spatial range, not relative density
-  dplyr::group_by(level3_species) |>
-  dplyr::group_modify(~ sample_up_to(.x, us_map_sample_n)) |>
-  dplyr::ungroup()
+  dplyr::mutate(level3_species = factor(level3_species, levels = top_species))
 
 ggplot(species_range_data, aes(x = longitude, y = latitude)) +
 
@@ -4153,15 +4198,14 @@ The regional lines in @fig-us-obs-per-year-region do not grow in parallel. Most 
 #| fig-height: 12.5
 #| fig-align: center
 
-# One global subsample of all CONUS records, then facet by period, so that the
-# later, denser periods stay denser (a per-period cap would flatten that trend).
+# All CONUS points are shown, so the later, denser periods read as denser
+# (raster PNG output, so the full point count does not inflate the HTML).
 period_map_data <- conus |>
   dplyr::mutate(
     period = period_levels[pmin((year - 2015) %/% 2 + 1, length(period_levels))],
     period = factor(period, levels = period_levels),
     level0 = factor(level0, levels = names(palette_level0))
-  ) |>
-  sample_up_to(us_map_sample_n)
+  )
 
 ggplot(period_map_data, aes(x = longitude, y = latitude)) +
 
@@ -4175,11 +4219,7 @@ ggplot(period_map_data, aes(x = longitude, y = latitude)) +
 
   facet_wrap(~ period, ncol = 2) +
 
-  plot_labs(
-    x = "Longitude", y = "Latitude",
-    caption = paste0("Showing ", format_number(nrow(period_map_data)),
-                     " of ", format_number(nrow(conus)), " US records.")
-  ) +
+  plot_labs(x = "Longitude", y = "Latitude") +
 
   theme_map_gtree()
 ```
