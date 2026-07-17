@@ -171,13 +171,12 @@ gisco_nuts3_url <- "https://gisco-services.ec.europa.eu/distribution/v2/nuts/geo
 berlin_district_url <- "https://raw.githubusercontent.com/codeforgermany/click_that_hood/main/public/data/berlin.geojson"
 
 # ── Source group color palette ────────────────────────────────────────────────
-# Seven groups, one color each.  The same palette is used in every multi-source
+# Six groups, one color each.  The same palette is used in every multi-source
 # chart so the reader can identify groups consistently throughout the report.
 source_colors <- c(
   "iNaturalist"                    = "#8ECAE6",
   "Pl@ntNet"                       = "#FF9DA7",
   "Other citizen-science apps"     = "#4E79A7",
-  "GBIF (aggregator)"              = "#264653",
   "Institutional & survey data"    = "#B07AA1",
   "Reference & thematic databases" = "#59A14F",
   "Other / unknown"                = "#CCCCCC"
@@ -291,16 +290,15 @@ empty_plot <- function(message) {
 }
 
 # ── classify_source() ─────────────────────────────────────────────────────────
-# Assigns each raw source name to one of seven groups.
+# Assigns each raw source name to one of six groups.
 # Rules are applied in order — the first matching condition wins.
+# Empty sources are rewritten to "unknown source" at load time and land in
+# "Other / unknown" via the catch-all, so no separate no-data rule is needed.
 classify_source <- function(x) {
   x_lower <- str_to_lower(str_trim(x))
   case_when(
-    str_detect(x_lower, "^(unknown( source)?|missing|n/?a|na|none|null|^$)$") ~ "Other / unknown",
-
     str_detect(x_lower, "inaturalist|inat")    ~ "iNaturalist",
     str_detect(x_lower, "plantnet|pl@ntnet")   ~ "Pl@ntNet",
-    str_detect(x_lower, "gbif")                ~ "GBIF (aggregator)",
 
     str_detect(x_lower,
       paste0(
@@ -368,7 +366,7 @@ This section explains the analytical choices that we implemented throughout the 
 
 **Data scope.** Rows with missing country codes or species names are removed during loading. Coordinates are converted to numeric values and validated before the continent spatial join; records with missing or out-of-range coordinates, unmatched continents, or open-ocean assignments are excluded from the spatially analysed dataset.
 
-**Source classification.** Each observation carries a free-text source field with thousands of distinct values. A keyword-matching function (`classify_source()`) assigns each source name to one of seven groups: iNaturalist, Pl\@ntNet, Other citizen-science apps, GBIF (aggregator), Institutional & survey data, Reference & thematic databases, and Other / unknown. The rules are applied in order, and the first match wins. This approach works well for English-language source names and major platforms but can misclassify source names in other languages or those using project-specific abbreviations. The "Other / unknown" group is a catch-all for everything that did not match any rule. This approach is demonstrated in the corresponding report section.
+**Source classification.** Each observation carries a free-text source field with thousands of distinct values. A keyword-matching function (`classify_source()`) assigns each source name to one of six groups: iNaturalist, Pl\@ntNet, Other citizen-science apps, Institutional & survey data, Reference & thematic databases, and Other / unknown. The rules are applied in order, and the first match wins. This approach works well for English-language source names and major platforms but can misclassify source names in other languages or those using project-specific abbreviations. The "Other / unknown" group is a catch-all for everything that did not match any rule. This approach is demonstrated in the corresponding report section.
 
 **Geographic boundaries.** For the Germany analysis, administrative boundaries at the NUTS1 level (federal states/Bundesländer) and NUTS3 level (districts) are loaded from GISCO, the geographic information system of the European Commission. Berlin district boundaries come from a separate open-data project, listed under sources. If a local copy of these files exists, it is used directly; otherwise the file is downloaded from the public URL on first render.
 
@@ -579,7 +577,9 @@ This section starts from the raw sources column in the dataset and works outward
 
 ## Exploring the Raw Source Field
 
-The `source` column is free text. Nothing in the dataset states how many providers contributed to it, what kind of organisation they are, or whether two records naming the same platform spell it the same way. Every later statement in this section depends on those unknowns, so the field is profiled before anything is compared.
+The `source` column contains free-text entries. The dataset does not specify how many providers contributed records, what types of organisations they are, or whether the same platform is always written in the same way.
+
+Because all later analysis in this section depends on these details, the source field is examined first, before any comparisons are made.
 
 ```{r source-field-eda}
 # Count every distinct spelling of the source field, including the ones that no
@@ -599,7 +599,7 @@ n_sources_rare  <- sum(source_raw_counts$observations < 100)
 share_rare      <- sum(source_raw_counts$share[source_raw_counts$observations < 100])
 ```
 
-The field contains **`r format_number(n_sources_total)` distinct source names** across `r format_number(nrow(df))` observations. They are not remotely evenly sized: the ten largest names alone account for **`r format_percent(share_top10)`** of all observations, while `r format_number(n_sources_rare)` names contribute fewer than 100 observations each and together make up just `r format_percent(share_rare)` of the data.
+The field contains **`r format_number(n_sources_total)` distinct source names** across `r format_number(nrow(df))` observations. They are not evenly sized: the ten largest names alone account for **`r format_percent(share_top10)`** of all observations, while `r format_number(n_sources_rare)` names contribute fewer than 100 observations each and together make up just `r format_percent(share_rare)` of the data.
 
 ```{r source-frequency-profile}
 source_size_profile <- source_raw_counts |>
@@ -629,7 +629,7 @@ source_size_profile <- source_raw_counts |>
 nice_table(source_size_profile)
 ```
 
-This is the shape of the problem. A handful of very large sources carry most of the dataset, and a long tail of hundreds of small ones carries almost none. Any analysis that treats sources as interchangeable contributors would be describing the tail while the head does the work.
+This is the main problem: a small number of very large sources provide most observations of the dataset, while hundreds of smaller sources provide only a very small part of it. Therefore, an analysis should not assume that all sources contribute equally. Doing so would focus too much on the many small sources, even though the few large sources have the greatest influence on the results.
 
 ```{r top-sources-bar, fig.width=6, fig.height=3.5}
 top_sources_raw <- source_raw_counts |>
@@ -650,24 +650,29 @@ ggplot(top_sources_raw, aes(x = source_short, y = observations)) +
   theme_gtree()
 ```
 
-Reading the actual names is what makes the grouping possible. They are not arbitrary strings: the frequent ones fall into a few recurring kinds of provider - two global identification apps, a set of national observation portals, an aggregator label, forest inventories, floristic archives. The same provider also appears under inconsistent spellings, and a number of names are in languages other than English. Both facts shape the classification described next.
+Reading the actual names is what makes the grouping possible. The most common sources belong to several recurring provider types: two global identification apps, several national observation portals, an aggregator category, forest inventory databases, and floristic archives.
+
+The same provider may appear under different spellings, and some source names are written in languages other than English. Both issues affect the classification method explained in the next section.
 
 ## Source Classification
 
 ### From Raw Names to Source Groups
 
-`r format_number(n_sources_total)` distinct names cannot be plotted, compared across countries, or reasoned about individually. Grouping them trades detail for comparability: it makes the question "does this pattern come from citizen-science apps or from formal surveys?" answerable at all, at the cost of collapsing distinctions inside each group.
+The `r format_number(n_sources_total)` distinct source names are too numerous to compare individually. Grouping them makes broader questions answerable, such as whether a pattern is linked to citizen-science apps or formal surveys, although some detail is lost within each group.
 
-The groups were derived from the names themselves rather than imposed in advance. We read the most frequent source names - the ten shown above already cover `r format_percent(share_top10)` of observations - and noted which kinds of provider recurred. Each kind became one group, defined by the keywords that identify it. `classify_source()` applies these rules in order and the first match wins, with a catch-all at the end. Keyword matching is used rather than an exact lookup for two reasons: the same provider is spelled inconsistently across records ("iNaturalist", "iNat", "iNaturalist Research-grade Observations"), and the tail of `r format_number(n_sources_rare)` rare names is far too long to enumerate by hand.
+The groups were derived from the source names rather than defined in advance. The ten most frequent names already account for `r format_percent(share_top10)` and revealed several recurring provider types. Each type became a group, identified through keywords. The `classify_source()` function applies these rules in order, assigns the first match, and uses a final catch-all category.
 
-Two judgement calls are worth stating openly. **GBIF is kept as its own group rather than being resolved into the others**, because it is not a primary data collector - it re-distributes records from thousands of organisations, so a GBIF-labelled record may be an iNaturalist observation, a herbarium specimen, or a survey record that was re-published. Merging it into any other group would hide that ambiguity; keeping it separate leaves it visible. **"Other / unknown" is not a clean "unclassifiable" bucket**, because multilingual names (*Inventaire Forestier National*, *Inventário Florestal Brasileiro*) and opaque project codes will fail to match rules that were written from English-language names. It almost certainly contains recognisable sources whose wording was simply not anticipated, which is why the section below looks inside it rather than discarding it.
+Keyword matching is more practical than exact matching because provider names are often inconsistent, for example “iNaturalist”, “iNat”, and “iNaturalist Research-grade Observations”. It also avoids manually listing the `r format_number(n_sources_rare)` rare names.
 
-The resulting seven groups (ordered from most to least specific):
+**GBIF is not one of the groups, even though it is the aggregator every record passed through.** The authors downloaded the entire dataset from GBIF, so the `source` field names the underlying dataset that GBIF re-distributes - "iNaturalist Research-grade Observations", "EOD – eBird Observation Dataset" - and never GBIF itself.
+
+**"Other / unknown"** should not be treated as fully unclassifiable. Multilingual names and project codes may fail to match rules based mainly on English-language terms. The category is therefore examined further rather than discarded.
+
+The resulting six groups (ordered from most to least specific):
 
 -   **iNaturalist** — the largest citizen-science biodiversity platform worldwide.
 -   **Pl\@ntNet** — a plant-identification app with a stronger presence in French-speaking countries and the Global South.
 -   **Other citizen-science apps** — regional portals (e.g., Artportalen, iRecord, Naturgucker, NatureMapr).
--   **GBIF (aggregator)** — re-distributes records from thousands of organisations; may *overlap* with any other group.
 -   **Institutional & survey data** — herbarium/museum collections and systematic field campaigns.
 -   **Reference & thematic databases** — compiled floristic atlases, global plant databases (e.g., BIEN, RAINBIO, Tropicos), Wikidata, and invasive-species tracking.
 -   **Other / unknown** — everything that did not match any keyword rule.
@@ -687,30 +692,29 @@ source_rule_examples <- df |>
     .groups  = "drop"
   )
 
-# Rule order mirrors classify_source() and is deliberately hand-written: it
-# differs from the palette order in source_group_levels, and "first match wins"
-# is only readable if the table follows evaluation order.
+# Rule order mirrors classify_source() and is hand-written: "first match wins"
+# is only readable if the table follows evaluation order.  Keep both in sync —
+# nothing enforces it.
 source_rules <- tibble(
-  Order = 1:8,
+  Order = 1:6,
   `Keyword rule (abridged)` = c(
-    "empty, or literal \"unknown\", \"missing\", \"n/a\", \"none\", \"null\"",
     "inaturalist, inat",
     "plantnet, pl@ntnet",
-    "gbif",
     "artportalen, observation.org, naturgucker, irecord, …",
     "herbar, museum, botanic, inventory, survey, monitoring, …",
-    "atlas, flora, bien, rainbio, tropicos, wikidata, invasive, …",
+    paste0(
+      "atlas, flora, bien, rainbio, tropicos, wikidata, invasive, ",
+      "aprovechamiento forestal, impacto ambiental, …"
+    ),
     "— no rule matched —"
   ),
   source_group = c(
-    "Other / unknown", "iNaturalist", "Pl@ntNet", "GBIF (aggregator)",
+    "iNaturalist", "Pl@ntNet",
     "Other citizen-science apps", "Institutional & survey data",
     "Reference & thematic databases", "Other / unknown"
   )
 ) |>
   left_join(source_rule_examples, by = "source_group") |>
-  # Row 1 and row 8 share a group; only the catch-all row carries its examples.
-  mutate(Examples = ifelse(Order == 1, "", Examples)) |>
   rename(`Assigned group` = source_group, `Example matched sources` = Examples)
 
 nice_table(source_rules)
@@ -729,7 +733,7 @@ coverage_stats <- df |>
   )
 ```
 
-Of all `r format_number(coverage_stats$total)` observations, **`r format_percent(coverage_stats$coverage)`** are assigned to one of the six named groups, and **`r format_percent(coverage_stats$other_rate)`** fall into "Other / unknown". The higher the coverage rate, the more reliably the source-group comparisons throughout this report represent the full dataset.
+Of all `r format_number(coverage_stats$total)` observations, **`r format_percent(coverage_stats$coverage)`** are assigned to one of the five named groups, and **`r format_percent(coverage_stats$other_rate)`** fall into "Other / unknown". The higher the coverage rate, the more reliably the source-group comparisons throughout this report represent the full dataset.
 
 ## Source Concentration
 
@@ -779,7 +783,7 @@ ggplot(source_counts |> slice_head(n = 50), aes(x = source_rank)) +
   theme_gtree()
 ```
 
-The Pareto chart shows extreme source concentration: a handful of individual sources account for the vast majority of classified observations, and the cumulative share curve flattens quickly. This means that any systematic bias in the top few sources will propagate through the entire dataset.
+The Pareto chart shows high source concentration: a small number of sources provide most of the classified observations, and the cumulative share rises quickly. As a result, any consistent bias in the largest sources can strongly affect the full dataset.
 
 ```{r source-group-bar, fig.width=6, fig.height=3.5}
 ggplot(source_group_counts,
@@ -796,7 +800,7 @@ ggplot(source_group_counts,
   theme_gtree()
 ```
 
-The bar chart confirms that citizen-science platforms collectively dominate the dataset, with iNaturalist as the single largest contributor. Institutional and reference sources, while individually smaller, cover regions and taxa that citizen-science platforms may miss.
+The bar chart also shows that citizen-science platforms provide the largest share of observations, with iNaturalist as the main contributor. Institutional and reference sources are smaller, but they may cover regions and species that citizen-science platforms do not.
 
 ## What Is in "Other / Unknown"?
 
@@ -832,7 +836,7 @@ ggplot(other_source_top,
 
 -   *Does source composition vary by country, or are some countries dominated by a single platform?*
 
-If a country's observations come almost entirely from one platform, its apparent species composition and geographic coverage are shaped by that platform's biases. The charts below compare source mixes across the most-observed countries and quantify how source-diverse each country's sample is.
+When most observations from a country come from one platform, that platform strongly influences the recorded species and locations. The charts below compare the source composition of the most-observed countries and measure how diverse their sources are.
 
 ```{r country-source-data}
 top_country_values <- df |>
@@ -895,8 +899,7 @@ ggplot(country_source, aes(x = country_code, y = share, fill = source_group_plot
     title    = "Source composition differs by country",
     subtitle = paste0(
       "Top ", top_n_countries,
-      " countries by observations; bars sum to 100% within each country.\n",
-      "GBIF (aggregator) is shown separately — its true source mix is unknown."
+      " countries by observations; bars sum to 100% within each country."
     ),
     x = NULL, y = "Share of country observations", fill = "Source group",
     caption = make_country_code_key(country_order)
@@ -906,9 +909,9 @@ ggplot(country_source, aes(x = country_code, y = share, fill = source_group_plot
   theme(plot.margin = margin(6, 12, 6, 6))
 ```
 
-The stacked bar chart reveals that source composition varies sharply by country. Some countries are almost entirely supplied by a single platform (e.g. iNaturalist in the US), while others draw from a more balanced mix (Great Britain, Germany). Countries dominated by a single source inherit that platform's geographic and taxonomic biases.
+The stacked bar chart shows large differences between countries. Some, such as the United States, rely mainly on iNaturalist, while others, including Great Britain and Germany, use a more balanced mix of sources. Countries dominated by one source are more exposed to its geographic and taxonomic biases.
 
-Shannon entropy converted to "effective number of source groups" quantifies source diversity per country (1 = one source dominates).
+Source diversity is measured using Shannon entropy, converted into an “effective number of source groups.” A value close to 1 means that one source group dominates.
 
 ```{r country-diversity-data}
 # Shannon entropy -> "effective number of source groups" per country.
@@ -948,13 +951,15 @@ ggplot(country_diversity, aes(x = country_code, y = effective_sources, fill = do
   theme(plot.margin = margin(6, 12, 6, 6))
 ```
 
-Countries with low effective source diversity (close to 1) are essentially single-source samples, meaning their apparent species composition and geographic coverage are shaped almost entirely by one platform's user base. Countries with higher diversity draw from multiple independent collection efforts, making their data more robust to any single platform's biases.
+Countries with low effective source diversity, close to 1, depend almost entirely on a single source. Their recorded species and locations therefore reflect the users and sampling patterns of that platform. Countries with higher source diversity combine several independent data sources, making their results less affected by the biases of any one platform.
+
+Austria, Germany, Spain and Portugal draw on several source groups. In contrast, the US, Canada, Taiwan and New Zealand rely mostly on one source.
 
 ## Sources and Taxonomic Groups
 
 -   *Do different sources record different plant families, or is the source mix uniform across plant families?*
 
-If certain families are recorded predominantly by a single source type, their apparent geographic and temporal patterns may reflect that source's coverage limitations rather than genuine ecological signals.
+When one source type dominates, apparent geographic or temporal patterns may reflect gaps in that source’s coverage rather than real ecological differences.
 
 ```{r taxonomic-source-data}
 df <- df |> mutate(family_clean = ifelse(level1_family == "" | is.na(level1_family), "Unknown family", level1_family))
@@ -1002,7 +1007,9 @@ ggplot(family_source, aes(x = family_clean, y = share, fill = source_group_plot)
   theme_gtree()
 ```
 
-The source mix is not uniform across plant families. Some families are predominantly recorded through citizen-science apps, while others rely more heavily on institutional surveys or reference databases. Families that are primarily recorded by a single source type may have geographic or temporal gaps that mirror that source's coverage limitations.
+The source mix differs across plant families. Some families are recorded mainly through citizen-science apps, while others depend more on institutional surveys or reference databases.
+
+iNaturalist is the largest source for all plant families, but its share varies. Some families also receive many records from Pl\@ntNet, reference databases, surveys or other apps.
 
 ## Geographic Footprints of Data Sources
 
@@ -1203,7 +1210,7 @@ The chart above highlights the single largest year-over-year jumps for each sour
 
 ## Geographic Coverage Over Time
 
-This subsection examines how the geographic reach of observations dated from 2015 to 2024 differs over time. It compares the first observation year represented for each country within this period and maps observation locations at selected snapshot years. This describes the dates attached to the records, not when countries or records were added to GlobalGeoTree.
+This subsection examines how the geographic reach of observations dated from 2015 to 2024 differs over time. It compares the first observation year represented for each country within this period and maps observation locations at selected snapshot years.
 
 ```{r country-coverage-data}
 country_year <- df |>
@@ -1239,7 +1246,7 @@ ggplot(new_countries, aes(x = first_observed_year, y = new_countries)) +
   theme_gtree()
 ```
 
-This chart shows when countries first appear among the observations dated within the selected period. A declining count suggests that later observation years add relatively few countries not already represented by earlier-dated records, although it does not reveal when those records were ingested into GlobalGeoTree.
+This chart shows when countries first appear among the observations dated within the selected period. A declining count suggests that later observation years add relatively few countries not already represented by earlier-dated records.
 
 The maps below show observation locations at four snapshot years, revealing whether records spread into new regions or simply become denser in existing ones.
 
@@ -1311,19 +1318,22 @@ What are the different taxonomic families represented in this dataset and in whi
 ```{r family-count-plot}
 #| cache: true
 #| fig-cap: "The 20 taxonomic families with the largest observation counts in the dataset."
-# Number of level1_categories
-level1_count <- data %>%
-  count(level0, level1_family, sort = TRUE)
-
-# selection of the 20 most represented families
-
-top20 <- level1_count %>%
+# The 20 families with the most observations overall.  Rank on the family total,
+# not on (level0, family) pairs: a family split across two categories would be
+# ranked on each half and could drop out despite a large total.
+top20_families <- data %>%
+  count(level1_family, sort = TRUE) %>%
   slice_head(n = 20)
+
+# Category breakdown within those 20 families — one row per bar segment.
+top20 <- data %>%
+  filter(level1_family %in% top20_families$level1_family) %>%
+  count(level0, level1_family)
 
 ggplot(
   top20,
   aes(
-    x = reorder(level1_family, n),
+    x = reorder(level1_family, n, FUN = sum),
     y = n,
     fill = level0
   )
@@ -1339,8 +1349,11 @@ ggplot(
     labels = scales::label_number(scale = 1 / 100000, accuracy = 0.1)
   ) +
   theme_gtree() +
+  # Centre the title over the plotting panel so it clears the y-axis label.
   theme(
-    axis.text.x = element_text(angle = 45, hjust = 1)
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title.position = "panel",
+    plot.title  = element_text(hjust = 0.5)
   )
 
 
@@ -1462,7 +1475,7 @@ ggplot(lat_species, aes(lat_bin, n)) + geom_line() + facet_wrap(~level3_species)
 
 With this figure, we see that among the most represented species in this dataset, they present different world distributions. Most of them are mostly present in the northern hemisphere, but some are also present in the southern hemisphere (such as Dombeya acrifolia), and some are almost evenly present in the two hemispheres, such as Cornus acuminata.
 
-Another representation could be a heatmap representing the species depenting on the latitude:
+Another representation could be a heatmap representing the species depending on the latitude:
 
 ```{r top-species-latitude-heatmap}
 #| cache: true
@@ -1701,8 +1714,6 @@ ggplot(df_n_obs, aes(x = reorder(continent, n), y = n)) +
 ```
 
 @fig-bar-continent quantifies the imbalance already suggested by @fig-map-continent. North America and Europe together account for 74.4% of all observations (41.3% and 33.1% respectively), despite representing only a fraction of the world's land area and tree biodiversity. Oceania follows at 10.3%, largely driven by Australia, before a sharp drop to South America (6.6%), Asia (5.5%) and Africa (3.3%). This ranking reveals an important nuance compared to the previous map. Although Asia appeared visually extensive in @fig-map-continent (spanning a wide longitudinal range with a dense cluster of points), it accounts for only 5.5% of total observations, far below Europe or North America. This apparent contradiction is simply a matter of scale: individual points can appear numerous and spread out on a map while still representing a small share of a dataset containing several million observations overall. This illustrates why the two figures are complementary. The map shows where observations are located, while the bar chart shows how much each region actually contributes to the dataset.
-
-The density map below is computed on a reproducible random subsample (see Methodology for the subsampling rationale).
 
 ```{r}
 #| label: fig-density-map
@@ -2288,7 +2299,7 @@ Overall, this final figure shows that the geographic imbalance is visible throug
 *— Nataliia*
 :::
 
-Part II examines tree observations within Germany. Germany was selected because it has relatively high observation density and contributions from multiple data sources, making it a good case for studying how global biases play out at the national and sub-national level. Berlin is examined in detail because this is where our team is based. Baden-Württemberg and NRW are included only as short map-based comparisons.
+Part II examines tree observations within Germany.
 
 ```{r de-helpers}
 #| include: false
@@ -2548,7 +2559,7 @@ nice_table(de_input_summary, "Germany data check")
 
 # Germany: Species and Common-Name Lookup
 
-To make charts easier to read, English common names are shown next to Latin names wherever possible. As described in the Methodology section, the GlobalGeoTree dataset contains `species_key`, a unique GBIF identifier for each species. This key is used to query the GBIF vernacular-names API once and cache the result in `data/external/species_common_names.csv`. On every subsequent render, the report reads from that file.
+To make charts easier to read, English common names are shown next to Latin names wherever possible. The GlobalGeoTree dataset contains `species_key`, a unique GBIF identifier for each species. This key is used to query the GBIF vernacular-names API once and cache the result in `data/external/species_common_names.csv`. On every subsequent render, the report reads from that file.
 
 ```{r germany-species-count}
 german_species_for_names <- germany |>
@@ -2607,15 +2618,15 @@ fetch_names_status <- tibble::tibble(
 nice_table(fetch_names_status, "GBIF common names lookup result")
 ```
 
-Species without an English name in GBIF are shown with their Latin name only in charts. The cached file can be deleted and re-generated at any time by deleting `data/external/species_common_names.csv` and re-rendering the report.
+Species without an English name in GBIF are shown with their Latin name only in charts.
 
 # Germany: National Patterns
 
-This section examines how tree observations are distributed across Germany as a whole: spatial concentration, temporal trends, source structure, and Bundesland-level variation.
+This section examines how tree observations are distributed across Germany as a whole: spatial concentration, temporal trends, source structure, and federal state-level variation.
 
-## Load Bundesländer boundaries
+## Load federal states (Bundesländer) boundaries
 
-Bundesländer polygons are needed to draw state boundaries on Germany maps and to assign observations to federal states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded.
+Federal states polygons are needed to draw state boundaries on Germany maps and to assign observations to federal states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded.
 
 ```{r load-bundeslaender}
 #| cache: true
@@ -2662,12 +2673,31 @@ nuts3 <- nuts3_result$data
 
 -   *Where are observations spatially concentrated across Germany?*
 
-Two complementary views are shown below. The first plots the individual observation points, revealing the raw recording locations; the second is a smooth filled density surface derived from those same points, which highlights where they concentrate into hotspots.
+Two complementary views are shown below. The first is a smooth filled density surface, which highlights where observations concentrate into hotspots; the second plots the individual observation points the surface is derived from, revealing the raw recording locations behind those contours.
 
 ```{r germany-distribution-data}
 germany_points_for_maps <- sample_up_to(germany, max_germany_overview_points)
 germany_boundary_for_maps <- if (has_bundeslaender) dplyr::bind_rows(bundeslaender_plot) else NULL
 ```
+
+```{r germany-distribution-main, fig.width=6, fig.height=5}
+if (nrow(germany_points_for_maps) < 3) {
+  empty_plot("Not enough Germany observations were available for the distribution maps.")
+} else {
+  plot_filled_density_map(
+    points_data = germany_points_for_maps,
+    boundary_data = germany_boundary_for_maps,
+    title = "Germany observation smoothed density",
+    subtitle = NULL,
+    caption = NULL,
+    xlim = germany_xlim, ylim = germany_ylim, bins = 10, alpha = 0.90
+  )
+}
+```
+
+Darker areas show where more observations were recorded. These hotspots should be read as observation intensity rather than tree abundance: a location can appear dense because observers are active there, because a platform has strong coverage, or simply because access is easier.
+
+Recording is highest in western and southwestern Germany, with a separate strong hotspot around Berlin. Large parts of eastern and northeastern Germany have much lower density.
 
 ```{r germany-distribution-points, fig.width=6, fig.height=5}
 if (nrow(germany_points_for_maps) < 3) {
@@ -2679,39 +2709,21 @@ if (nrow(germany_points_for_maps) < 3) {
   }
   p +
     geom_point(data = germany_points_for_maps, aes(x = longitude, y = latitude),
-               alpha = 0.18, size = 0.35, color = "#1F5B74") +
+               alpha = 0.4, size = 0.02, color = "gray25") +
     coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
     plot_labs(
-      title = "Germany observation locations",
-      caption = paste0("Individual observations, up to ", format_number(max_germany_overview_points),
-                       " sampled. Recording locations, not true tree abundance.")
+      title = "Germany observations points map",
+      caption = NULL
     ) +
     theme_map_gtree()
 }
 ```
 
-```{r germany-distribution-main, fig.width=6, fig.height=5}
-if (nrow(germany_points_for_maps) < 3) {
-  empty_plot("Not enough Germany observations were available for the distribution maps.")
-} else {
-  plot_filled_density_map(
-    points_data = germany_points_for_maps,
-    boundary_data = germany_boundary_for_maps,
-    title = "Germany observation density",
-    subtitle = NULL,
-    caption = "This shows recording density in the dataset, not true tree abundance.",
-    xlim = germany_xlim, ylim = germany_ylim, bins = 10, alpha = 0.90
-  )
-}
-```
-
-Darker areas show where more observations were recorded. These hotspots should be read as observation intensity rather than tree abundance: a location can appear dense because observers are active there, because a platform has strong coverage, or simply because access is easier.
+The point map confirms the same pattern: observations cluster strongly in the west and south, while the east is more sparsely covered outside Berlin.
 
 ## Observations by year
 
 -   *How has recording activity changed over time in Germany?*
-
-A dataset dominated by a few recent years may show spatial patterns that reflect current platform growth rather than long-term tree distribution.
 
 ```{r de-observations-by-year, fig.width=6, fig.height=3.5}
 year_counts <- germany |>
@@ -2736,7 +2748,7 @@ if (nrow(year_counts) == 0) {
 }
 ```
 
-Peaks in this chart reflect peaks in recording activity, not necessarily more trees. A strong upward trend in recent years is common in citizen-science datasets as more users join the platforms.
+A strong upward trend in recent years is common in citizen-science datasets as more users join the platforms. However, we also can see a significant decrease in the observations by year in the last two years.
 
 ## Observations by source on the country map
 
@@ -2790,7 +2802,7 @@ p +
   theme_map_gtree()
 ```
 
-If source panels look visually different, this is evidence of source bias: the national density map then reflects a mix of ecological signal and platform coverage.
+The maps show clear differences in where each source records observations. Observation.org and Pl\@ntNet are more concentrated in western and southern Germany, while naturgucker and iNaturalist have broader national coverage. Pl\@ntNet auto-ID appears the most evenly spread, although the 15,000-point limit means the panels show coverage patterns rather than total record numbers.
 
 ## Observations by source (bar chart)
 
@@ -2810,17 +2822,15 @@ ggplot(de_source_counts, aes(x = source_display, y = observations)) +
   theme_gtree()
 ```
 
-The largest bar identifies the dominant source. A single dominant source can strongly shape the density patterns seen on all subsequent maps.
+Pl\@ntNet auto ID contributes almost half of all German records. iNaturalist research-grade and Observation.org add another 35%, so the three largest sources together account for about 82% of the dataset. The remaining sources make much smaller contributions, meaning national patterns are shaped mainly by these three platforms.
 
-::: callout-note
-**Two Pl\@ntNet source names.** `Pl@ntNet observations` and `Pl@ntNet auto ID` are both Pl\@ntNet-derived but represent different validation routes: one is the regular shared-observation dataset, and the other contains automatically identified occurrences. They are therefore kept separate throughout this report.
-:::
+`Pl@ntNet observations` and `Pl@ntNet auto ID` are both Pl\@ntNet-derived but represent different validation routes: one is the regular shared-observation dataset, and the other contains automatically identified occurrences. They are therefore kept separate throughout this report.
 
-## Observations mapped to Bundesländer
+## Observations mapped to federal states
 
 -   *How are observations distributed across Germany's sixteen federal states?*
 
-Observations are assigned to Bundesländer using a spatial join — each observation's coordinates are matched to the boundary polygon it falls within.
+Observations are assigned to federal states using a spatial join — each observation's coordinates are matched to the boundary polygon it falls within.
 
 ```{r bundesland-spatial-join}
 #| cache: true
@@ -2898,7 +2908,9 @@ if (is.null(bundesland_map)) {
 }
 ```
 
-Together, the bar chart provides exact rankings while the map shows whether high-record states cluster in one part of Germany. Differences between Bundesländer reflect population density, platform coverage, and observer activity rather than differences in actual tree abundance. Nordrhein-Westfalen and Baden-Württemberg — the first and third largest Bundesländer by observation count — are revisited later as spatial comparison points for Berlin.
+Together, the bar chart provides exact rankings while the map shows whether high-record states cluster in one part of Germany.
+
+Observations are concentrated in western and southern Germany. Nordrhein-Westfalen has the highest count, with Bavaria, Baden-Württemberg and Lower Saxony also recording many observations. Eastern states and Saarland generally have fewer records, showing that sampling effort is uneven across Germany.
 
 # Berlin
 
@@ -2964,8 +2976,6 @@ nice_table(berlin_summary, "Berlin observation summary")
 
 -   *Which data sources contribute to Berlin's observations, and does one platform dominate?*
 
-Source composition is important context for every Berlin map. If one platform dominates, Berlin hotspots may partly reflect that platform's recording behaviour rather than tree distribution.
-
 ```{r berlin-source-summary}
 berlin_source_counts <- make_source_counts(berlin)
 # Counts feed the bar chart below; the table view was removed as it duplicated that chart.
@@ -2981,11 +2991,13 @@ ggplot(berlin_source_counts, aes(x = source_short, y = observations)) +
   theme_gtree()
 ```
 
+Berlin’s records are strongly dominated by iNaturalist, which contributes about 60% of observations. Pl\@ntNet auto ID adds another 24%, while ArtenFinder contributes 7.5%. Together, these three sources provide more than 90% of the Berlin dataset.
+
+We see, that the majority of Berlin observations comes from citizen-science platforms, both global - iNaturalist and Pl\@ntNet, and local - ArtenFinder, naturgucker etc.
+
 ## Spatial distribution of Berlin observations
 
 -   *Which parts of Berlin show the highest recording density?*
-
-Because Berlin is geographically compact, a single density map with overlaid district boundaries is sufficient to show spatial patterns.
 
 ```{r berlin-spatial-distribution, fig.width=6, fig.height=5}
 berlin_points_for_map <- sample_up_to(berlin, max_berlin_points)
@@ -3019,7 +3031,9 @@ if (nrow(berlin_points_for_map) < 3) {
 }
 ```
 
-The density map highlights which parts of Berlin have the most recorded tree observations. High-density areas are likely to correspond to parks, green corridors, and neighbourhoods with active observers rather than necessarily having more trees than other areas.
+The density map highlights which parts of Berlin have the most recorded tree observations. High-density areas are correspond to parks, green corridors, and neighbourhoods with active observers rather than necessarily having more trees than other areas.
+
+Observations are strongly concentrated in western Berlin, with the clearest hotspot just west of the city centre, in Grunewald. Smaller clusters appear in the southwest and along the southern edge, while most central and eastern districts have much lower recording density.
 
 ## Berlin local areas: observations and species
 
@@ -3054,6 +3068,8 @@ if (nrow(berlin_district_counts) == 0) {
 }
 ```
 
+Grunewald dominates the dataset with 1,714 observations—more than three times the count for Wannsee, another south-western district. All other local areas have fewer than 300 records, showing a strong concentration in the southwest.
+
 ```{r berlin-species-bar, fig.width=6, fig.height=4.5}
 if (nrow(berlin_district_counts) == 0) {
   empty_plot("Berlin local-area species counts are unavailable because polygons were not loaded.")
@@ -3070,6 +3086,8 @@ if (nrow(berlin_district_counts) == 0) {
     theme_gtree()
 }
 ```
+
+Grunewald and Wannsee also have the highest recorded species counts. Buch stands out with 60 species despite having fewer observations than Dahlem, suggesting that observation volume and recorded richness do not always rise together.
 
 ```{r berlin-district-map, fig.width=6, fig.height=5}
 if (has_berlin_districts && nrow(berlin_district_counts) > 0) {
@@ -3095,9 +3113,9 @@ if (has_berlin_districts && nrow(berlin_district_counts) > 0) {
 }
 ```
 
-Square-root scaling keeps both high- and medium-count local areas visible on the choropleth.
+The choropleth map shows the spatial pattern. Square-root scaling keeps both high- and medium-count local areas visible on the choropleth.
 
-The bar charts rank local areas by observation count and species count separately, while the choropleth map shows the spatial pattern. Local areas with both high observation counts and high species richness may genuinely be more biodiverse or may simply have more active recording communities.
+The map confirms a strong hotspot around Grunewald in western Berlin. Most central areas have low counts, while several outer areas in the southwest, north and southeast show moderate recording activity.
 
 ## Top recorded species in Berlin
 
@@ -3125,7 +3143,9 @@ berlin_top_species |>
   theme_gtree()
 ```
 
-The most frequently recorded species in Berlin reflect the city's urban tree stock, which includes both native species and commonly planted street and park trees. High observation counts for a species can indicate that it is genuinely common, that it is easy to identify and therefore often recorded by citizen-science users, or both.
+The most frequently recorded species in Berlin reflect the city's urban tree stock, which includes both native species and commonly planted street and park trees.
+
+*Cupania sylvatica* is recorded far more often than any other species, with about twice as many observations as beech. Counts then fall quickly across the remaining taxa. Several entries, including a bird species and tropical plants, suggest that the taxonomic labels should be checked before interpreting this ranking.
 
 ## Berlin oak tree groups
 
@@ -3198,6 +3218,8 @@ if (nrow(berlin_oak_points_for_map) == 0) {
 }
 ```
 
+The oak pattern closely follows the overall pattern of all Berlin observations, with the strongest concentration in the west. This suggests that the oak map mainly reflects where recording is most intensive, not where oaks are necessarily most common.
+
 ```{r berlin-oak-area-bar, fig.width=6, fig.height=4.5}
 if (nrow(berlin_oak_area_counts) == 0) {
   empty_plot("Berlin oak local-area counts are unavailable.")
@@ -3215,13 +3237,13 @@ if (nrow(berlin_oak_area_counts) == 0) {
 }
 ```
 
-The oak map and local-area ranking show where recorded oak groups are concentrated across Berlin. Because these records reflect observer activity and are not a complete oak census, they cannot determine pest presence or risk by themselves. The visualization instead demonstrates how GlobalGeoTree locations could be combined with official inventories and surveillance records in a practical follow-up analysis.
+Grunewald, Dahlem and other highly sampled areas also contain most oak records. Because the full dataset is spatially biased, the oak subset inherits the same bias, so these counts should not be read as a ranking of true oak abundance.
 
 # Baden-Württemberg and Nordrhein-Westfalen
 
 -   *Is Berlin's spatial concentration of observations a Berlin-specific pattern, or is it typical for German regions?*
 
-The Berlin analysis above revealed that observations are heavily concentrated in a single location. To investigate, we compare Berlin with Nordrhein-Westfalen (NRW) and Baden-Württemberg — the first and third largest Bundesländer by observation count. For each state, a density map and a NUTS3 district choropleth show where observations are concentrated. Both should be read as recording intensity, not true tree abundance.
+The Berlin analysis above revealed that observations are heavily concentrated in a single location. To investigate, we compare Berlin with Nordrhein-Westfalen (NRW) and Baden-Württemberg — the first and third largest federal states by observation count. For each state, a density map and a NUTS3 district choropleth show where observations are concentrated.
 
 ```{r load-bw-boundaries}
 #| include: false
@@ -3249,8 +3271,6 @@ rm(bw_filtered)
 
 ## Baden-Württemberg
 
-Baden-Württemberg is kept as a compact visual reference for Berlin. The two maps below show where observations are densest across the state and how observation frequency varies across NUTS3 districts.
-
 ```{r bw-density-main, fig.width=6, fig.height=5}
 bw_points_for_map <- sample_up_to(bw, max_bw_points)
 bw_boundary_for_map <- if (has_bw_boundary) bw_boundary_plot else NULL
@@ -3268,7 +3288,7 @@ if (nrow(bw_points_for_map) < 3) {
 }
 ```
 
-The filled density map is included only as a broad visual comparison with Berlin's observation-density pattern. It should be read as recording intensity, not true tree abundance.
+In Baden-Württemberg recording is stronger in the west and south than in many eastern areas. Several hotspots are visible, especially in the southwest, northwest and central part of the state. Unlike Berlin, where observations are concentrated mainly around one western hotspot, Baden-Württemberg has several separate centres of recording activity.
 
 ### Baden-Württemberg observations by NUTS3 district
 
@@ -3304,9 +3324,11 @@ if (is.null(bw_district_map)) {
 
 Square-root scaling is applied so that a few very high-count districts do not wash out variation among the rest.
 
+The district map confirms that observations are unevenly distributed. The highest counts occur in the far southwest, while several western, northern and southern districts also have relatively high totals. Many central and eastern districts contribute fewer records.
+
 ## Nordrhein-Westfalen (NRW)
 
-NRW serves the same role as Baden-Württemberg: a state-level comparison point for Berlin. The density map and NUTS3 district choropleth below follow the same layout.
+NRW serves the same role as Baden-Württemberg: a state-level comparison point for Berlin.
 
 ```{r load-nrw-boundaries}
 #| include: false
@@ -3349,7 +3371,7 @@ if (nrow(nrw_points_for_map) < 3) {
 }
 ```
 
-As with Baden-Württemberg, this density map should be read as recording intensity rather than true tree abundance.
+NRW has several observation hotspots rather than one dominant centre. High recording density appears in the southwest, central-west and north, with smaller clusters in the east. This is more dispersed than Berlin’s strongly concentrated western hotspot and helps explain the broad area of high density seen in western Germany.
 
 ### NRW observations by NUTS3 district
 
@@ -3384,6 +3406,8 @@ if (is.null(nrw_district_map)) {
 ```
 
 As above, square-root scaling is used so that dominant districts do not obscure the rest of the distribution.
+
+The district map confirms that records are uneven but spread across much of NRW. A few northern and southern districts have the highest totals, while many central districts show medium counts. Compared with Baden-Württemberg, NRW has a similarly multi-centred pattern; compared with Berlin, its observations are less dependent on one local area.
 
 Comparing the density maps of Baden-Württemberg and NRW with that of Berlin highlights a notable difference in spatial distribution. While observations in BW and NRW are spread much more evenly across their respective territories — with multiple distinct hotspots corresponding to major cities and populated areas — Berlin's observations are heavily concentrated in a single location. This contrast reinforces the data quality concern raised earlier: the Berlin subset appears to reflect localised recording activity rather than a representative spatial sample of the city's tree cover.
 
@@ -3828,7 +3852,7 @@ GlobalGeoTree aggregates tree observations from a large number of independent so
 
 Because GlobalGeoTree is assembled from many independent sources, it does not reflect a systematic global sampling design — it reflects where people happened to record trees. The result is a dataset with strong geographic, taxonomic, and temporal biases that are source-driven rather than biologically meaningful.
 
-The dataset has no systematic global sampling design, so observation patterns must not be interpreted as direct measures of tree abundance. Records redistributed through aggregators such as GBIF may overlap with records attributed to individual platforms; source classification is based on keyword rules and remains uncertain for multilingual or opaque source names; and the `year` field describes when an observation was recorded, not necessarily when it was added to GlobalGeoTree. These limitations apply throughout the report.
+The dataset has no systematic global sampling design, so observation patterns must not be interpreted as direct measures of tree abundance. Every record reaches the dataset through GBIF, so a single observation re-published by more than one contributing dataset may appear under different source names despite the de-duplication the authors applied; source classification is based on keyword rules and remains uncertain for multilingual or opaque source names; and the `year` field describes when an observation was recorded, not necessarily when it was added to GlobalGeoTree. These limitations apply throughout the report.
 
 # Visualisation Techniques {.unnumbered}
 
