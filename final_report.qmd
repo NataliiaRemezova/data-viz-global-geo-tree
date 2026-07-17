@@ -1317,6 +1317,7 @@ What are the different taxonomic families represented in this dataset and in whi
 
 ```{r family-count-plot}
 #| cache: true
+#| fig-height: 4.5
 #| fig-cap: "The 20 taxonomic families with the largest observation counts in the dataset."
 # The 20 families with the most observations overall.  Rank on the family total,
 # not on (level0, family) pairs: a family split across two categories would be
@@ -1349,6 +1350,8 @@ ggplot(
     labels = scales::label_number(scale = 1 / 100000, accuracy = 0.1)
   ) +
   theme_gtree() +
+  # Four foliage names on one row overflow the figure width, so wrap to two.
+  guides(fill = guide_legend(nrow = 2)) +
   # Centre the title over the plotting panel so it clears the y-axis label.
   theme(
     axis.text.x = element_text(angle = 45, hjust = 1),
@@ -1477,16 +1480,40 @@ With this figure, we see that the most represented species in this dataset have 
 
 Another representation could be a heatmap representing the species depending on the latitude:
 
-```{r top-species-latitude-heatmap}
+```{r}
+#| label: fig-species-latitude-heatmap
 #| cache: true
+#| fig-width: 6.5
+#| fig-height: 8
+#| fig-cap: "Observation counts by latitude for the 50 most recorded species."
+#| fig-cap-location: bottom
 top50 <- data %>% count(level3_species, sort = TRUE) %>% slice_head(n = 50)
 
 heat <- data %>% filter(level3_species %in% top50$level3_species) %>% mutate(lat_bin = floor(latitude)) %>% count(level3_species, lat_bin)
 
-ggplot(heat, aes(lat_bin, reorder(level3_species, n), fill = n)) + geom_tile()
+# Rank species on their total, not on the mean count per latitude bin, which is
+# what reorder() would default to.
+ggplot(heat, aes(x = lat_bin, y = reorder(level3_species, n, FUN = sum), fill = n)) +
+  geom_tile() +
+  scale_fill_viridis_c(
+    option = "C", transform = "sqrt", labels = scales::comma_format(),
+    breaks = scales::breaks_pretty(n = 5),
+    guide = guide_colorbar(
+      barwidth = 12, barheight = 0.6,
+      label.theme = element_text(angle = 45, hjust = 1, size = 9)
+    )
+  ) +
+  plot_labs(
+    x = "Latitude (°)",
+    y = NULL,
+    fill = "Observations",
+    title = "Top 50 species by latitude"
+  ) +
+  theme_gtree() +
+  theme(axis.text.y = element_text(size = 6, face = "italic"))
 ```
 
-Again, we see here that most species are present mostly in the Northern Hemisphere, but some can also be present in both hemispheres, or only in the Southern Hemisphere or near the equator (*Guazuma ulmifolia*, a tree largely present in Latin America and very rare in other areas).
+@fig-species-latitude-heatmap shows again that most species are present mostly in the Northern Hemisphere, but some can also be present in both hemispheres, or only in the Southern Hemisphere or near the equator (*Guazuma ulmifolia*, a tree largely present in Latin America and very rare in other areas).
 
 The boxplot below compares the latitudinal spread of the twenty most recorded families, ordered by median latitude, so that families centred on temperate bands can be separated from those reaching towards the equator.
 
@@ -1886,8 +1913,8 @@ This distinction by continent, however, remains an approximation, since large co
 #| message: false
 #| fig-cap: "Distribution of foliage types by latitude"
 #| fig-cap-location: bottom
-#| fig-width: 14
-#| fig-height: 8
+#| fig-width: 7
+#| fig-height: 5
 #| fig-align: center
 
 
@@ -1904,43 +1931,43 @@ ggplot(df, aes(x = latitude, y = level0, fill = level0)) +
   geom_density_ridges(
     aes(fill = level0),
     alpha       = 0.75,
-    scale       = 1.8,         # overlap between curves (1 = no overlap)
+    scale       = 1.0,         # overlap between curves (1 = no overlap)
     rel_min_height = 0.005,    # trims very low-density tails
     bandwidth   = 3,           # smoothing in degrees of latitude
     colour      = "white",
     linewidth   = 0.6
   ) +
-  
-  # Climate zone annotations
-  annotate("text", x = 0,     y = 0, label = "Equator",       angle = 90,
-           vjust = 0, hjust=0, size = 3, colour = "grey50") +
-  annotate("text", x = 23.5,  y = 0, label = "Tropic of Cancer", angle = 90,
-           vjust = -0.4, hjust=0, size = 3, colour = "grey55") +
-  annotate("text", x = -23.5, y = 0, label = "Tropic of Capricorn", angle = 90,
-           vjust =  1.2, hjust=0, size = 3, colour = "grey55") +
-  annotate("text", x = 66.5,  y = 0, label = "Arctic Circle", angle = 90,
-           vjust = -0.4, hjust=0, size = 3, colour = "grey55") +
-  
+
   scale_fill_manual(values = palette_level0, guide = "none") +
-  
+
+  # Headroom so the tallest curve is not clipped at the panel top.
+  scale_y_discrete(expand = expansion(add = c(0.6, 0.8))) +
+
+  # Climate zones are labelled on a top axis rather than inside the panel,
+  # where rotated text would run into the curves.
   scale_x_continuous(
-    breaks = seq(-60, 80, by = 10),
-    labels = function(x) paste0(abs(x), ifelse(x >= 0, "°N", "°S")),
-    limits = c(-60, 80)
+    breaks = seq(-60, 80, by = 20),
+    labels = function(x) ifelse(x == 0, "0°", paste0(abs(x), ifelse(x > 0, "°N", "°S"))),
+    sec.axis = dup_axis(
+      breaks = c(-23.5, 0, 23.5, 66.5),
+      labels = c("Tropic of\nCapricorn", "Equator", "Tropic of\nCancer", "Arctic\nCircle"),
+      name = NULL
+    )
   ) +
-  
+
+  coord_cartesian(xlim = c(-60, 80)) +
+
   plot_labs(
     x        = "Latitude",
     y        = NULL
   ) +
-  
-  theme_minimal(base_size = 14) +
-  
+
+  theme_gtree() +
+
   theme(
-    panel.grid.minor   = element_blank(),
     panel.grid.major.y = element_blank(),
-    axis.text.y        = element_text(face = "bold", size = 12),
-    plot.caption       = element_text(size = 9, colour = "grey50", hjust = 0)
+    axis.text.y        = element_text(face = "bold"),
+    axis.text.x.top    = element_text(size = 8, colour = "grey45", lineheight = 0.9)
   )
 
 ```
@@ -2700,7 +2727,7 @@ if (nrow(germany_points_for_maps) < 3) {
   plot_filled_density_map(
     points_data = germany_points_for_maps,
     boundary_data = germany_boundary_for_maps,
-    title = NULL,
+    title = "Germany observation density",
     subtitle = NULL,
     caption = NULL,
     xlim = germany_xlim, ylim = germany_ylim, bins = 10, alpha = 0.90
@@ -2729,7 +2756,7 @@ if (nrow(germany_points_for_maps) < 3) {
     geom_point(data = germany_points_for_maps, aes(x = longitude, y = latitude),
                alpha = 0.4, size = 0.02, color = "gray25") +
     coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
-    plot_labs(caption = NULL) +
+    plot_labs(title = "Germany observation locations", caption = NULL) +
     theme_map_gtree()
 }
 ```
@@ -2745,7 +2772,7 @@ if (nrow(germany_points_for_maps) < 3) {
 #| fig-cap: "Germany observations by year"
 #| fig-cap-location: bottom
 #| fig-width: 6
-#| fig-height: 3.5
+#| fig-height: 3.8
 year_counts <- germany |>
   filter(!is.na(year), year >= 1900, year <= as.integer(format(Sys.Date(), "%Y"))) |>
   count(year, name = "observations") |>
@@ -2760,7 +2787,7 @@ if (nrow(year_counts) == 0) {
     geom_point(size = 1.8, color = "gray25") +
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_y_continuous(labels = scales::comma_format()) +
-    plot_labs(x = "Year", y = "Observations") +
+    plot_labs(title = "Germany observations by year", x = "Year", y = "Observations") +
     theme_gtree()
 }
 ```
@@ -2822,6 +2849,7 @@ p +
   facet_wrap(~ source_display, ncol = 3) +
   coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
   plot_labs(
+    title = "Source footprints across Germany",
     caption = paste("Maximum displayed points per source:", format_number(max_points_per_source_group))
   ) +
   theme_map_gtree()
@@ -2838,13 +2866,13 @@ p +
 #| fig-cap: "Germany observations by source"
 #| fig-cap-location: bottom
 #| fig-width: 6
-#| fig-height: 3.5
+#| fig-height: 3.8
 ggplot(de_source_counts, aes(x = source_display, y = observations)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = label), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.20))) +
-  plot_labs(subtitle = NULL, x = NULL, y = "Observations") +
+  plot_labs(title = "Germany observations by source", subtitle = NULL, x = NULL, y = "Observations") +
   theme_gtree()
 ```
 
@@ -2911,7 +2939,7 @@ if (nrow(bundesland_counts) == 0) {
     geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(x = NULL, y = "Observations") +
+    plot_labs(title = "Observations by federal state", x = NULL, y = "Observations") +
     theme_gtree()
 }
 ```
@@ -2934,6 +2962,7 @@ if (is.null(bundesland_map)) {
                            label.theme = element_text(angle = 45, hjust = 1, size = 9)
                          )) +
     plot_labs(
+      title = "Observation frequency by state",
       subtitle = NULL,
       fill = "Observations",
       caption = "Boundaries: GISCO NUTS1 regions. Counts: GlobalGeoTree Germany subset."
@@ -3022,13 +3051,13 @@ berlin_source_counts <- make_source_counts(berlin)
 #| fig-cap: "Berlin observations by source"
 #| fig-cap-location: bottom
 #| fig-width: 6
-#| fig-height: 3.5
+#| fig-height: 3.8
 ggplot(berlin_source_counts, aes(x = source_short, y = observations)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = label), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.18))) +
-  plot_labs(x = NULL, y = "Observations") +
+  plot_labs(title = "Berlin observations by source", x = NULL, y = "Observations") +
   theme_gtree()
 ```
 
@@ -3061,7 +3090,8 @@ if (nrow(berlin_points_for_map) < 3) {
     geom_point(data = berlin_points_for_map, aes(x = longitude, y = latitude), alpha = 0.14, size = 0.35) +
     coord_sf() +
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
-    plot_labs(caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
+    plot_labs(title = "Tree observation density in Berlin",
+         caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
 } else {
@@ -3070,7 +3100,8 @@ if (nrow(berlin_points_for_map) < 3) {
     geom_point(alpha = 0.12, size = 0.35) +
     coord_fixed() +
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
-    plot_labs(subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
+    plot_labs(title = "Tree observation density in Berlin",
+         subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
          caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = "Longitude", y = "Latitude") +
     theme_gtree()
@@ -3116,7 +3147,7 @@ if (nrow(berlin_district_counts) == 0) {
     geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(subtitle = "Only the top 20 areas are shown.", x = NULL, y = "Observations") +
+    plot_labs(title = "Berlin observations by local area", subtitle = "Only the top 20 areas are shown.", x = NULL, y = "Observations") +
     theme_gtree()
 }
 ```
@@ -3141,7 +3172,7 @@ if (nrow(berlin_district_counts) == 0) {
     geom_col(fill = "steelblue") +
     geom_text(aes(label = format_number(species)), hjust = -0.05, size = 3) +
     coord_flip() +
-    plot_labs(x = NULL, y = "Recorded species") +
+    plot_labs(title = "Recorded species by local area", x = NULL, y = "Recorded species") +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
     theme_gtree()
 }
@@ -3171,7 +3202,7 @@ if (has_berlin_districts && nrow(berlin_district_counts) > 0) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(subtitle = NULL, fill = "Observations") +
+    plot_labs(title = "Observation frequency by local area", subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 } else {
   empty_plot("Berlin local-area map is unavailable because polygons were not loaded.")
@@ -3209,7 +3240,8 @@ berlin_top_species |>
   geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-  plot_labs(subtitle = "Common names shown where available.",
+  plot_labs(title = "Most recorded tree species in Berlin",
+       subtitle = "Common names shown where available.",
        x = NULL, y = "Observations") +
   theme_gtree()
 ```
@@ -3285,14 +3317,16 @@ if (nrow(berlin_oak_points_for_map) == 0) {
     geom_sf(data = berlin_districts_plot, fill = NA, color = "gray25", linewidth = 0.35) +
     coord_sf() +
     scale_fill_viridis_d(option = "B", direction = -1, name = "Oak density") +
-    plot_labs(caption = paste("Displayed oak points:", format_number(nrow(berlin_oak_points_for_map)), "of", format_number(nrow(berlin_oaks)), "Berlin oak observations."),
+    plot_labs(title = "Recorded oak tree groups in Berlin",
+         caption = paste("Displayed oak points:", format_number(nrow(berlin_oak_points_for_map)), "of", format_number(nrow(berlin_oaks)), "Berlin oak observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
 } else {
   ggplot(berlin_oak_points_for_map, aes(x = longitude, y = latitude)) +
     geom_point(color = "#4d2c0b", alpha = 0.45, size = 0.75) +
     coord_fixed() +
-    plot_labs(subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
+    plot_labs(title = "Recorded oak tree groups in Berlin",
+         subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
          x = "Longitude", y = "Latitude") +
     theme_gtree()
 }
@@ -3316,7 +3350,7 @@ if (nrow(berlin_oak_area_counts) == 0) {
     geom_text(aes(label = format_number(oak_observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(x = NULL, y = "Oak observations") +
+    plot_labs(title = "Oak observations by local area", x = NULL, y = "Oak observations") +
     theme_gtree()
 }
 ```
@@ -3373,7 +3407,7 @@ if (nrow(bw_points_for_map) < 3) {
 } else {
   plot_filled_density_map(
     points_data = bw_points_for_map, boundary_data = bw_boundary_for_map,
-    title = NULL,
+    title = "Baden-Württemberg recording density",
     subtitle = NULL,
     caption = "This shows recording density in the dataset, not true tree abundance.",
     bins = 9, alpha = 0.90
@@ -3413,7 +3447,7 @@ if (is.null(bw_district_map)) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(subtitle = NULL, fill = "Observations") +
+    plot_labs(title = "Observation frequency by district", subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 }
 ```
@@ -3464,7 +3498,7 @@ if (nrow(nrw_points_for_map) < 3) {
 } else {
   plot_filled_density_map(
     points_data = nrw_points_for_map, boundary_data = nrw_boundary_for_map,
-    title = NULL,
+    title = "NRW observation density",
     subtitle = NULL,
     caption = "This shows recording density in the dataset, not true tree abundance.",
     bins = 9, alpha = 0.90
@@ -3504,7 +3538,7 @@ if (is.null(nrw_district_map)) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(subtitle = NULL, fill = "Observations") +
+    plot_labs(title = "Observation frequency by district", subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 }
 ```
