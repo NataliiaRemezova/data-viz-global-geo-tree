@@ -2626,7 +2626,7 @@ This section examines how tree observations are distributed across Germany as a 
 
 ## Pre-Processing
 
-Polygons for the federal states (Bundesländer) are needed to draw state boundaries on Germany maps and to assign observations to states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded.
+Polygons for the federal states (Bundesländer) are needed to draw state boundaries on Germany maps and to assign observations to states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded. Individual state names throughout this part follow the GISCO boundary file, which uses the German forms (Bayern, Niedersachsen, and so on), so that the text and the figures agree.
 
 ```{r load-bundeslaender}
 #| cache: true
@@ -2936,9 +2936,9 @@ if (is.null(bundesland_map)) {
 
 @fig-de-bundesland-bar provides exact rankings, while @fig-de-bundesland-map shows whether high-record states cluster in one part of Germany.
 
-Observations are concentrated in western and southern Germany. North Rhine-Westphalia has the highest count, with Bavaria, Baden-Württemberg and Lower Saxony also recording many observations. Eastern states and Saarland generally have fewer records, showing that sampling effort is uneven across Germany.
+Observations are concentrated in western and southern Germany. Nordrhein-Westfalen has the highest count, with Bayern, Baden-Württemberg and Niedersachsen also recording many observations. Eastern states and Saarland generally have fewer records, showing that sampling effort is uneven across Germany.
 
-That ranking is worth a second look, because it closely follows the states' populations rather than anything about trees: North Rhine-Westphalia, Bavaria, Baden-Württemberg and Lower Saxony are also Germany's four most populous states, in almost that order. The counts here are raw totals, not normalised by area or population, so the chart cannot separate "more trees" from "more people who record trees" — and the population ordering suggests the second reading is the stronger one. Confirming this would need observations per capita or per square kilometre, which this report does not compute; it is noted here as a limitation on how @fig-de-bundesland-bar should be read.
+That ranking is worth a second look, because it closely follows the states' populations rather than anything about trees: Nordrhein-Westfalen, Bayern, Baden-Württemberg and Niedersachsen are also Germany's four most populous states, in almost that order. The counts here are raw totals, not normalised by area or population, so the chart cannot separate "more trees" from "more people who record trees" — and the population ordering suggests the second reading is the stronger one. Confirming this would need observations per capita or per square kilometre, which this report does not compute; it is noted here as a limitation on how @fig-de-bundesland-bar should be read.
 
 # Berlin
 
@@ -3208,7 +3208,7 @@ berlin_top_species |>
 
 @fig-berlin-top-species should be read with considerable caution, because it is the one figure in this part where the *labels* — not just the counts — are demonstrably wrong.
 
-*Cupania sylvatica* tops the ranking, with roughly `r round(berlin_top_species$observations[1] / berlin_top_species$observations[2], 1)` times the observations of the next species. That result is not credible: *Cupania* is a Neotropical genus that does not grow wild in Germany. The explanation is visible on the chart itself. The common names come from GBIF via `add_species_display_name()`, and the label rendered for this taxon is **"Litchi family"** — a *family* vernacular, not a species name. Its `species_key` (6657) is a family-rank GBIF identifier for Sapindaceae, not a species key.
+*Cupania sylvatica* tops the ranking, with roughly `r round(berlin_top_species$observations[1] / berlin_top_species$observations[2], 1)` times the observations of the next species. That result is not credible: *Cupania* is a Neotropical genus that does not grow wild in Brandenburg. The explanation is visible on the chart itself. The common names come from GBIF via `add_species_display_name()`, and the label rendered for this taxon is **"Litchi family"** — a *family* vernacular, not a species name. Its `species_key` (6657) is a family-rank GBIF identifier for Sapindaceae, not a species key.
 
 The same fault recurs. `Croton laccifer` resolves to "Euphorbia family", `Schefflera macrophylla` to "Aralia and Ivy family", `Dombeya acerifolia` to "Mallow Family", `Salix arbutifolia` to "Willow Family". In every case a four-digit family-rank key sits where a seven-digit species key should be. The pattern suggests that where GlobalGeoTree could resolve a record only to family, it back-filled `level3_species` with an arbitrary — usually tropical — member of that family instead of leaving it blank. Read that way, the entries are not exotic at all: the Sapindaceae records are almost certainly maples, the Araliaceae records ivy, and the Malvaceae records limes — all thoroughly unremarkable Berlin trees wearing the wrong names. Across Germany these family-rank rows account for `r format_percent(sum(as.integer(species_names_raw$de_observations[nchar(as.character(species_names_raw$species_key)) <= 6])) / sum(as.integer(species_names_raw$de_observations)))` of observations.
 
@@ -3317,11 +3317,11 @@ Grunewald, Dahlem and other highly sampled areas also contain most oak records. 
 
 It is worth stating plainly what this means for the application proposed above, because the answer is negative. A processionary-moth warning system needs to know where oaks *are*; @fig-berlin-oak-bar shows where oaks were *looked at*. An area with many oaks and no observers is indistinguishable here from an area with no oaks, and those are exactly the areas a public-health warning would most need to reach. GlobalGeoTree cannot supply this on its own — the oak records are usable as a supplementary layer over an official tree inventory, which has known coverage, but not as a substitute for one. The value of this section is in showing what the dataset would need to be joined against, rather than in the map itself.
 
-# Baden-Württemberg and North Rhine-Westphalia
+# Baden-Württemberg and Nordrhein-Westfalen
 
 -   *Is Berlin's spatial concentration of observations a Berlin-specific pattern, or is it typical for German regions?*
 
-The Berlin analysis above revealed that observations are heavily concentrated in a single location. To investigate, we compare Berlin with North Rhine-Westphalia (NRW) and Baden-Württemberg — the first and third largest federal states by observation count. For each state, a density map and a NUTS3 district choropleth show where observations are concentrated.
+The Berlin analysis above revealed that observations are heavily concentrated in a single location. To investigate, we compare Berlin with Nordrhein-Westfalen (NRW) and Baden-Württemberg — the first and third largest federal states by observation count. For each state, a density map and a NUTS3 district choropleth show where observations are concentrated.
 
 One caveat applies to the whole comparison. Berlin covers about 890 km² and is divided into small local areas; Baden-Württemberg and NRW each cover roughly 35,000 km² and are divided into much larger NUTS3 districts. Measured concentration depends on the size of the units doing the measuring, so "Berlin is more concentrated" cannot be read straight off the maps — the comparison below rests on the *shape* of the density surfaces, which are computed from coordinates rather than administrative units, and treats the choropleths as supporting detail only.
 
@@ -3414,7 +3414,7 @@ Square-root scaling is applied so that a few very high-count districts do not wa
 
 @fig-bw-district-map confirms that observations are unevenly distributed. The highest counts occur in the far southwest, while several western, northern and southern districts also have relatively high totals. Many central and eastern districts contribute fewer records.
 
-## North Rhine-Westphalia
+## Nordrhein-Westfalen
 
 NRW serves the same role as Baden-Württemberg: a state-level comparison point for Berlin.
 
@@ -3513,7 +3513,7 @@ The scale caveat above limits how far this can be pushed: the density surfaces a
 
 Part II asked where tree observations in Germany come from, who records them, and whether the national picture holds at city scale. Five findings stand out.
 
-**Recording is a western and southwestern phenomenon, and it tracks people.** @fig-de-density and @fig-de-points agree: intensity is highest in the west and south, with an isolated hotspot at Berlin and thin coverage across the east and northeast. At state level, North Rhine-Westphalia leads, followed by Bavaria, Baden-Württemberg and Lower Saxony — which is close to Germany's population ranking. Because the counts are raw rather than normalised, the federal state comparison cannot separate tree cover from observer density, and the population ordering suggests observers are doing most of the work.
+**Recording is a western and southwestern phenomenon, and it tracks people.** @fig-de-density and @fig-de-points agree: intensity is highest in the west and south, with an isolated hotspot at Berlin and thin coverage across the east and northeast. At state level, Nordrhein-Westfalen leads, followed by Bayern, Baden-Württemberg and Niedersachsen — which is close to Germany's population ranking. Because the counts are raw rather than normalised, the federal state comparison cannot separate tree cover from observer density, and the population ordering suggests observers are doing most of the work.
 
 **No single platform describes Germany, and the mix changes with scale.** Pl\@ntNet auto ID contributes `r format_percent(de_source_counts$share[1])` of German records and the three largest sources `r format_percent(sum(de_source_counts$share[1:3]))`, so national patterns are effectively the patterns of three platforms. That composition is not the global one — iNaturalist leads worldwide with `r format_percent(inat_share)` — and it is not Berlin's either, where iNaturalist returns to the front with `r format_percent(berlin_source_counts$share[1])`. Global, national and city scales are each dominated by a different source, so source composition has to be established at the scale being analysed and never inherited from the level above.
 
@@ -3993,3 +3993,4 @@ European Commission, Eurostat. (2021). *NUTS – Nomenclature of territorial uni
 GBIF Secretariat. (2024). *GBIF species API v1* \[Application programming interface\]. Global Biodiversity Information Facility. https://www.gbif.org/developer/species
 
 Mu, Y., Xiong, Z., Wang, Y., Shahzad, M., Essl, F., Kreft, H., van Kleunen, M., & Zhu, X. X. (2025). GlobalGeoTree: A multi-granular vision-language dataset for global tree species classification. *arXiv preprint arXiv:2505.12513*. https://doi.org/10.48550/arXiv.2505.12513
+
