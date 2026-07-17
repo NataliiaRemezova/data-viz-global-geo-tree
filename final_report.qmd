@@ -740,7 +740,7 @@ source_rules <- tibble(
 
 if (params$latex) {
   kableExtra::kbl(source_rules, booktabs = TRUE, longtable = FALSE) |>
-    kableExtra::kable_styling(latex_options = "hold_position", font_size = 8) |>
+    kableExtra::kable_styling(font_size = 8) |>
     kableExtra::column_spec(2, width = "4.5cm") |>
     kableExtra::column_spec(4, width = "4.5cm")
 } else {
@@ -1538,7 +1538,7 @@ ggplot( data %>% filter(level1_family %in% top20_family$level1_family), aes(x = 
 
 The same families are shown geographically below, which reveals the longitudinal spread that a latitude-only view cannot. Both maps below use the shared worldwide point-map subsample (see Methodology for subsampling details).
 
-```{r family-map-samples}
+```{r family-overview-map}
 #| cache: true
 data_sample <- df_world_map_sample
 
@@ -1548,8 +1548,14 @@ ggplot(data_sample, aes(longitude, latitude)) +
   coord_fixed() +
   plot_labs(caption = paste("Displayed points:", format_number(nrow(data_sample)), "sampled observations.")) +
   theme_gtree()
+```
 
-# one map for each family (20 first families)
+```{r family-facet-map}
+#| cache: true
+#| fig-width: 7
+#| fig-height: 8.5
+
+# one map for each of the top 12 families
 top_families <- data %>% count(level1_family, sort = TRUE) %>% slice_head(n = 12) %>% pull(level1_family)
 
 data_top <- df_world_map_base %>%
@@ -1560,8 +1566,8 @@ data_top <- df_world_map_base %>%
 
 ggplot(data_top, aes(longitude, latitude)) +
   geom_polygon(data = world, aes(long, lat, group = group), fill = "lightgrey", color = "white", linewidth = 0.2, inherit.aes = FALSE) +
-  geom_point(alpha = 0.03, size = 0.05) +
-  facet_wrap(~ level1_family) + coord_fixed() + theme_gtree() +
+  geom_point(alpha = 0.12, size = 0.15) +
+  facet_wrap(~ level1_family, ncol = 3) + coord_fixed() + theme_map_gtree() +
   plot_labs(
     title = "Spatial distribution of the 12 most abundant families",
     caption = paste("Displayed points: up to", format_number(world_map_sample_n), "per family.")
@@ -1609,7 +1615,7 @@ df_preview <- head(df) |>
          level3_species, source, year, continent)
 if (params$latex) {
   kableExtra::kbl(df_preview, booktabs = TRUE, longtable = FALSE) |>
-    kableExtra::kable_styling(latex_options = c("scale_down", "hold_position"))
+    kableExtra::kable_styling(latex_options = "scale_down")
 } else {
   kable(df_preview)
 }
@@ -3828,7 +3834,7 @@ us_preview <- head(us_df[, c("sample_id", "level0", "level1_family", "level2_gen
                          "state", "region"), with=FALSE])
 if (params$latex) {
   kableExtra::kbl(us_preview, booktabs = TRUE, longtable = FALSE, row.names = FALSE) |>
-    kableExtra::kable_styling(latex_options = c("scale_down", "hold_position"))
+    kableExtra::kable_styling(latex_options = "scale_down")
 } else {
   knitr::kable(us_preview, row.names = FALSE)
 }
@@ -3965,43 +3971,45 @@ The regional counts in @fig-us-bar-region make the imbalance more explicit. The 
 
 # Aggregate the complete CONUS subset before plotting. This keeps the cell
 # counts exact while avoiding a stat calculation over almost two million rows.
+cell <- 0.5
 conus_density <- conus[, .(records = .N), by = .(
-  longitude_bin = floor(longitude),
-  latitude_bin = floor(latitude)
+  longitude_bin = floor(longitude / cell) * cell,
+  latitude_bin  = floor(latitude  / cell) * cell
 )]
 conus_density[, `:=`(
-  longitude_center = longitude_bin + 0.5,
-  latitude_center = latitude_bin + 0.5
+  longitude_center = longitude_bin + cell / 2,
+  latitude_center  = latitude_bin  + cell / 2
 )]
 stopifnot(sum(conus_density$records) == nrow(conus))
 
-# Counts use whole-degree cells and are shown as log10(count + 1), so that
-# single-record cells stay faintly visible instead of washing out to white.
+# Half-degree cells; fill is the record count on a log10 mako ramp, drawn over a
+# grey land basemap so sparse and empty areas still read as the CONUS landmass.
 ggplot(conus_density, aes(x = longitude_center, y = latitude_center)) +
 
-  geom_tile(
-    aes(fill = log10(records + 1)), width = 1, height = 1
-  ) +
+  conus_layers() +
+
+  geom_tile(aes(fill = records), width = cell, height = cell) +
 
   geom_path(
     data = ggplot2::map_data("state"),
     aes(x = long, y = lat, group = group),
-    colour = "grey55", linewidth = 0.18
+    colour = "grey55", linewidth = 0.15, inherit.aes = FALSE
   ) +
 
-  scale_fill_gradientn(
-    colours = c("white", "#B8E0D2", "#4C956C", "#173F35"),
-    name = "log10(records + 1)"
+  scale_fill_viridis_c(
+    option = "G", direction = -1, trans = "log10",
+    breaks = c(1, 10, 100, 1000, 10000, 100000),
+    labels = scales::comma_format(),
+    name   = "Records",
+    guide  = guide_colorbar(
+      barwidth = 12, barheight = 0.6,
+      label.theme = element_text(angle = 45, hjust = 1, size = 9)
+    )
   ) +
 
-  coord_fixed(
-    ratio = 1 / cos(37 * pi / 180),
-    xlim = c(-125, -65), ylim = c(24, 51), expand = FALSE
-  ) +
+  plot_labs(x = NULL, y = NULL) +
 
-  plot_labs(x = "Longitude", y = "Latitude") +
-
-  theme_gtree()
+  theme_map_gtree()
 ```
 
 The grid representation in @fig-us-density-map isolates the main hotspots around central Texas, southern California, Florida, and the northeastern corridor. Pale inland cells indicate limited sampling rather than an absence of trees.
