@@ -60,10 +60,6 @@ if (params$latex) {
 *Authors: Nataliia (source bias, temporal development & Germany analysis), Anna (data structure & taxonomic composition), Camille (worldwide distribution), Santiago (US analysis)*
 :::
 
-::: {.callout-note appearance="minimal"}
-*— Nataliia*
-:::
-
 This report analyses the GlobalGeoTree dataset, a global collection of more than 6 million georeferenced tree observations covering species, taxonomic groups, and geographical locations of trees combined from several sources from across the world.
 
 This dataset was originally published in the paper 'GlobalGeoTree: A Multi-Granular Vision-Language Dataset for Global Tree Species Classification' (Mu et al., 2025).
@@ -538,10 +534,6 @@ The table above confirms that the dataset loaded correctly and gives an overview
 
 ## Dataset Overview
 
-::: {.callout-note appearance="minimal"}
-*— Anna*
-:::
-
 | Column | Description |
 |------------------------------------|------------------------------------|
 | `sample_id` | Entry ID |
@@ -595,10 +587,6 @@ ggplot(country_year_counts, aes(x = reorder(country_code, n, FUN = sum), y = n, 
 The graph shows that observations across different countries were collected over a ten-year period. To understand these records in more depth, we analyse their data sources and examine the worldwide distribution of observations in the dataset.
 
 # Source and Platform Bias
-
-::: {.callout-note appearance="minimal"}
-*— Nataliia*
-:::
 
 In this section of the report we were trying to answer the following research questions:
 
@@ -750,7 +738,14 @@ source_rules <- tibble(
   left_join(source_rule_examples, by = "source_group") |>
   rename(`Assigned group` = source_group, `Example matched sources` = Examples)
 
-nice_table(source_rules)
+if (params$latex) {
+  kableExtra::kbl(source_rules, booktabs = TRUE, longtable = FALSE) |>
+    kableExtra::kable_styling(latex_options = "hold_position", font_size = 8) |>
+    kableExtra::column_spec(2, width = "4.5cm") |>
+    kableExtra::column_spec(4, width = "4.5cm")
+} else {
+  nice_table(source_rules)
+}
 ```
 
 ### Classification coverage
@@ -1092,10 +1087,6 @@ The faceted map reveals different spatial footprints across source groups. iNatu
 
 # Temporal Development
 
-::: {.callout-note appearance="minimal"}
-*— Nataliia*
-:::
-
 -   *How do observation volume and geographic representation differ by observation year?*
 -   *Which sources are associated with the largest increases in dated observations?*
 
@@ -1319,10 +1310,6 @@ Comparing the four snapshot years shows that the geographic footprint of the dat
 
 ## Species observed in this dataset
 
-::: {.callout-note appearance="minimal"}
-*— Anna*
-:::
-
 What are the different tree families referenced in this dataset?
 
 ```{r level0-count-plot}
@@ -1399,10 +1386,6 @@ Again, here we see that the most represented taxonomic families in this dataset 
 
 ## Geographical distribution of the observations
 
-::: {.callout-note appearance="minimal"}
-*— Anna*
-:::
-
 How are the trees distributed depending on the latitude?
 
 ```{r latitude-distribution-plots}
@@ -1448,10 +1431,6 @@ Binned into 5° bands, the distribution shows the same pattern as the histogram 
 We usually take 5° slices because they are narrow enough to reveal local tendencies and geographical patterns (climatic gradients, biodiversity, species distribution, and so on), but wide enough to avoid the noise and uninformative detail that finer bands introduce.
 
 ## Geographical observations of species
-
-::: {.callout-note appearance="minimal"}
-*— Anna*
-:::
 
 How does latitude influence the different species observed (latitude and species richness)?
 
@@ -1595,10 +1574,6 @@ On this visualisation, we can see the distribution of the different taxonomic fa
 -   Other families are observed in more restricted areas, such as the Ericaceae and Pinaceae. These families are well adapted to cold and inhospitable places such as the tundra and boreal forests, or to places at high altitude.
 
 # Worldwide Distribution of the Data
-
-::: {.callout-note appearance="minimal"}
-*— Camille*
-:::
 
 How are observations distributed globally, and what does this reveal about sampling bias and taxonomic diversity? This section addresses four guiding questions:
 
@@ -2408,10 +2383,6 @@ Point coverage becomes progressively denser and more continuous over North Ameri
 Overall, this final figure shows that the geographic imbalance is visible throughout the full range of observation years. This is consistent with a persistent structural bias in the dated records, while not describing when the contributing records were actually ingested into GlobalGeoTree.
 
 # Part II: Germany and Berlin Analysis {.unnumbered}
-
-::: {.callout-note appearance="minimal"}
-*— Nataliia*
-:::
 
 Part II examines tree observations within Germany.
 
@@ -3654,10 +3625,6 @@ Overall, Part II measures **recording behaviour in Germany, not German tree cove
 
 # Part III: Distribution of the data in the United States {.unnumbered}
 
-::: {.callout-note appearance="minimal"}
-*— Santiago*
-:::
-
 This part focuses on the US records and asks whether their distribution reflects ecological patterns, the way the data was collected, or a combination of both. Knowing which places and years contribute most of the observations is necessary before drawing conclusions about tree diversity from the dataset.
 
 The analysis first describes national coverage and its regional imbalance. It then compares foliage categories, latitude profiles, and taxonomic richness. The final figures add the time dimension to show whether the geographical pattern changed as the number of records increased.
@@ -3856,9 +3823,15 @@ draw_conus <- function(fill = "grey92", border = "white") {
 #| tbl-cap: "First observations after preparing the US subset"
 #| tbl-cap-location: bottom
 
-knitr::kable(head(us_df[, c("sample_id", "level0", "level1_family", "level2_genus",
+us_preview <- head(us_df[, c("sample_id", "level0", "level1_family", "level2_genus",
                          "level3_species", "year", "longitude", "latitude",
-                         "state", "region"), with=FALSE]), row.names = FALSE)
+                         "state", "region"), with=FALSE])
+if (params$latex) {
+  kableExtra::kbl(us_preview, booktabs = TRUE, longtable = FALSE, row.names = FALSE) |>
+    kableExtra::kable_styling(latex_options = c("scale_down", "hold_position"))
+} else {
+  knitr::kable(us_preview, row.names = FALSE)
+}
 ```
 
 The regional colours in @fig-us-colour-region remain unchanged from one graph to another. They come from the colour-blind-friendly Okabe-Ito palette.
@@ -4399,7 +4372,7 @@ The annual series in @fig-us-obs-per-year rises markedly after 2018 and reaches 
 
 year_region <- us_df |>
   dplyr::count(year, region) |>
-  # keep absent year x region combinations at zero, as matplot drew them
+  # fill absent year x region combinations with zero so every region draws a continuous line
   tidyr::complete(year, region, fill = list(n = 0))
 
 ggplot(year_region, aes(x = year, y = n, colour = region)) +
