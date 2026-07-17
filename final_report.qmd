@@ -368,7 +368,7 @@ This section explains the analytical choices that we implemented throughout the 
 
 **Source classification.** Each observation carries a free-text source field with thousands of distinct values. A keyword-matching function (`classify_source()`) assigns each source name to one of six groups: iNaturalist, Pl\@ntNet, Other citizen-science apps, Institutional & survey data, Reference & thematic databases, and Other / unknown. The rules are applied in order, and the first match wins. This approach works well for English-language source names and major platforms but can misclassify source names in other languages or those using project-specific abbreviations. The "Other / unknown" group is a catch-all for everything that did not match any rule. This approach is demonstrated in the corresponding report section.
 
-**Geographic boundaries.** For the Germany analysis, administrative boundaries at the NUTS1 level (federal states/Bundesländer) and NUTS3 level (districts) are loaded from GISCO, the geographic information system of the European Commission. Berlin district boundaries come from a separate open-data project, listed under sources. If a local copy of these files exists, it is used directly; otherwise the file is downloaded from the public URL on first render.
+**Geographic boundaries.** For the Germany analysis, administrative boundaries at the NUTS1 level — the federal states (Bundesländer) — and the NUTS3 level (districts) are loaded from GISCO, the geographic information system of the European Commission. Berlin local-area boundaries come from a separate open-data project, listed under sources. If a local copy of these files exists, it is used directly; otherwise the file is downloaded from the public URL on first render.
 
 **Visualisation and subsampling.** The dataset contains more than 6 million observations, so plotting every record would be slow, produce very large files, and add little visual value. Point-based maps therefore use reproducible random subsamples with a fixed seed of 42. Global maps display up to 40,000 observations, while source-specific and density maps use up to 50,000 records per group or map. US and Germany maps use region-specific limits; for Germany, the dataset is often small enough that all observations can be shown. The sampling affects only the visualisations. All counts, rankings, species-richness tables, rarefaction analyses, and source summaries use the full relevant dataset.
 
@@ -2474,7 +2474,7 @@ make_state_summary <- function(data, region_label, filter_note) {
       format_number(n_distinct(data$level1_family[!is.na(data$level1_family) & data$level1_family != ""])),
       format_number(n_distinct(data$source_raw[!is.na(data$source_raw) & data$source_raw != ""])),
       if (nrow(data) == 0 || all(is.na(data$year))) "No usable year values"
-      else paste(range(data$year, na.rm = TRUE), collapse = "-")
+      else paste(range(data$year, na.rm = TRUE), collapse = "–")
     )
   )
 }
@@ -2624,14 +2624,14 @@ Species without an English name in GBIF are shown with their Latin name only in 
 
 This section examines how tree observations are distributed across Germany as a whole: spatial concentration, temporal trends, source structure, and federal state-level variation.
 
-## Load federal states (Bundesländer) boundaries
+## Pre-Processing
 
-Federal states polygons are needed to draw state boundaries on Germany maps and to assign observations to federal states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded.
+Polygons for the federal states (Bundesländer) are needed to draw state boundaries on Germany maps and to assign observations to states. The code first looks for a local GeoJSON file; if it is not found, the public GISCO NUTS1 file is downloaded. Individual state names throughout this part follow the GISCO boundary file, which uses the German forms (Bayern, Niedersachsen, and so on), so that the text and the figures agree.
 
 ```{r load-bundeslaender}
 #| cache: true
 bundeslaender_result <- read_geojson_local_or_url(
-  bundeslaender_local_path, gisco_nuts1_url, "Bundesländer / NUTS1"
+  bundeslaender_local_path, gisco_nuts1_url, "federal state / NUTS1"
 )
 bundeslaender <- bundeslaender_result$data
 
@@ -2644,7 +2644,7 @@ if (!is.null(bundeslaender)) {
   }
   name_col <- intersect(c("name_latn", "nuts_name", "name", "nuts_id"), names(bundeslaender))[1]
   if (is.na(name_col)) {
-    bundeslaender$bundesland <- paste("Bundesland", seq_len(nrow(bundeslaender)))
+    bundeslaender$bundesland <- paste("Federal state", seq_len(nrow(bundeslaender)))
   } else {
     bundeslaender$bundesland <- as.character(bundeslaender[[name_col]])
   }
@@ -2657,10 +2657,10 @@ has_bundeslaender <- !is.null(bundeslaender) && nrow(bundeslaender) > 0
 bundeslaender_plot <- simplify_for_plot(bundeslaender, tolerance = 0.01)
 
 bundeslaender_status <- tibble::tibble(
-  item = c("Boundary status", "Number of Bundesländer polygons"),
+  item = c("Boundary status", "Number of federal state polygons"),
   value = c(bundeslaender_result$note, ifelse(has_bundeslaender, format_number(nrow(bundeslaender)), "0"))
 )
-nice_table(bundeslaender_status, "Bundesländer boundary check")
+nice_table(bundeslaender_status, "Federal state boundary check")
 ```
 
 ```{r load-nuts3}
@@ -2673,21 +2673,26 @@ nuts3 <- nuts3_result$data
 
 -   *Where are observations spatially concentrated across Germany?*
 
-Two complementary views are shown below. The first is a smooth filled density surface, which highlights where observations concentrate into hotspots; the second plots the individual observation points the surface is derived from, revealing the raw recording locations behind those contours.
+Two complementary views are shown below. @fig-de-density is a smooth filled density surface, which highlights where observations concentrate into hotspots; @fig-de-points plots the individual observation points the surface is derived from, revealing the raw recording locations behind those contours.
 
 ```{r germany-distribution-data}
 germany_points_for_maps <- sample_up_to(germany, max_germany_overview_points)
 germany_boundary_for_maps <- if (has_bundeslaender) dplyr::bind_rows(bundeslaender_plot) else NULL
 ```
 
-```{r germany-distribution-main, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-de-density
+#| fig-cap: "Smoothed density of Germany observations"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (nrow(germany_points_for_maps) < 3) {
   empty_plot("Not enough Germany observations were available for the distribution maps.")
 } else {
   plot_filled_density_map(
     points_data = germany_points_for_maps,
     boundary_data = germany_boundary_for_maps,
-    title = "Germany observation smoothed density",
+    title = NULL,
     subtitle = NULL,
     caption = NULL,
     xlim = germany_xlim, ylim = germany_ylim, bins = 10, alpha = 0.90
@@ -2695,11 +2700,16 @@ if (nrow(germany_points_for_maps) < 3) {
 }
 ```
 
-Darker areas show where more observations were recorded. These hotspots should be read as observation intensity rather than tree abundance: a location can appear dense because observers are active there, because a platform has strong coverage, or simply because access is easier.
+Darker areas show where more observations were recorded. **This is the central caveat for the whole of Part II: every map, chart and count that follows measures recording intensity, not tree abundance.** A location can appear dense because observers are active there, because a platform has strong coverage, or simply because access is easier. Nothing in this dataset distinguishes a place with many trees from a place with many observers, so the two must not be read as the same thing.
 
 Recording is highest in western and southwestern Germany, with a separate strong hotspot around Berlin. Large parts of eastern and northeastern Germany have much lower density.
 
-```{r germany-distribution-points, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-de-points
+#| fig-cap: "Locations of Germany observations"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (nrow(germany_points_for_maps) < 3) {
   empty_plot("Not enough Germany observations were available for the distribution maps.")
 } else {
@@ -2711,21 +2721,23 @@ if (nrow(germany_points_for_maps) < 3) {
     geom_point(data = germany_points_for_maps, aes(x = longitude, y = latitude),
                alpha = 0.4, size = 0.02, color = "gray25") +
     coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
-    plot_labs(
-      title = "Germany observations points map",
-      caption = NULL
-    ) +
+    plot_labs(caption = NULL) +
     theme_map_gtree()
 }
 ```
 
-The point map confirms the same pattern: observations cluster strongly in the west and south, while the east is more sparsely covered outside Berlin.
+@fig-de-points confirms the same pattern: observations cluster strongly in the west and south, while the east is more sparsely covered outside Berlin.
 
 ## Observations by year
 
 -   *How has recording activity changed over time in Germany?*
 
-```{r de-observations-by-year, fig.width=6, fig.height=3.5}
+```{r}
+#| label: fig-de-year
+#| fig-cap: "Germany observations by year"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 3.5
 year_counts <- germany |>
   filter(!is.na(year), year >= 1900, year <= as.integer(format(Sys.Date(), "%Y"))) |>
   count(year, name = "observations") |>
@@ -2740,21 +2752,22 @@ if (nrow(year_counts) == 0) {
     geom_point(size = 1.8, color = "gray25") +
     scale_x_continuous(breaks = scales::pretty_breaks()) +
     scale_y_continuous(labels = scales::comma_format()) +
-    plot_labs(
-      title = "Germany observations by year",
-      x = "Year", y = "Observations"
-    ) +
+    plot_labs(x = "Year", y = "Observations") +
     theme_gtree()
 }
 ```
 
-A strong upward trend in recent years is common in citizen-science datasets as more users join the platforms. However, we also can see a significant decrease in the observations by year in the last two years.
+Recording grows steeply through the second half of the period, which is common in citizen-science datasets as more users join the platforms. Volume peaks in **`r year_counts$year[which.max(year_counts$observations)]`** and then falls over the final two years.
 
-## Observations by source on the country map
+That decline is most likely an artefact of how the dataset was assembled rather than a real collapse in German recording. Every record reaches GlobalGeoTree through GBIF, and there is a lag between an observation being made, being verified on a platform, and appearing in a GBIF snapshot — so the most recent years are still filling up. Part III points the same way: the U.S. series in @fig-us-obs-per-year climbs to its highest level at the very end of the same decade. Germany and the United States are unlikely to have diverged that sharply in the same two years, so the drop is better read as incomplete coverage at the cutoff than as a fall in activity.
+
+## Source footprints across Germany
 
 -   *Which platforms contribute the most records in Germany, and do they cover the country differently?*
 
-The year distribution above shows *when* Germany observations were recorded; this subsection examines *who* recorded them. Each panel shows where one source group collected its records.
+@fig-de-year shows *when* Germany observations were recorded; this subsection examines *who* recorded them. Each panel of @fig-de-source-map shows where one source collected its records.
+
+Note that "source" here means an individual platform, not one of the six source groups defined by `classify_source()` in Part I. Germany is dominated by so few platforms that the individual names are more informative than the groups; the five largest are shown separately and everything else is pooled into "Other sources".
 
 ```{r de-source-groups}
 source_counts_de <- germany |>
@@ -2785,7 +2798,12 @@ source_map_data_de <- germany_sources |>
   mutate(source_display = factor(source_display, levels = levels(de_source_counts$source_display)))
 ```
 
-```{r de-source-map, fig.width=7, fig.height=5}
+```{r}
+#| label: fig-de-source-map
+#| fig-cap: "Source footprints in Germany"
+#| fig-cap-location: bottom
+#| fig-width: 7
+#| fig-height: 5
 p <- ggplot()
 if (has_bundeslaender) {
   p <- p + geom_sf(data = bundeslaender_plot, fill = "gray97", color = "gray70", linewidth = 0.2)
@@ -2796,33 +2814,35 @@ p +
   facet_wrap(~ source_display, ncol = 3) +
   coord_sf(xlim = germany_xlim, ylim = germany_ylim, expand = FALSE) +
   plot_labs(
-    title = "Source footprints in Germany",
-    caption = paste("Maximum displayed points per source group:", format_number(max_points_per_source_group))
+    caption = paste("Maximum displayed points per source:", format_number(max_points_per_source_group))
   ) +
   theme_map_gtree()
 ```
 
-The maps show clear differences in where each source records observations. Observation.org and Pl\@ntNet are more concentrated in western and southern Germany, while naturgucker and iNaturalist have broader national coverage. Pl\@ntNet auto-ID appears the most evenly spread, although the 15,000-point limit means the panels show coverage patterns rather than total record numbers.
+@fig-de-source-map shows clear differences in where each source records observations. Observation.org and Pl\@ntNet are more concentrated in western and southern Germany, while naturgucker and iNaturalist have broader national coverage. Pl\@ntNet auto ID appears the most evenly spread, although the `r format_number(max_points_per_source_group)`-point limit per panel means these show coverage patterns rather than total record numbers.
 
-## Observations by source (bar chart)
+## Observations by source
 
-The map above shows *where* each source records; this bar chart shows *how many* records each source contributes.
+@fig-de-source-map shows *where* each source records; @fig-de-source-bar shows *how many* records each source contributes.
 
-```{r de-source-bar-chart, fig.width=6, fig.height=3.5}
+```{r}
+#| label: fig-de-source-bar
+#| fig-cap: "Germany observations by source"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 3.5
 ggplot(de_source_counts, aes(x = source_display, y = observations)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = label), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.20))) +
-  plot_labs(
-    title = "Germany observations by source group",
-    subtitle = NULL,
-    x = NULL, y = "Observations"
-  ) +
+  plot_labs(subtitle = NULL, x = NULL, y = "Observations") +
   theme_gtree()
 ```
 
-Pl\@ntNet auto ID contributes almost half of all German records. iNaturalist research-grade and Observation.org add another 35%, so the three largest sources together account for about 82% of the dataset. The remaining sources make much smaller contributions, meaning national patterns are shaped mainly by these three platforms.
+Pl\@ntNet auto ID contributes `r format_percent(de_source_counts$share[1])` of all German records — almost half. iNaturalist research-grade and Observation.org add another `r format_percent(sum(de_source_counts$share[2:3]))`, so the three largest sources together account for `r format_percent(sum(de_source_counts$share[1:3]))` of the dataset. The remaining sources make much smaller contributions, meaning national patterns are shaped mainly by these three platforms.
+
+This inverts the global picture. Part I showed that iNaturalist alone contributes `r format_percent(inat_share)` of all observations worldwide and is by some margin the largest single source. In Germany it is only the second largest, behind an automated identification pipeline. Germany is therefore not a scaled-down version of the global dataset: whichever platform happens to have market share in a given country determines what its records look like, and conclusions drawn at one geographic scale do not transfer to another.
 
 `Pl@ntNet observations` and `Pl@ntNet auto ID` are both Pl\@ntNet-derived but represent different validation routes: one is the regular shared-observation dataset, and the other contains automatically identified occurrences. They are therefore kept separate throughout this report.
 
@@ -2863,32 +2883,39 @@ if (has_bundeslaender) {
 }
 
 bundesland_join_check <- tibble::tibble(
-  metric = c("Germany observations before join", "Matched to a Bundesland", "Bundesländer with observations"),
+  metric = c("Germany observations before join", "Matched to a federal state", "Federal states with observations"),
   value = c(format_number(nrow(germany)), format_number(germany_bundeslaender_n), format_number(nrow(bundesland_counts)))
 )
-nice_table(bundesland_join_check, "Bundesland spatial join check")
+nice_table(bundesland_join_check, "Federal state spatial join check")
 ```
 
-```{r bundesland-bar-chart, fig.width=6, fig.height=4.5}
+```{r}
+#| label: fig-de-bundesland-bar
+#| fig-cap: "Germany observations by federal state"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 4.5
 if (nrow(bundesland_counts) == 0) {
-  empty_plot("Bundesländer counts are unavailable because the boundary file was not loaded.")
+  empty_plot("Federal state counts are unavailable because the boundary file was not loaded.")
 } else {
   ggplot(bundesland_counts, aes(x = reorder(bundesland, observations), y = observations)) +
     geom_col(fill = "steelblue") +
     geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(
-      title = "Germany observations by Bundesland",
-      x = NULL, y = "Observations"
-    ) +
+    plot_labs(x = NULL, y = "Observations") +
     theme_gtree()
 }
 ```
 
-```{r bundesland-map, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-de-bundesland-map
+#| fig-cap: "Observation frequency by federal state"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (is.null(bundesland_map)) {
-  empty_plot("Bundesländer map is unavailable because the boundary file was not loaded.")
+  empty_plot("Federal state map is unavailable because the boundary file was not loaded.")
 } else {
   ggplot(bundesland_map_plot) +
     geom_sf(aes(fill = observations), color = "white", linewidth = 0.35) +
@@ -2899,7 +2926,6 @@ if (is.null(bundesland_map)) {
                            label.theme = element_text(angle = 45, hjust = 1, size = 9)
                          )) +
     plot_labs(
-      title = "Observation frequency by Bundesland",
       subtitle = NULL,
       fill = "Observations",
       caption = "Boundaries: GISCO NUTS1 regions. Counts: GlobalGeoTree Germany subset."
@@ -2908,21 +2934,23 @@ if (is.null(bundesland_map)) {
 }
 ```
 
-Together, the bar chart provides exact rankings while the map shows whether high-record states cluster in one part of Germany.
+@fig-de-bundesland-bar provides exact rankings, while @fig-de-bundesland-map shows whether high-record states cluster in one part of Germany.
 
-Observations are concentrated in western and southern Germany. Nordrhein-Westfalen has the highest count, with Bavaria, Baden-Württemberg and Lower Saxony also recording many observations. Eastern states and Saarland generally have fewer records, showing that sampling effort is uneven across Germany.
+Observations are concentrated in western and southern Germany. Nordrhein-Westfalen has the highest count, with Bayern, Baden-Württemberg and Niedersachsen also recording many observations. Eastern states and Saarland generally have fewer records, showing that sampling effort is uneven across Germany.
+
+That ranking is worth a second look, because it closely follows the states' populations rather than anything about trees: Nordrhein-Westfalen, Bayern, Baden-Württemberg and Niedersachsen are also Germany's four most populous states, in almost that order. The counts here are raw totals, not normalised by area or population, so the chart cannot separate "more trees" from "more people who record trees" — and the population ordering suggests the second reading is the stronger one. Confirming this would need observations per capita or per square kilometre, which this report does not compute; it is noted here as a limitation on how @fig-de-bundesland-bar should be read.
 
 # Berlin
 
-Berlin is the city of our university, which is why it was selected as the main target for regional analysis in Germany. As a city-state, Berlin's entire area is urban, which may produce recording patterns quite different from larger, more rural federal states.
+Berlin is the city of our university, which is why it was selected as the main target for regional analysis in Germany. As a city-state, Berlin's entire area is urban, which may produce recording patterns quite different from larger, more rural federal states. Whether that expectation holds is tested below — it does not.
 
-## Load Berlin district boundaries
+## Pre-Processing
 
-Berlin is handled separately because a finer boundary layer than Bundesländer is needed for city-level analysis. The district boundaries come from an open-data project and provide polygons for Berlin's local areas (Ortsteile).
+Berlin is handled separately because a finer boundary layer than the federal states is needed for city-level analysis. The boundaries come from an open-data project and provide polygons for Berlin's **local areas (Ortsteile)** — the small sub-units nested inside Berlin's twelve boroughs (Bezirke). "Local area" always refers to an Ortsteil in this part of the report; the polygon count is reported in the boundary check below.
 
 ```{r load-berlin-boundaries}
 #| cache: true
-berlin_result <- read_geojson_local_or_url(berlin_local_path, berlin_district_url, "Berlin district/local-area")
+berlin_result <- read_geojson_local_or_url(berlin_local_path, berlin_district_url, "Berlin local-area")
 berlin_districts <- berlin_result$data
 
 if (!is.null(berlin_districts)) {
@@ -2981,25 +3009,37 @@ berlin_source_counts <- make_source_counts(berlin)
 # Counts feed the bar chart below; the table view was removed as it duplicated that chart.
 ```
 
-```{r berlin-source-bar, fig.width=6, fig.height=3.5}
+```{r}
+#| label: fig-berlin-source
+#| fig-cap: "Berlin observations by source"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 3.5
 ggplot(berlin_source_counts, aes(x = source_short, y = observations)) +
   geom_col(fill = "steelblue") +
   geom_text(aes(label = label), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.18))) +
-  plot_labs(title = "Berlin observations by source", x = NULL, y = "Observations") +
+  plot_labs(x = NULL, y = "Observations") +
   theme_gtree()
 ```
 
-Berlin’s records are strongly dominated by iNaturalist, which contributes about 60% of observations. Pl\@ntNet auto ID adds another 24%, while ArtenFinder contributes 7.5%. Together, these three sources provide more than 90% of the Berlin dataset.
+As @fig-berlin-source shows, Berlin's records are strongly dominated by iNaturalist research-grade, which contributes `r format_percent(berlin_source_counts$share[1])` of observations. Pl\@ntNet auto ID adds another `r format_percent(berlin_source_counts$share[2])`, while ArtenFinder contributes `r format_percent(berlin_source_counts$share[3])`. Together, these three sources provide `r format_percent(sum(berlin_source_counts$share[1:3]))` of the Berlin dataset.
 
-We see, that the majority of Berlin observations comes from citizen-science platforms, both global - iNaturalist and Pl\@ntNet, and local - ArtenFinder, naturgucker etc.
+The majority of Berlin observations come from citizen-science platforms — both global ones, such as iNaturalist and Pl\@ntNet, and local ones, such as ArtenFinder and naturgucker.
+
+The source mix has now flipped twice. iNaturalist leads globally (Part I), Pl\@ntNet auto ID leads nationally in Germany (@fig-de-source-bar), and Berlin reverts to iNaturalist research-grade at `r format_percent(berlin_source_counts$share[1])`. Berlin is not representative of Germany in the way that Germany is not representative of the world. Each nested scale is dominated by a different platform, so the composition of any GlobalGeoTree subset has to be checked at the scale being analysed rather than inherited from the level above.
 
 ## Spatial distribution of Berlin observations
 
 -   *Which parts of Berlin show the highest recording density?*
 
-```{r berlin-spatial-distribution, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-berlin-density
+#| fig-cap: "Tree observation density in Berlin"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 berlin_points_for_map <- sample_up_to(berlin, max_berlin_points)
 
 if (nrow(berlin_points_for_map) < 3) {
@@ -3013,8 +3053,7 @@ if (nrow(berlin_points_for_map) < 3) {
     geom_point(data = berlin_points_for_map, aes(x = longitude, y = latitude), alpha = 0.14, size = 0.35) +
     coord_sf() +
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
-    plot_labs(title = "Tree observation density in Berlin",
-         caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
+    plot_labs(caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
 } else {
@@ -3023,19 +3062,20 @@ if (nrow(berlin_points_for_map) < 3) {
     geom_point(alpha = 0.12, size = 0.35) +
     coord_fixed() +
     scale_fill_viridis_d(option = "C", direction = -1, name = "Density") +
-    plot_labs(title = "Tree observation density in Berlin",
-         subtitle = "District borders were unavailable, so this map uses the Berlin bounding-box fallback.",
+    plot_labs(subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
          caption = paste("Density and points use", format_number(nrow(berlin_points_for_map)), "sampled Berlin observations."),
          x = "Longitude", y = "Latitude") +
     theme_gtree()
 }
 ```
 
-The density map highlights which parts of Berlin have the most recorded tree observations. High-density areas are correspond to parks, green corridors, and neighbourhoods with active observers rather than necessarily having more trees than other areas.
+@fig-berlin-density highlights which parts of Berlin have the most recorded tree observations. As always in this part, high-density areas correspond to parks, green corridors, and neighbourhoods with active observers rather than to places that necessarily hold more trees.
 
-Observations are strongly concentrated in western Berlin, with the clearest hotspot just west of the city centre, in Grunewald. Smaller clusters appear in the southwest and along the southern edge, while most central and eastern districts have much lower recording density.
+Observations are strongly concentrated in western Berlin, with the clearest hotspot just west of the city centre, in Grunewald. Smaller clusters appear in the southwest and along the southern edge, while most central and eastern local areas have much lower recording density.
 
 ## Berlin local areas: observations and species
+
+-   *Do the local areas with the most observations also have the most recorded species?*
 
 ```{r berlin-district-summary}
 if ("district" %in% names(berlin) && any(!is.na(berlin$district))) {
@@ -3052,7 +3092,12 @@ if ("district" %in% names(berlin) && any(!is.na(berlin$district))) {
 # Counts feed the bar charts and choropleth below; the table view was removed as redundant.
 ```
 
-```{r berlin-district-bar, fig.width=6, fig.height=4.5}
+```{r}
+#| label: fig-berlin-area-bar
+#| fig-cap: "Berlin observations by local area"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 4.5
 if (nrow(berlin_district_counts) == 0) {
   empty_plot("Berlin local-area counts are unavailable because polygons were not loaded.")
 } else {
@@ -3063,14 +3108,21 @@ if (nrow(berlin_district_counts) == 0) {
     geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(title = "Berlin observations by local area", subtitle = "Only the top 20 areas are shown.", x = NULL, y = "Observations") +
+    plot_labs(subtitle = "Only the top 20 areas are shown.", x = NULL, y = "Observations") +
     theme_gtree()
 }
 ```
 
-Grunewald dominates the dataset with 1,714 observations—more than three times the count for Wannsee, another south-western district. All other local areas have fewer than 300 records, showing a strong concentration in the southwest.
+Grunewald dominates the dataset with `r format_number(berlin_district_counts$observations[1])` observations — `r round(berlin_district_counts$observations[1] / berlin_district_counts$observations[2], 1)` times the count for Wannsee, the next local area. Third-placed `r berlin_district_counts$district[3]` has only `r format_number(berlin_district_counts$observations[3])`, and every area below it fewer still, so recording is heavily concentrated in the southwest.
 
-```{r berlin-species-bar, fig.width=6, fig.height=4.5}
+This is where the expectation set out at the start of this section breaks down. Berlin was chosen partly because, as a city-state, its entire area is urban — but the places driving its record count are not urban in any ordinary sense. Grunewald is Berlin's largest forest; Wannsee and Dahlem, the next-ranked areas, are green, peripheral and affluent. The dense central boroughs, where street trees actually are, contribute little. Berlin's tree records therefore describe woodland and leafy periphery visited by recreational observers, not the urban tree stock of a capital city. The city-state framing turns out to predict the opposite of what the data shows.
+
+```{r}
+#| label: fig-berlin-area-species
+#| fig-cap: "Recorded species by Berlin local area"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 4.5
 if (nrow(berlin_district_counts) == 0) {
   empty_plot("Berlin local-area species counts are unavailable because polygons were not loaded.")
 } else {
@@ -3081,15 +3133,22 @@ if (nrow(berlin_district_counts) == 0) {
     geom_col(fill = "steelblue") +
     geom_text(aes(label = format_number(species)), hjust = -0.05, size = 3) +
     coord_flip() +
+    plot_labs(x = NULL, y = "Recorded species") +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(title = "Recorded species by Berlin local area", x = NULL, y = "Recorded species") +
     theme_gtree()
 }
 ```
 
-Grunewald and Wannsee also have the highest recorded species counts. Buch stands out with 60 species despite having fewer observations than Dahlem, suggesting that observation volume and recorded richness do not always rise together.
+Grunewald and Wannsee also have the highest recorded species counts. Buch stands out with `r format_number(berlin_district_counts$species[berlin_district_counts$district == "Buch"])` species despite having fewer observations than Dahlem, suggesting that observation volume and recorded richness do not always rise together.
 
-```{r berlin-district-map, fig.width=6, fig.height=5}
+The gap between @fig-berlin-area-bar and @fig-berlin-area-species is itself informative. Grunewald's lead in species is nowhere near as extreme as its lead in observations, which is what one would expect from saturation: once an area has been visited often enough, additional visits mostly re-record species already on the list. Recorded richness is bounded by the local flora, whereas observation counts are bounded only by observer enthusiasm. Comparing richness across areas with such unequal effort would need rarefaction of the kind applied to continents in Part I and to U.S. regions in Part III; without it, @fig-berlin-area-species should be read as "species found so far", not as a diversity ranking.
+
+```{r}
+#| label: fig-berlin-area-map
+#| fig-cap: "Observation frequency by Berlin local area"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (has_berlin_districts && nrow(berlin_district_counts) > 0) {
   berlin_district_map <- berlin_districts |>
     left_join(berlin_district_counts, by = "district") |>
@@ -3104,20 +3163,20 @@ if (has_berlin_districts && nrow(berlin_district_counts) > 0) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(title = "Observation frequency by Berlin local area",
-         subtitle = NULL,
-         fill = "Observations") +
+    plot_labs(subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 } else {
   empty_plot("Berlin local-area map is unavailable because polygons were not loaded.")
 }
 ```
 
-The choropleth map shows the spatial pattern. Square-root scaling keeps both high- and medium-count local areas visible on the choropleth.
+@fig-berlin-area-map shows the same counts in their spatial arrangement. Square-root scaling keeps both high- and medium-count local areas visible.
 
 The map confirms a strong hotspot around Grunewald in western Berlin. Most central areas have low counts, while several outer areas in the southwest, north and southeast show moderate recording activity.
 
 ## Top recorded species in Berlin
+
+-   *Which tree species are recorded most often in Berlin, and are the species labels trustworthy?*
 
 ```{r berlin-top-species}
 berlin_named <- add_species_display_name(berlin)
@@ -3129,7 +3188,12 @@ berlin_top_species <- berlin_named |>
 # The top-species table was removed; the bar chart below shows the same ranking.
 ```
 
-```{r berlin-top-species-bar, fig.width=6, fig.height=4.5}
+```{r}
+#| label: fig-berlin-top-species
+#| fig-cap: "Most recorded tree species in Berlin"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 4.5
 berlin_top_species |>
   slice_head(n = 15) |>
   ggplot(aes(x = reorder(species_display_name, observations), y = observations)) +
@@ -3137,15 +3201,20 @@ berlin_top_species |>
   geom_text(aes(label = format_number(observations)), hjust = -0.05, size = 3) +
   coord_flip() +
   scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-  plot_labs(title = "Most recorded tree species in Berlin",
-       subtitle = "Common names shown where available.",
+  plot_labs(subtitle = "Common names shown where available.",
        x = NULL, y = "Observations") +
   theme_gtree()
 ```
 
-The most frequently recorded species in Berlin reflect the city's urban tree stock, which includes both native species and commonly planted street and park trees.
+@fig-berlin-top-species should be read with considerable caution, because it is the one figure in this part where the *labels* — not just the counts — are demonstrably wrong.
 
-*Cupania sylvatica* is recorded far more often than any other species, with about twice as many observations as beech. Counts then fall quickly across the remaining taxa. Several entries, including a bird species and tropical plants, suggest that the taxonomic labels should be checked before interpreting this ranking.
+*Cupania sylvatica* tops the ranking, with roughly `r round(berlin_top_species$observations[1] / berlin_top_species$observations[2], 1)` times the observations of the next species. That result is not credible: *Cupania* is a Neotropical genus that does not grow wild in Brandenburg. The explanation is visible on the chart itself. The common names come from GBIF via `add_species_display_name()`, and the label rendered for this taxon is **"Litchi family"** — a *family* vernacular, not a species name. Its `species_key` (6657) is a family-rank GBIF identifier for Sapindaceae, not a species key.
+
+The same fault recurs. `Croton laccifer` resolves to "Euphorbia family", `Schefflera macrophylla` to "Aralia and Ivy family", `Dombeya acerifolia` to "Mallow Family", `Salix arbutifolia` to "Willow Family". In every case a four-digit family-rank key sits where a seven-digit species key should be. The pattern suggests that where GlobalGeoTree could resolve a record only to family, it back-filled `level3_species` with an arbitrary — usually tropical — member of that family instead of leaving it blank. Read that way, the entries are not exotic at all: the Sapindaceae records are almost certainly maples, the Araliaceae records ivy, and the Malvaceae records limes — all thoroughly unremarkable Berlin trees wearing the wrong names. Across Germany these family-rank rows account for `r format_percent(sum(as.integer(species_names_raw$de_observations[nchar(as.character(species_names_raw$species_key)) <= 6])) / sum(as.integer(species_names_raw$de_observations)))` of observations.
+
+A second, unrelated problem sits alongside it: *Dryocopus martius*, the black woodpecker, is the second most recorded taxon among the German species carrying a GBIF key, with `r format_number(as.integer(species_names_raw$de_observations[species_names_raw$level3_species == "Dryocopus martius"]))` records — behind only beech. It is a bird. Whatever filter was meant to restrict GlobalGeoTree to trees has let at least one animal through at high volume.
+
+Both faults are inherited from the upstream dataset rather than introduced here, and neither is repaired in this report. The consequence is that this ranking cannot be read as a description of Berlin's tree stock: it is a description of Berlin's *labels*, and some of them are wrong. Species-level use of the German subset would need the taxonomy validated against GBIF ranks first. The spatial and source-level findings elsewhere in Part II do not depend on species identity and are unaffected.
 
 ## Berlin oak tree groups
 
@@ -3183,7 +3252,12 @@ if ("district" %in% names(berlin_oaks) && any(!is.na(berlin_oaks$district))) {
 # Counts feed the oak map and the bar chart below; the table view was removed as redundant.
 ```
 
-```{r berlin-oak-map, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-berlin-oak-map
+#| fig-cap: "Recorded oak tree groups in Berlin"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 berlin_oak_points_for_map <- sample_up_to(berlin_oaks, max_berlin_points)
 
 if (nrow(berlin_oak_points_for_map) == 0) {
@@ -3203,24 +3277,27 @@ if (nrow(berlin_oak_points_for_map) == 0) {
     geom_sf(data = berlin_districts_plot, fill = NA, color = "gray25", linewidth = 0.35) +
     coord_sf() +
     scale_fill_viridis_d(option = "B", direction = -1, name = "Oak density") +
-    plot_labs(title = "Recorded oak tree groups in Berlin",
-         caption = paste("Displayed oak points:", format_number(nrow(berlin_oak_points_for_map)), "of", format_number(nrow(berlin_oaks)), "Berlin oak observations."),
+    plot_labs(caption = paste("Displayed oak points:", format_number(nrow(berlin_oak_points_for_map)), "of", format_number(nrow(berlin_oaks)), "Berlin oak observations."),
          x = NULL, y = NULL) +
     theme_map_gtree()
 } else {
   ggplot(berlin_oak_points_for_map, aes(x = longitude, y = latitude)) +
     geom_point(color = "#4d2c0b", alpha = 0.45, size = 0.75) +
     coord_fixed() +
-    plot_labs(title = "Recorded oak tree groups in Berlin",
-         subtitle = "District borders were unavailable, so this map uses the Berlin bounding-box fallback.",
+    plot_labs(subtitle = "Local-area borders were unavailable, so this map uses the Berlin bounding-box fallback.",
          x = "Longitude", y = "Latitude") +
     theme_gtree()
 }
 ```
 
-The oak pattern closely follows the overall pattern of all Berlin observations, with the strongest concentration in the west. This suggests that the oak map mainly reflects where recording is most intensive, not where oaks are necessarily most common.
+The oak pattern in @fig-berlin-oak-map closely follows the overall pattern in @fig-berlin-density, with the strongest concentration in the west. The oak map therefore mainly reflects where recording is most intensive, not where oaks are most common.
 
-```{r berlin-oak-area-bar, fig.width=6, fig.height=4.5}
+```{r}
+#| label: fig-berlin-oak-bar
+#| fig-cap: "Recorded oak observations by Berlin local area"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 4.5
 if (nrow(berlin_oak_area_counts) == 0) {
   empty_plot("Berlin oak local-area counts are unavailable.")
 } else {
@@ -3231,19 +3308,22 @@ if (nrow(berlin_oak_area_counts) == 0) {
     geom_text(aes(label = format_number(oak_observations)), hjust = -0.05, size = 3) +
     coord_flip() +
     scale_y_continuous(labels = scales::comma_format(), expand = expansion(mult = c(0, 0.15))) +
-    plot_labs(title = "Recorded oak observations by Berlin local area",
-         x = NULL, y = "Oak observations") +
+    plot_labs(x = NULL, y = "Oak observations") +
     theme_gtree()
 }
 ```
 
 Grunewald, Dahlem and other highly sampled areas also contain most oak records. Because the full dataset is spatially biased, the oak subset inherits the same bias, so these counts should not be read as a ranking of true oak abundance.
 
+It is worth stating plainly what this means for the application proposed above, because the answer is negative. A processionary-moth warning system needs to know where oaks *are*; @fig-berlin-oak-bar shows where oaks were *looked at*. An area with many oaks and no observers is indistinguishable here from an area with no oaks, and those are exactly the areas a public-health warning would most need to reach. GlobalGeoTree cannot supply this on its own — the oak records are usable as a supplementary layer over an official tree inventory, which has known coverage, but not as a substitute for one. The value of this section is in showing what the dataset would need to be joined against, rather than in the map itself.
+
 # Baden-Württemberg and Nordrhein-Westfalen
 
 -   *Is Berlin's spatial concentration of observations a Berlin-specific pattern, or is it typical for German regions?*
 
 The Berlin analysis above revealed that observations are heavily concentrated in a single location. To investigate, we compare Berlin with Nordrhein-Westfalen (NRW) and Baden-Württemberg — the first and third largest federal states by observation count. For each state, a density map and a NUTS3 district choropleth show where observations are concentrated.
+
+One caveat applies to the whole comparison. Berlin covers about 890 km² and is divided into small local areas; Baden-Württemberg and NRW each cover roughly 35,000 km² and are divided into much larger NUTS3 districts. Measured concentration depends on the size of the units doing the measuring, so "Berlin is more concentrated" cannot be read straight off the maps — the comparison below rests on the *shape* of the density surfaces, which are computed from coordinates rather than administrative units, and treats the choropleths as supporting detail only.
 
 ```{r load-bw-boundaries}
 #| include: false
@@ -3271,7 +3351,12 @@ rm(bw_filtered)
 
 ## Baden-Württemberg
 
-```{r bw-density-main, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-bw-density
+#| fig-cap: "Baden-Württemberg observation density"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 bw_points_for_map <- sample_up_to(bw, max_bw_points)
 bw_boundary_for_map <- if (has_bw_boundary) bw_boundary_plot else NULL
 
@@ -3280,7 +3365,7 @@ if (nrow(bw_points_for_map) < 3) {
 } else {
   plot_filled_density_map(
     points_data = bw_points_for_map, boundary_data = bw_boundary_for_map,
-    title = "Baden-Württemberg observation density",
+    title = NULL,
     subtitle = NULL,
     caption = "This shows recording density in the dataset, not true tree abundance.",
     bins = 9, alpha = 0.90
@@ -3302,7 +3387,12 @@ bw_district_map_plot <- simplify_for_plot(bw_district_map, tolerance = 0.003)
 rm(bw_district_outputs)
 ```
 
-```{r bw-district-map, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-bw-district-map
+#| fig-cap: "Baden-Württemberg observation frequency by NUTS3 district"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (is.null(bw_district_map)) {
   empty_plot("Baden-Württemberg district map is unavailable because NUTS3 polygons were not loaded.")
 } else {
@@ -3315,18 +3405,16 @@ if (is.null(bw_district_map)) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(title = "Baden-Württemberg by NUTS3 district",
-         subtitle = NULL,
-         fill = "Observations") +
+    plot_labs(subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 }
 ```
 
 Square-root scaling is applied so that a few very high-count districts do not wash out variation among the rest.
 
-The district map confirms that observations are unevenly distributed. The highest counts occur in the far southwest, while several western, northern and southern districts also have relatively high totals. Many central and eastern districts contribute fewer records.
+@fig-bw-district-map confirms that observations are unevenly distributed. The highest counts occur in the far southwest, while several western, northern and southern districts also have relatively high totals. Many central and eastern districts contribute fewer records.
 
-## Nordrhein-Westfalen (NRW)
+## Nordrhein-Westfalen
 
 NRW serves the same role as Baden-Württemberg: a state-level comparison point for Berlin.
 
@@ -3354,7 +3442,12 @@ nrw <- nrw_filtered$data
 rm(nrw_filtered)
 ```
 
-```{r nrw-density-main, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-nrw-density
+#| fig-cap: "NRW observation density"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 nrw_points_for_map <- sample_up_to(nrw, max_nrw_points)
 nrw_boundary_for_map <- if (has_nrw_boundary) nrw_boundary_plot else NULL
 
@@ -3363,7 +3456,7 @@ if (nrow(nrw_points_for_map) < 3) {
 } else {
   plot_filled_density_map(
     points_data = nrw_points_for_map, boundary_data = nrw_boundary_for_map,
-    title = "NRW observation density",
+    title = NULL,
     subtitle = NULL,
     caption = "This shows recording density in the dataset, not true tree abundance.",
     bins = 9, alpha = 0.90
@@ -3371,7 +3464,7 @@ if (nrow(nrw_points_for_map) < 3) {
 }
 ```
 
-NRW has several observation hotspots rather than one dominant centre. High recording density appears in the southwest, central-west and north, with smaller clusters in the east. This is more dispersed than Berlin’s strongly concentrated western hotspot and helps explain the broad area of high density seen in western Germany.
+NRW has several observation hotspots rather than one dominant centre. High recording density appears in the southwest, central-west and north, with smaller clusters in the east. This is more dispersed than Berlin's strongly concentrated western hotspot and helps explain the broad area of high density seen in western Germany in @fig-de-density.
 
 ### NRW observations by NUTS3 district
 
@@ -3385,7 +3478,12 @@ nrw_district_map_plot <- simplify_for_plot(nrw_district_map, tolerance = 0.003)
 rm(nrw_district_outputs)
 ```
 
-```{r nrw-district-map, fig.width=6, fig.height=5}
+```{r}
+#| label: fig-nrw-district-map
+#| fig-cap: "NRW observation frequency by NUTS3 district"
+#| fig-cap-location: bottom
+#| fig-width: 6
+#| fig-height: 5
 if (is.null(nrw_district_map)) {
   empty_plot("NRW district map is unavailable because NUTS3 polygons were not loaded.")
 } else {
@@ -3398,18 +3496,34 @@ if (is.null(nrw_district_map)) {
         label.theme = element_text(angle = 45, hjust = 1, size = 9)
       )
     ) +
-    plot_labs(title = "NRW: NUTS3 observation frequency",
-         subtitle = NULL,
-         fill = "Observations") +
+    plot_labs(subtitle = NULL, fill = "Observations") +
     theme_map_gtree()
 }
 ```
 
 As above, square-root scaling is used so that dominant districts do not obscure the rest of the distribution.
 
-The district map confirms that records are uneven but spread across much of NRW. A few northern and southern districts have the highest totals, while many central districts show medium counts. Compared with Baden-Württemberg, NRW has a similarly multi-centred pattern; compared with Berlin, its observations are less dependent on one local area.
+@fig-nrw-district-map confirms that records are uneven but spread across much of NRW. A few northern and southern districts have the highest totals, while many central districts show medium counts. Compared with Baden-Württemberg, NRW has a similarly multi-centred pattern; compared with Berlin, its observations are less dependent on one local area.
 
-Comparing the density maps of Baden-Württemberg and NRW with that of Berlin highlights a notable difference in spatial distribution. While observations in BW and NRW are spread much more evenly across their respective territories — with multiple distinct hotspots corresponding to major cities and populated areas — Berlin's observations are heavily concentrated in a single location. This contrast reinforces the data quality concern raised earlier: the Berlin subset appears to reflect localised recording activity rather than a representative spatial sample of the city's tree cover.
+Comparing @fig-bw-density and @fig-nrw-density with @fig-berlin-density answers the question this section opened with. Observations in Baden-Württemberg and NRW are spread much more evenly across their territories, with multiple distinct hotspots corresponding to major cities and populated areas, whereas Berlin's observations are heavily concentrated in a single location. Berlin's concentration is therefore Berlin-specific rather than typical of German regions, and the Berlin subset is better described as localised recording activity than as a representative spatial sample of the city's tree cover.
+
+The scale caveat above limits how far this can be pushed: the density surfaces are directly comparable in shape, but Berlin is two orders of magnitude smaller in area, and a single forest occupies a far larger fraction of it than any one wood could occupy in a large state. Some concentration is expected simply from the geography. What the comparison supports is that Berlin's pattern is different in kind — one site rather than several centres — and not merely different in degree.
+
+# Germany: Conclusions
+
+Part II asked where tree observations in Germany come from, who records them, and whether the national picture holds at city scale. Five findings stand out.
+
+**Recording is a western and southwestern phenomenon, and it tracks people.** @fig-de-density and @fig-de-points agree: intensity is highest in the west and south, with an isolated hotspot at Berlin and thin coverage across the east and northeast. At state level, Nordrhein-Westfalen leads, followed by Bayern, Baden-Württemberg and Niedersachsen — which is close to Germany's population ranking. Because the counts are raw rather than normalised, the federal state comparison cannot separate tree cover from observer density, and the population ordering suggests observers are doing most of the work.
+
+**No single platform describes Germany, and the mix changes with scale.** Pl\@ntNet auto ID contributes `r format_percent(de_source_counts$share[1])` of German records and the three largest sources `r format_percent(sum(de_source_counts$share[1:3]))`, so national patterns are effectively the patterns of three platforms. That composition is not the global one — iNaturalist leads worldwide with `r format_percent(inat_share)` — and it is not Berlin's either, where iNaturalist returns to the front with `r format_percent(berlin_source_counts$share[1])`. Global, national and city scales are each dominated by a different source, so source composition has to be established at the scale being analysed and never inherited from the level above.
+
+**Berlin's tree records describe a forest, not a city.** Grunewald alone holds `r format_number(berlin_district_counts$observations[1])` observations, `r round(berlin_district_counts$observations[1] / berlin_district_counts$observations[2], 1)` times the next local area, with the dense central boroughs contributing little. The expectation that a city-state would yield urban, street-tree recording is contradicted by its own data: what the Berlin subset captures is recreational recording in woodland and leafy periphery. The oak analysis inherits this bias exactly, which is why it cannot underpin a processionary-moth warning system without an official inventory to supply the coverage GlobalGeoTree lacks.
+
+**That concentration is specific to Berlin.** Baden-Württemberg and NRW are multi-centred, with hotspots at their major population centres rather than at one site (@fig-bw-density, @fig-nrw-density). Berlin differs in kind, not just degree — though the comparison spans very different areal units and should be read from the density surfaces rather than the choropleths.
+
+**Species-level labels in the German subset are not trustworthy.** Around `r format_percent(sum(as.integer(species_names_raw$de_observations[nchar(as.character(species_names_raw$species_key)) <= 6])) / sum(as.integer(species_names_raw$de_observations)))` of German observations carry family-rank GBIF keys behind plausible-looking species names, so the "tropical" trees topping the Berlin ranking are almost certainly maples, ivy and limes; a black woodpecker ranks second nationally. These faults come from the upstream dataset and are not repaired here. The spatial and source-level conclusions above do not depend on species identity, but any species-level use of this subset would need the taxonomy validated first.
+
+Taken together, Part II measures **recording behaviour in Germany, not German tree cover**. Every pattern above — the western skew, the state ranking, the Berlin hotspot, the oak distribution — is better explained by where observers go and which app they use than by where trees grow. This does not make the data useless, but it fixes what it can answer: it is evidence about a sampling process, and only indirectly about the thing sampled.
 
 # Part III: Distribution of the data in the United States {.unnumbered}
 
@@ -3842,7 +3956,7 @@ This report has examined the GlobalGeoTree dataset from multiple angles — sour
 
 **Taxonomic composition and worldwide distribution.** The taxonomic analysis showed that Deciduous Broadleaf is the largest foliage category in the observations and that recorded species richness peaks in several temperate latitude bands. Sampling is heavily concentrated in North America and Europe, while regions such as central Africa, the Amazon interior, and Central Asia remain sparsely represented. This geographic bias is visible throughout 2015–2024 observation years, with later-dated records tending to intensify already represented areas rather than adding major new regions.
 
-**Germany and Berlin analysis.** Within Germany, the same citizen-science dominance reproduces at the national level, with several platforms shaping partially different spatial footprints. At the Bundesland level, observation counts vary widely, reflecting differences in population density, platform coverage, and observer activity. Berlin is examined in detail, while Baden-Württemberg and NRW provide brief map-based context. The Berlin oak analysis demonstrates how recorded oak locations could be compared with official inventories and pest-surveillance data in a follow-up application.
+**Germany and Berlin analysis.** Within Germany, citizen-science dominance reproduces at the national level, but not with the same platforms: Pl\@ntNet auto ID leads in Germany where iNaturalist leads globally, and Berlin reverts to iNaturalist again — each scale has a different dominant source. Federal state counts vary widely and closely follow the states' populations, though the report does not normalise by population or area and so cannot separate tree cover from observer density. Berlin proves to be an extreme case: recording concentrates on a single forest, Grunewald, rather than on the urban tree stock a city-state might suggest, and Baden-Württemberg and NRW show this concentration is Berlin-specific. The Berlin oak analysis shows why GlobalGeoTree cannot support pest surveillance alone — the oak records track observer effort, so they are usable only over an official inventory with known coverage. Part II also surfaces a taxonomic fault inherited from the source dataset: roughly a tenth of German records carry family-rank keys behind species-looking names, and a bird ranks among the most-recorded "tree species".
 
 **United States.** The US analysis — the most-represented country in the dataset — showed strong regional imbalance in recording intensity, with the South and West contributing the largest shares of observations. Foliage composition varies geographically: Deciduous Broadleaf dominates everywhere, while Evergreen Broadleaf is more southern/coastal and Evergreen Needleleaf is more western and northern. Taxonomic richness remains partly shaped by sample size, so regional diversity comparisons should be read alongside the rarefaction results.
 
