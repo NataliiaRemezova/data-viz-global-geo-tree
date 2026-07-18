@@ -4206,8 +4206,6 @@ ggplot(rich_long, aes(x = Region, y = count, fill = level)) +
 
 The South leads the raw counts in @tbl-us-taxa-region and @fig-us-richness-region, followed by the West. Their advantage is partly expected because these are also the two largest regional subsets. Despite having fewer observations, the Northeast and Midwest still include a notable share of the 3,001 species recorded for the United States.
 
-**Methodological note:** `vegan::rarefy()` computes the expected number of recorded species in a random sample of *n* observations, drawn without replacement from each region's species-abundance counts. It evaluates this expectation analytically instead of averaging repeated random draws, producing one rarefaction curve per region. This standardises the number of observations being compared, but it does not correct for uneven geographic coverage, source composition, or detectability within each region.
-
 ```{r}
 #| label: fig-us-rarefaction
 #| fig-cap: "Growth of recorded species richness as regional sample size increases"
