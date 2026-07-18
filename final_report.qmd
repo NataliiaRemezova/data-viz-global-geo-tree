@@ -80,6 +80,10 @@ The report is organised in three main parts.
 
 **Part III** examines the United States, the most-represented country in the dataset, analysing species composition and geographic patterns at the national level.
 
+::: {.callout-note}
+Because the complete dataset is over 1 GB in size, it cannot be submitted together with this report. The full dataset file, *GlobalGeoTree.csv*, is available in the GlobalGeoTree repository on Hugging Face (yann111, n.d.).
+:::
+
 ```{r packages}
 # ── Setup ────────────────────────────────────────────────────
 
@@ -4580,3 +4584,5 @@ Grömping, U. (2026, April 7). *Tools and software for our course* [Moodle cours
 Mu, Y., Xiong, Z., Wang, Y., Shahzad, M., Essl, F., Kreft, H., van Kleunen, M., & Zhu, X. X. (2025). GlobalGeoTree: A multi-granular vision-language dataset for global tree species classification. *arXiv preprint arXiv:2505.12513*. https://doi.org/10.48550/arXiv.2505.12513
 
 Senate Department for Urban Development. (2011). *Actual use of built-up areas / inventory of green and open spaces 2010: Map description*. Berlin Environmental Atlas. https://www.berlin.de/umweltatlas/en/land-use/actual-land-use/2010/map-description/
+
+yann111. (n.d.). GlobalGeoTree [Data set]. Hugging Face. https://huggingface.co/datasets/yann111/GlobalGeoTree
