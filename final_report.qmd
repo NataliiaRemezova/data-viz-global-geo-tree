@@ -3,7 +3,7 @@ title: "GlobalGeoTree Dataset Visualisation Project"
 subtitle: "Exploring source bias, temporal trends, and regional patterns in a global tree observation dataset"
 author:
   - Anna Garnon (113632)
-  - Camille Guth
+  - Camille Guth (113425)
   - Nataliia Remezova (106606)
   - Santiago Mesa Rubio
 date: today
