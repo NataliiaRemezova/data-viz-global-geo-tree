@@ -1,7 +1,11 @@
 ---
-title: "GlobalGeoTree Dataset Analysis"
+title: "GlobalGeoTree Dataset Visualisation Project"
 subtitle: "Exploring source bias, temporal trends, and regional patterns in a global tree observation dataset"
-author: "GlobalGeoTree team"
+author:
+  - Anna Garnon
+  - Camille Guth
+  - Nataliia Remezova (106606)
+  - Santiago Mesa Rubio
 date: today
 lang: en-GB
 format:
@@ -54,11 +58,9 @@ if (params$latex) {
 }
 ```
 
-# Introduction
+**Group 5 · Data Visualisation Course · Summer Semester 2026**
 
-::: {.callout-note appearance="minimal"}
-*Authors: Nataliia (source bias, temporal development & Germany analysis), Anna (data structure & taxonomic composition), Camille (worldwide distribution), Santiago (US analysis)*
-:::
+# Introduction
 
 This report analyses the GlobalGeoTree dataset, a global collection of more than 6 million georeferenced tree observations covering species, taxonomic groups, and geographical locations of trees combined from several sources from across the world.
 
@@ -4521,19 +4523,47 @@ Source composition changes with scale: iNaturalist dominates globally and in Ber
 
 These biases do not make the dataset unusable; they define the questions it can answer reliably. GlobalGeoTree is well suited to analysing recording activity, comparing source footprints, identifying coverage gaps, and generating hypotheses. Claims about biological abundance, species richness, regional diversity, or pest risk require independent validation, correction for observation effort, and careful taxonomic quality control. The concentrated Berlin sample and the mislabelled German records demonstrate why these safeguards are essential.
 
-# AI Assistance Disclosure {.unnumbered}
+# AI Usage Disclaimer {.unnumbered}
 
-ChatGPT and Codex were used as supporting tools during the development of this project. Their assistance included reviewing and debugging R and Quarto code, identifying hard-coded or inconsistent values, suggesting improvements to reproducibility and visualisation design, refining the report's structure and language, and checking whether interpretations were adequately supported by the analyses and figures.
+We acknowledge that AI chatbots were used during this project in accordance with the course guidelines described in *Tools and Software for Our Course* and *Rules for Tools in Data Visualization* (Grömping, 2023, 2026).
 
-This assistance enabled faster iteration, clearer writing, more consistent visualisations, improved code quality, and earlier detection of potential errors. The tools did not replace the authors' analytical judgement. All AI-assisted code, analyses, interpretations, and text were reviewed and validated by the authors, who retain full responsibility for the content and conclusions of the final report.
+The search for data and the selection of datasets were carried out entirely manually using Hugging Face, Kaggle, and Google Dataset Search. The initial brainstorming, project planning, development of visualisation ideas, and distribution of tasks were completed by the group in person during class sessions.
 
-The following are representative examples of prompts used during the project; they illustrate the types of requests made and are not necessarily verbatim records:
+The report was written, revised, and reviewed manually by the authors. AI tools were used to support language editing, including the identification of grammatical errors, typographical mistakes, and inconsistencies in terminology.
 
-1.  "Review this R/Quarto code for hard-coded values and replace them with calculations derived directly from the data."
-2.  "Debug this `ggplot2` visualisation and identify why its scales, legend, or rendering are incorrect."
-3.  "Propose a reproducible subsampling method for a large spatial dataset that preserves meaningful regional patterns."
-4.  "Edit this report section for clarity and concision without changing its analytical meaning."
-5.  "Check whether this visualisation supports the accompanying interpretation and identify any claims that require qualification."
+AI tools were also used to assist with code development. However, code reviews, analytical and engineering decisions, as well as final implementations were completed and validated by the authors. 
+
+AI assistance helped us to:
+
+* identify and correct coding errors more efficiently;
+* resolve rendering issues, such as oversized text, overlapping legends, and cropped chart titles;
+* expand the scope of the project and develop more engaging visualisations; and
+* redirect effort from routine coding difficulties towards the visual design and substantive interpretation of the project.
+
+The AI tools used in this project were:
+
+* ChatGPT, including the GPT-5.5 and GPT-5.6 models;
+* Claude, including the Sonnet and Opus models.
+
+Examples of prompts used during the project include:
+
+* “The legend in the `...` visualisation is formatted incorrectly and the numbers overlap. How can this be fixed?”
+* “The `...` table is not rendered correctly in the PDF. How can this issue be resolved?”
+* “Review this R code in the `...` section and replace hard-coded values with calculations derived directly from the data.”
+* “Review and suggest improvements to the subsampling method in the `...` section so that it preserves meaningful regional patterns.”
+* “The scales, legend, or rendering in this `ggplot2` visualisation are incorrect. How can they be fixed?”
+* “Check this text for typographical errors and inconsistencies in terminology, and suggest corrections.”
+
+The use of AI enabled faster iteration, clearer writing, more consistent visualisations, improved code quality, and earlier identification of potential errors. AI tools did not replace the authors’ analytical involvement, subject-matter judgement, or responsibility for the final results. AI-assisted text and code were reviewed and validated by the authors.
+
+In addition to AI tools, the following software and collaboration platforms were used: 
+
+* R as the programming language of the project;
+* Quarto for creating and rendering the report;
+* RStudio and Visual Studio Code as IDEs;
+* Git and GitHub for version control and collaboration;
+* Google Docs and Google Slides for collaborative work and the exchange of project materials;
+* a group chat for communication and coordination among team members.
 
 # References {.unnumbered}
 
@@ -4542,6 +4572,10 @@ Code for Germany. (n.d.). *Berlin district boundaries* \[GeoJSON data file\]. Gi
 European Commission, Eurostat. (2021). *NUTS – Nomenclature of territorial units for statistics: NUTS 2021 boundary data* \[GeoJSON data files\]. GISCO — Geographical Information System of the Commission. https://gisco-services.ec.europa.eu/distribution/v2/nuts/
 
 GBIF Secretariat. (2024). *GBIF species API v1* \[Application programming interface\]. Global Biodiversity Information Facility. https://www.gbif.org/developer/species
+
+Grömping, U. (2023, March 16). *Rules for tools in data visualization* (Version 1) [Course material].
+
+Grömping, U. (2026, April 7). *Tools and software for our course* [Moodle course material].
 
 Mu, Y., Xiong, Z., Wang, Y., Shahzad, M., Essl, F., Kreft, H., van Kleunen, M., & Zhu, X. X. (2025). GlobalGeoTree: A multi-granular vision-language dataset for global tree species classification. *arXiv preprint arXiv:2505.12513*. https://doi.org/10.48550/arXiv.2505.12513
 
