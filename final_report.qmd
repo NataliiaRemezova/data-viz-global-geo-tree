@@ -2,7 +2,7 @@
 title: "GlobalGeoTree Dataset Visualisation Project"
 subtitle: "Exploring source bias, temporal trends, and regional patterns in a global tree observation dataset"
 author:
-  - Anna Garnon
+  - Anna Garnon (113632)
   - Camille Guth
   - Nataliia Remezova (106606)
   - Santiago Mesa Rubio
@@ -1416,6 +1416,7 @@ ggplot(data, aes(x = latitude)) + geom_density(fill = "forestgreen", alpha = 0.5
     hjust = 0,
     col="darkgreen"
   ) +
+  scale_x_reverse() +
   annotate(
     "text",
     x = max(data$latitude, na.rm = TRUE), y = -Inf, label = "North", vjust = 2, hjust = 1, col="darkgreen" ) + coord_cartesian(clip = "off") + theme( plot.margin = margin(10, 10, 30, 10) )
@@ -1450,17 +1451,6 @@ ggplot(richness, aes(lat_bin, species_richness)) + geom_line(linewidth = 1) + ge
 Species richness is the number of distinct species recorded in a particular area. Here, recorded richness is higher across many Northern Hemisphere latitude bands and lower near the equator and poles; because observation effort is uneven, this is not a direct estimate of biological richness.
 
 We see here that the maximum species richness is very close in the two hemispheres, but that the distribution is broader in the Northern Hemisphere than in the Southern Hemisphere (partly because trees grow at higher latitudes in the Northern Hemisphere than in the Southern Hemisphere). Similar environmental conditions can be found in the two hemispheres but they are not spread following the same pattern.
-
-How does longitude influence the different species observed (longitude and species richness)?
-
-```{r global-species-richness-longitude}
-#| cache: true
-richness_long <- data %>% mutate(long_bin = floor(longitude / 5) * 5) %>% group_by(long_bin) %>% summarise(species_richness = n_distinct(species_key))
-
-ggplot(richness_long, aes(long_bin, species_richness)) + geom_line(linewidth = 1) + geom_point() + plot_labs( title = "Species richness by longitude", x = "Longitude", y = "Number of species observed" ) + theme_gtree()+ scale_x_reverse()
-```
-
-Areas with high recorded species richness correspond to continental areas, but little more can be concluded from longitude alone.
 
 What is the local recorded species richness across the world?
 
